@@ -6,7 +6,6 @@ ignore = ["E501"]
 
 [lint.isort]
 known-first-party = ["uummannaq_ice"]
-profile = "black"
 
 [format]
 quote-style = "double"
