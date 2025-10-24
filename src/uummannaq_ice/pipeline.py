@@ -56,13 +56,13 @@ def run_pipeline(config: RunConfig) -> dict[str, Any]:
     panels_dir.mkdir(parents=True, exist_ok=True)
 
     tiles = fetch_tiles(config)
-    started_at = dt.datetime.utcnow()
+    started_at = dt.datetime.now(dt.timezone.utc)
     device = resolve_device(config.device)
     logging.info("Using torch device: %s", device)
 
     if not tiles:
         logging.info("Nothing to process – exiting.")
-        finished_at = dt.datetime.utcnow()
+        finished_at = dt.datetime.now(dt.timezone.utc)
         stats = {
             "tiles_total": 0,
             "tiles_requested": 0,
@@ -202,7 +202,7 @@ def run_pipeline(config: RunConfig) -> dict[str, Any]:
             elif device.type == "cuda":
                 torch.cuda.empty_cache()
 
-    finished_at = dt.datetime.utcnow()
+    finished_at = dt.datetime.now(dt.timezone.utc)
     elapsed = (finished_at - started_at).total_seconds()
     avg = sum(proc_times) / len(proc_times) if proc_times else 0.0
     stats_summary: dict[str, float | int | str] = {
