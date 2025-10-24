@@ -88,6 +88,8 @@ def downsample_cube(cube: np.ndarray) -> torch.Tensor:
     tensor = torch.from_numpy(cube[None])
     height_aligned = (cube.shape[1] // 4) * 4
     width_aligned = (cube.shape[2] // 4) * 4
+    if height_aligned == 0 or width_aligned == 0:
+        return tensor.squeeze(0)
     pooled = fn.avg_pool2d(tensor[..., :height_aligned, :width_aligned], 4, 4).squeeze(
         0
     )
@@ -274,7 +276,8 @@ def summarise_masks(
     cnt_land = int(land.sum())
     cnt_nodata = int(nodata.sum())
     occupied = ice_solid | ice_light | water | cloud | land | nodata
-    unknown = int((~occupied).sum())
+    sum_counts = cnt_solid + cnt_light + cnt_water + cnt_cloud + cnt_land + cnt_nodata
+    duplicate = max(sum_counts - int(occupied.sum()), 0)
 
     def pct(count: int) -> float:
         return round(count / total, 4) if total else 0.0
@@ -289,7 +292,7 @@ def summarise_masks(
         "cloud_px": cnt_cloud,
         "land_px": cnt_land,
         "nodata_px": cnt_nodata,
-        "unknown_px": unknown,
+        "unknown_px": duplicate,
         "solid_pct": pct(cnt_solid),
         "light_pct": pct(cnt_light),
         "water_pct": pct(cnt_water),
