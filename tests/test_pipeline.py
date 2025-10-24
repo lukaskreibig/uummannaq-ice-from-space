@@ -11,7 +11,7 @@ from uummannaq_ice.processing import BANDS
 
 class FakeBand:
     def __init__(self, value: float):
-        self._values = np.full((1, 8, 8), value, dtype=np.float32)
+        self._values = np.full((8, 8), value, dtype=np.float32)
 
     def __getitem__(self, _index):
         return self
