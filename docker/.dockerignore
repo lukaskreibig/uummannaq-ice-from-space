@@ -1,0 +1,14 @@
+__pycache__
+.mypy_cache
+.pytest_cache
+.ruff_cache
+.git
+.gitignore
+out
+data
+archive
+notebooks
+models/legacy
+*.egg-info
+dist
+build

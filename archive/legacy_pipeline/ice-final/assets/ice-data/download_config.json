@@ -1,0 +1,16 @@
+{
+  "years": [
+    2015,
+    2020,
+    2023
+  ],
+  "output_dir": "./assets/ice-data/",
+  "source": "gibs",
+  "layer": "sea_ice_extent",
+  "results": {
+    "2015-GIBS-sea_ice_extent": false,
+    "2020-GIBS-sea_ice_extent": false,
+    "2023-GIBS-sea_ice_extent": false
+  },
+  "timestamp": "2025-07-21T18:11:17.079876"
+}

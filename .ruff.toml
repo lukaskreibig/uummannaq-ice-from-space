@@ -1,0 +1,14 @@
+extend-select = ["B", "C4", "I", "N", "Q"]
+
+[lint]
+select = ["E", "F", "W"]
+ignore = ["E501"]
+
+[lint.isort]
+known-first-party = ["uummannaq_ice"]
+profile = "black"
+
+[format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"

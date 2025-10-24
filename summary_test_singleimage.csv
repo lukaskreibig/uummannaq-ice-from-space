@@ -1,0 +1,4 @@
+tile_id,timestamp,solid_px,light_px,water_px,cloud_px,land_px,nodata_px,unknown_px,solid_pct,light_pct,water_pct,cloud_pct,land_pct,nodata_pct,mean_ndsi_solid,mean_ndsi_light,mean_ndwi_water,eo_cloud_cover,sun_elev,sun_azim,edge_gap
+S2A_21WXU_20170523_0_L1C,20170523T153908,113732,41616,0,0,16843,0,14644,0.6087,0.2227,0.0,0.0,0.0901,0.0,0.6042,0.4713,,0
+S2A_21WXU_20170520_0_L1C,20170520T152909,107515,48335,3,0,16843,0,14139,0.5755,0.2587,0.0,0.0,0.0901,0.0,0.6149,0.4444,0.2628,0
+S2C_22WDD_20250514_0_L1C,20250514T155317,14167,22902,0,0,15008,0,114627,0.085,0.1374,0.0,0.0,0.09,0.0,0.5837,0.4176,,0

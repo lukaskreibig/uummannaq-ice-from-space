@@ -1,0 +1,28 @@
+__pycache__/
+*.py[cod]
+*.log
+.Python
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.DS_Store
+.env
+.venv/
+env/
+build/
+dist/
+*.egg-info/
+
+# Project outputs
+out/
+archive/legacy_pipeline/ice-final/out/
+archive/legacy_pipeline/ice-final/old_visuals/
+archive/legacy_pipeline/ice-final/out_images/
+archive/legacy_pipeline/ice-final/visuals/
+
+# Large local datasets (untracked by default)
+data/raw/
+data/interim/
+data/processed/
+data/examples/
+models/legacy/

@@ -1,0 +1,20 @@
+# Default production-like run covering late spring 2025 over Uummannaq.
+stac_url: https://earth-search.aws.element84.com/v1
+collection: sentinel-2-l1c
+start_date: 2025-05-06
+end_date: 2025-06-25
+output_dir: out/runs/latest
+csv_filename: summary.csv
+quicklook_subdir: quicklooks
+overwrite_csv: false
+thresholds:
+  ndsi_light: 0.31
+  ndsi_solid: 0.52
+  ndwi: 0.25
+  nodata_fraction: 0.2
+concurrency:
+  download_workers: 4
+  decode_queue_size: 3
+max_tiles: null
+log_level: INFO
+

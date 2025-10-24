@@ -1,0 +1,5 @@
+# Debug configuration that fetches a single tile for quick validation.
+extends: baseline.yaml
+max_tiles: 1
+output_dir: out/runs/debug-single
+log_level: DEBUG
