@@ -146,6 +146,8 @@ def run_pipeline(config: RunConfig) -> dict[str, Any]:
             rgb_preview = build_rgb_preview(dataset)
             cube = reflectance_cube(dataset, baseline_major)
             small = downsample_cube(cube)
+            if small.ndim == 4:
+                small = small.squeeze(0)
             _, h4, w4 = small.shape
 
             land_mask = make_land_mask(landmask_template, w4, h4)

@@ -276,8 +276,7 @@ def summarise_masks(
     cnt_land = int(land.sum())
     cnt_nodata = int(nodata.sum())
     occupied = ice_solid | ice_light | water | cloud | land | nodata
-    sum_counts = cnt_solid + cnt_light + cnt_water + cnt_cloud + cnt_land + cnt_nodata
-    duplicate = max(sum_counts - int(occupied.sum()), 0)
+    unknown = max(total - int(occupied.sum()), 0)
 
     def pct(count: int) -> float:
         return round(count / total, 4) if total else 0.0
@@ -292,7 +291,7 @@ def summarise_masks(
         "cloud_px": cnt_cloud,
         "land_px": cnt_land,
         "nodata_px": cnt_nodata,
-        "unknown_px": duplicate,
+        "unknown_px": unknown,
         "solid_pct": pct(cnt_solid),
         "light_pct": pct(cnt_light),
         "water_pct": pct(cnt_water),
