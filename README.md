@@ -11,6 +11,15 @@ claim: significance. The exact permutation test gives **p = 0.119** over ten
 seasons, and no monotone trend is detectable at all. The direction is consistent
 under every treatment. The certainty is not there, and ten winters is why.
 
+![The 30 March 2013 fjord in the near infrared and in brightness temperature, beside the same fjord on 23 April](docs/images/dark-ice-2013-03-30.jpg)
+
+*Both days are frozen shore to shore. The classifier only says so about one of
+them, because on 30 March the surface is too dark for the brightness gate and
+falls through to the water class. A second satellite reads the same reflectance
+that day to within a hundredth, so it is not the instrument. Found in the course
+of asking whether the record began on an unusually icy stretch, and it turned out
+to matter more than the question. `scripts/figure_dark_ice.py`.*
+
 ## Check a number yourself
 
 Every published figure has a committed artefact and a script. These run offline,
@@ -24,6 +33,12 @@ python scripts/grid_resolution.py   --reuse --out archive/reprocessed_2026
 python scripts/validate_sar.py --analyse-only --output archive/reprocessed_2026/sar_validation.csv
 python scripts/check_summary.py archive/reprocessed_2026/summary.csv
 ```
+
+The last two of those are the CI gate. `.github/workflows/ci.yml` runs them on
+every push, so a page that has gone stale against the data fails the build rather
+than waiting to be noticed. The daily series they read is committed as
+`archive/reprocessed_2026/daily_series.csv`; `story_numbers.py --live` reads the
+story repo's working copy instead and fails if the snapshot has drifted from it.
 
 `docs/published_numbers.json` holds the figures the documentation quotes.
 `story_numbers.py` recomputes them from the daily series and exits non-zero if
@@ -115,6 +130,12 @@ The packaged assets are:
 - `config/*.yaml`: Versioned run presets (supports `extends` for layered configs).
 
 ## Pipeline overview
+
+![One scene through the pipeline: RGB, cloud mask, land mask, solid ice, light ice, and the overlay](docs/images/pipeline-panel-2017-02-19.jpg)
+
+*One scene, 19 February 2017, at every stage. Panels like this are written for
+every scene in a run, and looking at them is how the land mask defect in
+docs/investigation-log.md was found: it was invisible in every statistic.*
 
 `docs/pipeline.md` describes every stage in detail; at a high level:
 

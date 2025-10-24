@@ -42,9 +42,13 @@ import numpy as np
 import pandas as pd
 
 DEFAULT_ARCHIVE = Path("archive/reprocessed_2026/summary.csv")
-DEFAULT_SERIES = Path(
-    "../climate-dashboard/frontend/public/data/summary_test_cleaned.csv"
-)
+# The daily series is produced by the story repo's cleaning step, and until
+# recently this defaulted to that repo's working copy. That made the gate
+# unrunnable on a fresh clone and unrunnable in CI, which is the opposite of
+# what a gate is for. It now reads a COMMITTED snapshot, and --live points at
+# the source of truth so the two can be compared.
+DEFAULT_SERIES = Path("archive/reprocessed_2026/daily_series.csv")
+LIVE_SERIES = Path("../climate-dashboard/frontend/public/data/summary_test_cleaned.csv")
 
 SEASON_WINDOW = (53, 180)
 LATE_FROM = 2021
@@ -113,16 +117,55 @@ def bootstrap_interval(values: np.ndarray) -> float:
     return float(np.std(means, ddof=1))
 
 
+def _snapshot_drift(snapshot: Path, live: Path) -> str:
+    """Empty string if the committed copy still equals the story repo's."""
+    if not snapshot.exists():
+        return f"no committed snapshot at {snapshot}"
+    a, b = pd.read_csv(snapshot), pd.read_csv(live)
+    if len(a) != len(b):
+        return (
+            f"snapshot has {len(a)} rows against {len(b)} live. Refresh it with\n"
+            f"  cp {live} {snapshot}\n"
+            "and rerun without --live to see what the numbers do."
+        )
+    for column in ("frac", "frac_filled", "frac_smooth"):
+        if column not in a or column not in b:
+            continue
+        gap = (a[column] - b[column]).abs().max()
+        if gap > 1e-9:
+            return (
+                f"snapshot and live series disagree on {column} by up to {gap:.6f}. "
+                f"Refresh with\n  cp {live} {snapshot}"
+            )
+    return ""
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--archive", type=Path, default=DEFAULT_ARCHIVE)
     parser.add_argument("--series", type=Path, default=DEFAULT_SERIES)
+    parser.add_argument(
+        "--live",
+        action="store_true",
+        help="read the story repo's working copy instead of the committed "
+        "snapshot, and fail if the two disagree",
+    )
     parser.add_argument(
         "--expect", type=Path, help="committed claims to compare against"
     )
     parser.add_argument("--tolerance", type=float, default=0.0006)
     args = parser.parse_args(argv)
 
+    if args.live:
+        if not LIVE_SERIES.exists():
+            print(f"the story repo is not next door: {LIVE_SERIES}")
+            return 2
+        drift = _snapshot_drift(DEFAULT_SERIES, LIVE_SERIES)
+        if drift:
+            print(drift)
+            return 2
+        print(f"snapshot matches the live series at {LIVE_SERIES}")
+        args.series = LIVE_SERIES
     if not args.series.exists():
         print(f"published series not found: {args.series}")
         return 2

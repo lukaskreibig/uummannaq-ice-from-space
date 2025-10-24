@@ -391,6 +391,12 @@ to within a hundredth. **The radiometry was never the problem.** The lower ETM+
 share is the scan line corrector failure of 2003, whose wedge gaps arrive as fill
 and cost coverage rather than accuracy.
 
+![Near infrared and brightness temperature for 30 March and 23 April 2013](images/dark-ice-2013-03-30.jpg)
+
+*Produced by `scripts/figure_dark_ice.py`. The scales are shared between the two
+columns so they are comparable by eye, and the numbers below are given so they do
+not have to be.*
+
 ## What the thermal band said instead
 
 Reflectance cannot separate dark ice from open water, because both are dark. A

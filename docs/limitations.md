@@ -72,7 +72,7 @@ Spring means (day of year 53 to 180) per season, from the reprocessed archive:
 
 ```
 2017 0.738   2018 0.756   2019 0.611   2020 0.631   2021 0.431
-2022 0.766   2023 0.440   2024 0.667   2025 0.389   2026 0.484
+2022 0.766   2023 0.438   2024 0.668   2025 0.390   2026 0.484
 ```
 
 - Early (2017 to 2020) mean 0.684, late (2021 to 2026) mean 0.529, a decline of

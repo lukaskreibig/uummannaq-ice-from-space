@@ -41,13 +41,22 @@ jobs:
           python -m pip install -e ".[dev,test]"
 
       - name: Lint
-        run: ruff check src tests
+        run: ruff check src tests scripts
 
       - name: Format check
-        run: ruff format --check src tests
+        run: ruff format --check src tests scripts
 
       - name: Type check
         run: mypy src/uummannaq_ice
 
       - name: Test with pytest
         run: pytest --cov=uummannaq_ice --cov-report=term-missing
+
+      # The analysis layer produces every published figure and used to sit
+      # outside CI entirely. These two run offline against the committed
+      # archive, so they gate the numbers rather than only the code.
+      - name: Archive integrity
+        run: python scripts/check_summary.py archive/reprocessed_2026/summary.csv
+
+      - name: Published numbers have not drifted
+        run: python scripts/story_numbers.py --expect docs/published_numbers.json
