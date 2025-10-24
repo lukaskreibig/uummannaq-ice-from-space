@@ -36,7 +36,9 @@ def _resolve_config(path: Path) -> MutableMapping[str, Any]:
     if base:
         base_path = (path.parent / base).resolve()
         parent_cfg = _resolve_config(base_path)
-        merged = _deep_merge(parent_cfg, {k: v for k, v in raw.items() if k != "extends"})
+        merged = _deep_merge(
+            parent_cfg, {k: v for k, v in raw.items() if k != "extends"}
+        )
         return merged
     return deepcopy(raw)
 
@@ -58,9 +60,13 @@ def _build_from_mapping(data: Mapping[str, Any], *, base_dir: Path) -> RunConfig
     if "quicklook_subdir" in data:
         kwargs["quicklook_subdir"] = data["quicklook_subdir"]
     if "checkpoint_path" in data:
-        kwargs["checkpoint_path"] = _resolve_optional_path(base_dir, data["checkpoint_path"])
+        kwargs["checkpoint_path"] = _resolve_optional_path(
+            base_dir, data["checkpoint_path"]
+        )
     if "landmask_path" in data:
-        kwargs["landmask_path"] = _resolve_optional_path(base_dir, data["landmask_path"])
+        kwargs["landmask_path"] = _resolve_optional_path(
+            base_dir, data["landmask_path"]
+        )
     if "overwrite_csv" in data:
         kwargs["overwrite_csv"] = bool(data["overwrite_csv"])
     if "max_tiles" in data:
@@ -72,12 +78,20 @@ def _build_from_mapping(data: Mapping[str, Any], *, base_dir: Path) -> RunConfig
 
     thresholds_cfg = data.get("thresholds")
     if isinstance(thresholds_cfg, Mapping):
-        kwargs["thresholds"] = Thresholds(**{k: v for k, v in thresholds_cfg.items() if v is not None})
+        kwargs["thresholds"] = Thresholds(
+            **{key: value for key, value in thresholds_cfg.items() if value is not None}
+        )
 
     concurrency_cfg = data.get("concurrency")
     if isinstance(concurrency_cfg, Mapping):
-        kwargs["download_workers"] = concurrency_cfg.get("download_workers", Concurrency().download_workers)
-        kwargs["decode_queue_size"] = concurrency_cfg.get("decode_queue_size", Concurrency().decode_queue_size)
+        kwargs["download_workers"] = concurrency_cfg.get(
+            "download_workers",
+            Concurrency().download_workers,
+        )
+        kwargs["decode_queue_size"] = concurrency_cfg.get(
+            "decode_queue_size",
+            Concurrency().decode_queue_size,
+        )
 
     if "aoi_path" in data:
         kwargs["aoi_path"] = _resolve_optional_path(base_dir, data["aoi_path"])
