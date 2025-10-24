@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from contextlib import nullcontext
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict
@@ -52,7 +53,8 @@ class TileClassification:
 def build_rgb_preview(ds) -> Image.Image:
     """Generate a 512×512 RGB preview for plotting."""
     red_band, green_band, blue_band = [
-        ds[channel][0].values.astype(np.float32) for channel in ("red", "green", "blue")
+        np.asarray(ds[channel][0].values, dtype=np.float32).squeeze()
+        for channel in ("red", "green", "blue")
     ]
     scale = 255.0 if red_band.max() <= 1.0 else 255.0 / 10000.0
     rgb = [
@@ -107,7 +109,12 @@ def compute_cloud_mask(
     model: torch.nn.Module, small: torch.Tensor, device: torch.device
 ) -> np.ndarray:
     h4, w4 = small.shape[-2:]
-    with autocast(device_type=device.type), torch.no_grad():
+    autocast_ctx = (
+        autocast(device_type=device.type)
+        if device.type in {"cuda", "mps"}
+        else nullcontext()
+    )
+    with autocast_ctx, torch.no_grad():
         logits = model(pad32(small)[None].to(device))
         prob = torch.softmax(logits, 1)[0, 1].cpu().numpy()
     return binary_closing(prob[:h4, :w4] > 0.5, structure=np.ones((3, 3)))
@@ -266,9 +273,8 @@ def summarise_masks(
     cnt_cloud = int(cloud.sum())
     cnt_land = int(land.sum())
     cnt_nodata = int(nodata.sum())
-    unknown = total - (
-        cnt_solid + cnt_light + cnt_water + cnt_cloud + cnt_land + cnt_nodata
-    )
+    occupied = ice_solid | ice_light | water | cloud | land | nodata
+    unknown = int((~occupied).sum())
 
     def pct(count: int) -> float:
         return round(count / total, 4) if total else 0.0
@@ -276,7 +282,7 @@ def summarise_masks(
     def safe_mean(arr: np.ndarray, mask: np.ndarray) -> str | float:
         return round(float(np.nanmean(arr[mask])), 4) if mask.any() else ""
 
-    return {
+    stats: Dict[str, float | int | str] = {
         "solid_px": cnt_solid,
         "light_px": cnt_light,
         "water_px": cnt_water,
@@ -295,6 +301,7 @@ def summarise_masks(
         "mean_ndwi_water": safe_mean(ndwi, water),
         "edge_gap": int((cnt_nodata / total) >= nodata_threshold),
     }
+    return stats
 
 
 def refresh_landmask(template_path: Path) -> Image.Image:
