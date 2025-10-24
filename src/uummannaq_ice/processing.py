@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Tuple
-import logging
+from typing import Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import torch.nn.functional as F
+import torch.nn.functional as fn
 from PIL import Image
 from scipy.ndimage import binary_closing
 from torch.amp import autocast
@@ -51,11 +51,13 @@ class TileClassification:
 
 def build_rgb_preview(ds) -> Image.Image:
     """Generate a 512×512 RGB preview for plotting."""
-    R, G, B = [ds[channel][0].values.astype(np.float32) for channel in ("red", "green", "blue")]
-    scale = 255.0 if R.max() <= 1.0 else 255.0 / 10000.0
+    red_band, green_band, blue_band = [
+        ds[channel][0].values.astype(np.float32) for channel in ("red", "green", "blue")
+    ]
+    scale = 255.0 if red_band.max() <= 1.0 else 255.0 / 10000.0
     rgb = [
         Image.fromarray(np.clip(channel * scale, 0, 255).astype(np.uint8), "L")
-        for channel in (R, G, B)
+        for channel in (red_band, green_band, blue_band)
     ]
     return Image.merge("RGB", rgb).resize((512, 512), Image.BILINEAR)
 
@@ -82,9 +84,11 @@ def reflectance_cube(ds, baseline_major: int) -> np.ndarray:
 def downsample_cube(cube: np.ndarray) -> torch.Tensor:
     """Average-pool the reflectance cube to 40 m resolution."""
     tensor = torch.from_numpy(cube[None])
-    H4 = (cube.shape[1] // 4) * 4
-    W4 = (cube.shape[2] // 4) * 4
-    pooled = F.avg_pool2d(tensor[..., :H4, :W4], 4, 4).squeeze(0)
+    height_aligned = (cube.shape[1] // 4) * 4
+    width_aligned = (cube.shape[2] // 4) * 4
+    pooled = fn.avg_pool2d(tensor[..., :height_aligned, :width_aligned], 4, 4).squeeze(
+        0
+    )
     return pooled
 
 
@@ -96,7 +100,7 @@ def make_land_mask(template: Image.Image, width: int, height: int) -> np.ndarray
 
 def pad32(tensor: torch.Tensor) -> torch.Tensor:
     _, h, w = tensor.shape
-    return F.pad(tensor, (0, (-w) % 32, 0, (-h) % 32))
+    return fn.pad(tensor, (0, (-w) % 32, 0, (-h) % 32))
 
 
 def compute_cloud_mask(
@@ -128,16 +132,9 @@ def classify_tile(
     ndsi = (s_np[GREEN_IDX] - s_np[SWIR_IDX]) / (
         s_np[GREEN_IDX] + s_np[SWIR_IDX] + 1e-6
     )
-    ndwi = (s_np[GREEN_IDX] - s_np[NIR_IDX]) / (
-        s_np[GREEN_IDX] + s_np[NIR_IDX] + 1e-6
-    )
+    ndwi = (s_np[GREEN_IDX] - s_np[NIR_IDX]) / (s_np[GREEN_IDX] + s_np[NIR_IDX] + 1e-6)
 
-    ice_solid = (
-        (ndsi > thresholds.ndsi_solid)
-        & ~cloud
-        & ~land
-        & ~nodata
-    )
+    ice_solid = (ndsi > thresholds.ndsi_solid) & ~cloud & ~land & ~nodata
     ice_light = (
         (ndsi > thresholds.ndsi_light)
         & (ndsi < thresholds.ndsi_solid)
@@ -146,12 +143,7 @@ def classify_tile(
         & ~nodata
     )
     water = (
-        (ndwi > thresholds.ndwi)
-        & ~ice_light
-        & ~ice_solid
-        & ~cloud
-        & ~land
-        & ~nodata
+        (ndwi > thresholds.ndwi) & ~ice_light & ~ice_solid & ~cloud & ~land & ~nodata
     )
 
     overlay = overlay_rgb(
@@ -205,9 +197,8 @@ def overlay_rgb(
         (nodata, (255, 0, 255)),
     ]
     for mask, colour in layers:
-        arr = (
-            Image.fromarray((mask * 255).astype(np.uint8))
-            .resize(base.size, Image.NEAREST)
+        arr = Image.fromarray((mask * 255).astype(np.uint8)).resize(
+            base.size, Image.NEAREST
         )
         overlay[np.array(arr) > 127] = (*colour, 120)
     return Image.alpha_composite(base, Image.fromarray(overlay, "RGBA")).convert("RGB")
@@ -260,7 +251,7 @@ def summarise_masks(
     ndsi: np.ndarray,
     ndwi: np.ndarray,
     nodata_threshold: float,
-) -> Dict[str, float]:
+) -> Dict[str, float | int | str]:
     ice_solid = masks["ice_solid"]
     ice_light = masks["ice_light"]
     water = masks["water"]

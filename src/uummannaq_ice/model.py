@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Optional
-import logging
 
-import torch
 import segmentation_models_pytorch as smp
+import torch
 
 
 def resolve_device(preferred: Optional[str] = None) -> torch.device:

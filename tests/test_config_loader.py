@@ -2,7 +2,6 @@ from pathlib import Path
 
 from uummannaq_ice.config_loader import load_run_config
 
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 

@@ -10,6 +10,9 @@ dev:
 lint:
 	ruff check src tests
 
+lint fix:
+	ruff check src tests --fix
+
 format:
 	ruff format src tests
 

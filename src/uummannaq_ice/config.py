@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 from typing import Any, Mapping, Optional
-import json
 
 from .assets import default_checkpoint_path, default_landmask_path
 

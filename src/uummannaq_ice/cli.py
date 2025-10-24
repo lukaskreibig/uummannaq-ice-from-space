@@ -6,7 +6,7 @@ import argparse
 import logging
 from datetime import date
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from .config import Thresholds, build_config
 from .config_loader import load_run_config
@@ -25,10 +25,18 @@ def build_parser() -> argparse.ArgumentParser:
         prog="uummannaq-ice",
         description="Classify Sentinel-2 tiles over Uummannaq into ice/water/cloud classes.",
     )
-    parser.add_argument("--config-file", type=Path, help="YAML file describing the run configuration.")
-    parser.add_argument("--start-date", type=_parse_date, help="Inclusive start date (YYYY-MM-DD).")
-    parser.add_argument("--end-date", type=_parse_date, help="Inclusive end date (YYYY-MM-DD).")
-    parser.add_argument("--aoi", type=Path, help="GeoJSON file describing the AOI polygon.")
+    parser.add_argument(
+        "--config-file", type=Path, help="YAML file describing the run configuration."
+    )
+    parser.add_argument(
+        "--start-date", type=_parse_date, help="Inclusive start date (YYYY-MM-DD)."
+    )
+    parser.add_argument(
+        "--end-date", type=_parse_date, help="Inclusive end date (YYYY-MM-DD)."
+    )
+    parser.add_argument(
+        "--aoi", type=Path, help="GeoJSON file describing the AOI polygon."
+    )
     parser.add_argument("--output-dir", type=Path, help="Root directory for outputs.")
     parser.add_argument("--csv-name", type=str, help="Filename for the summary CSV.")
     parser.add_argument(
@@ -36,24 +44,56 @@ def build_parser() -> argparse.ArgumentParser:
         type=str,
         help="Subdirectory within the output dir for overlay PNGs.",
     )
-    parser.add_argument("--checkpoint", type=Path, help="Path to the UNet MobilenetV2 checkpoint.")
-    parser.add_argument("--landmask", type=Path, help="Path to the landmask template PNG.")
-    parser.add_argument("--max-tiles", type=int, help="Limit number of tiles to process.")
-    parser.add_argument("--overwrite-csv", action="store_true", help="Rewrite the summary CSV instead of appending.")
-    parser.add_argument("--device", type=str, help="Force a specific torch device (cpu, cuda, mps).")
-    parser.add_argument("--threads", type=int, help="Concurrent STAC loads (default: 4).")
-    parser.add_argument("--decode-queue", type=int, help="Prefetch queue size (default: 3).")
+    parser.add_argument(
+        "--checkpoint", type=Path, help="Path to the UNet MobilenetV2 checkpoint."
+    )
+    parser.add_argument(
+        "--landmask", type=Path, help="Path to the landmask template PNG."
+    )
+    parser.add_argument(
+        "--max-tiles", type=int, help="Limit number of tiles to process."
+    )
+    parser.add_argument(
+        "--overwrite-csv",
+        action="store_true",
+        help="Rewrite the summary CSV instead of appending.",
+    )
+    parser.add_argument(
+        "--device", type=str, help="Force a specific torch device (cpu, cuda, mps)."
+    )
+    parser.add_argument(
+        "--threads", type=int, help="Concurrent STAC loads (default: 4)."
+    )
+    parser.add_argument(
+        "--decode-queue", type=int, help="Prefetch queue size (default: 3)."
+    )
     parser.add_argument("--log-level", type=str, help="Python logging level.")
 
     thresh = parser.add_argument_group("Thresholds")
-    thresh.add_argument("--ndsi-light", type=float, help="NDSI threshold for light ice detection.")
-    thresh.add_argument("--ndsi-solid", type=float, help="NDSI threshold for solid ice detection.")
-    thresh.add_argument("--ndwi", type=float, help="NDWI threshold for water detection.")
-    thresh.add_argument("--nodata-fraction", type=float, help="No-data fraction flag threshold.")
-    thresh.add_argument("--ndvi-min", type=float, help="Optional NDVI floor (currently inactive).")
-    thresh.add_argument("--vis-bright-min", type=float, help="Optional visible band brightness floor.")
-    thresh.add_argument("--nir-bright-min", type=float, help="Optional NIR brightness floor.")
-    thresh.add_argument("--swir-dark-max", type=float, help="Optional SWIR darkness ceiling.")
+    thresh.add_argument(
+        "--ndsi-light", type=float, help="NDSI threshold for light ice detection."
+    )
+    thresh.add_argument(
+        "--ndsi-solid", type=float, help="NDSI threshold for solid ice detection."
+    )
+    thresh.add_argument(
+        "--ndwi", type=float, help="NDWI threshold for water detection."
+    )
+    thresh.add_argument(
+        "--nodata-fraction", type=float, help="No-data fraction flag threshold."
+    )
+    thresh.add_argument(
+        "--ndvi-min", type=float, help="Optional NDVI floor (currently inactive)."
+    )
+    thresh.add_argument(
+        "--vis-bright-min", type=float, help="Optional visible band brightness floor."
+    )
+    thresh.add_argument(
+        "--nir-bright-min", type=float, help="Optional NIR brightness floor."
+    )
+    thresh.add_argument(
+        "--swir-dark-max", type=float, help="Optional SWIR darkness ceiling."
+    )
 
     return parser
 
@@ -78,8 +118,8 @@ def _thresholds_from_args(args: argparse.Namespace) -> Optional[Thresholds]:
     return base if changed else None
 
 
-def _build_kwargs_from_args(args: argparse.Namespace) -> dict[str, object]:
-    kwargs: dict[str, object] = {}
+def _build_kwargs_from_args(args: argparse.Namespace) -> Dict[str, Any]:
+    kwargs: Dict[str, Any] = {}
     if args.start_date:
         kwargs["start_date"] = args.start_date
     if args.end_date:
@@ -122,7 +162,7 @@ def main(argv: Optional[list[str]] = None) -> None:
     if args.config_file:
         config = load_run_config(args.config_file, overrides=kwargs)
     else:
-        config = build_config(**kwargs)
+        config = build_config(**kwargs)  # type: ignore[arg-type]
 
     logging.basicConfig(
         format="%(asctime)s  %(levelname)-8s %(message)s",

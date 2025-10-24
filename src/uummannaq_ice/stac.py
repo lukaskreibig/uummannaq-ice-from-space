@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Iterable, List
 import logging
+from datetime import date
+from typing import Dict, List
 
 from pystac import Item
 from pystac_client import Client
@@ -30,9 +31,10 @@ def fetch_tiles(config: RunConfig) -> List[Item]:
     )
 
     client = Client.open(config.stac_url)
+    geojson = dict(config.search_aoi)
     search = client.search(
         collections=[config.collection],
-        intersects=config.search_aoi,
+        intersects=geojson,
         datetime=config.date_range,
     )
 
@@ -41,11 +43,14 @@ def fetch_tiles(config: RunConfig) -> List[Item]:
         logging.warning("No STAC items found for the current configuration.")
         return []
 
-    deduped = {}
+    deduped: Dict[date, Item] = {}
     for item in items:
+        if item.datetime is None:
+            logging.warning("Skipping STAC item without datetime: %s", item.id)
+            continue
         deduped[item.datetime.date()] = fix_l1c_hrefs(item)
 
-    ordered = sorted(deduped.values(), key=lambda it: it.datetime)
+    ordered = [deduped[key] for key in sorted(deduped)]
     if config.max_tiles:
         ordered = ordered[: config.max_tiles]
 

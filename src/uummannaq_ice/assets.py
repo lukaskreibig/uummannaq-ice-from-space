@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from importlib import resources
 from pathlib import Path
+from typing import cast
 
 
 def package_path(*parts: str) -> Path:
@@ -11,7 +12,7 @@ def package_path(*parts: str) -> Path:
     traversable = resources.files("uummannaq_ice")
     for part in parts:
         traversable = traversable.joinpath(part)
-    return Path(traversable)
+    return cast(Path, traversable)
 
 
 def default_landmask_path() -> Path:

@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
+import csv
 from pathlib import Path
 from typing import Dict, Tuple
-import csv
-
 
 CSV_HEADER = [
     "tile_id",
@@ -49,9 +48,7 @@ class SummaryWriter:
             self.file = path.open("r+", newline="")
             reader = csv.reader(self.file)
             header = next(reader, None)
-            self.seen = {
-                (row[0], row[1]) for row in reader if len(row) >= 2
-            }
+            self.seen = {(row[0], row[1]) for row in reader if len(row) >= 2}
             if header is None:
                 self.writer = csv.writer(self.file)
                 self.writer.writerow(CSV_HEADER)

@@ -20,14 +20,13 @@ from .manifest import write_manifest
 from .model import load_cloud_model, resolve_device
 from .output import SummaryWriter
 from .processing import (
-    TileClassification,
+    build_rgb_preview,
     classify_tile,
     downsample_cube,
     make_land_mask,
     reflectance_cube,
-    summarise_masks,
-    build_rgb_preview,
     refresh_landmask,
+    summarise_masks,
 )
 from .stac import fetch_tiles
 
@@ -37,8 +36,6 @@ try:  # pragma: no cover - optional dependency quirk
 
     _ = dask.typing.Key
 except Exception:  # pragma: no cover
-    import types
-
     import dask.typing  # type: ignore
 
     dask.typing.Key = object  # type: ignore
@@ -59,8 +56,6 @@ def run_pipeline(config: RunConfig) -> dict[str, Any]:
     panels_dir.mkdir(parents=True, exist_ok=True)
 
     tiles = fetch_tiles(config)
-    if not tiles:
-        logging.info("Nothing to process – exiting.")
     started_at = dt.datetime.utcnow()
     device = resolve_device(config.device)
     logging.info("Using torch device: %s", device)
@@ -87,9 +82,12 @@ def run_pipeline(config: RunConfig) -> dict[str, Any]:
     landmask_template = refresh_landmask(config.landmask_path)
 
     with SummaryWriter(config.csv_path, overwrite=config.overwrite_csv) as writer:
-        pending = []
+        pending: list[Any] = []
         already_processed = 0
         for item in tiles:
+            if item.datetime is None:
+                logging.warning("Skipping %s – missing datetime metadata", item.id)
+                continue
             timestamp = item.datetime.strftime("%Y%m%dT%H%M%S")
             if writer.already_processed(item.id, timestamp):
                 logging.info("Skipping %s %s (already in CSV)", item.id, timestamp)
@@ -130,6 +128,9 @@ def run_pipeline(config: RunConfig) -> dict[str, Any]:
                 skipped_invalid += 1
                 continue
 
+            if item.datetime is None:
+                logging.warning("Skipping %s – missing datetime metadata", item.id)
+                continue
             ts = item.datetime.strftime("%Y%m%dT%H%M%S")
             logging.info("[%d/%d] %s  %s", idx, len(pending), item.id, ts)
 
@@ -159,7 +160,7 @@ def run_pipeline(config: RunConfig) -> dict[str, Any]:
                 baseline_str,
             )
 
-            stats = summarise_masks(
+            tile_stats = summarise_masks(
                 classification.masks,
                 classification.ndsi,
                 classification.ndwi,
@@ -173,12 +174,12 @@ def run_pipeline(config: RunConfig) -> dict[str, Any]:
             classification.panel.savefig(panel_path, dpi=150)
             plt.close(classification.panel)
 
-            metadata = {
+            metadata: dict[str, float | int | str | None] = {
                 "eo_cloud_cover": item.properties.get("eo:cloud_cover"),
                 "sun_elev": item.properties.get("view:sun_elevation"),
                 "sun_azim": item.properties.get("view:sun_azimuth"),
             }
-            writer.write(item.id, ts, stats, metadata)
+            writer.write(item.id, ts, tile_stats, metadata)
 
             dt_sec = time.time() - t0
             proc_times.append(dt_sec)
@@ -202,7 +203,7 @@ def run_pipeline(config: RunConfig) -> dict[str, Any]:
     finished_at = dt.datetime.utcnow()
     elapsed = (finished_at - started_at).total_seconds()
     avg = sum(proc_times) / len(proc_times) if proc_times else 0.0
-    stats_summary = {
+    stats_summary: dict[str, float | int | str] = {
         "tiles_total": len(tiles),
         "tiles_requested": len(pending),
         "tiles_processed": processed,

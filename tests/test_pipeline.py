@@ -1,5 +1,4 @@
 from datetime import datetime
-from pathlib import Path
 
 import numpy as np
 import torch
@@ -65,15 +64,21 @@ class FakeModel:
 
     def __call__(self, tensor: torch.Tensor) -> torch.Tensor:
         batch, _channels, height, width = tensor.shape
-        return torch.zeros((batch, 4, height, width), dtype=torch.float32, device=tensor.device)
+        return torch.zeros(
+            (batch, 4, height, width), dtype=torch.float32, device=tensor.device
+        )
 
 
 def test_run_pipeline_smoke(tmp_path, monkeypatch):
     import uummannaq_ice.pipeline as pipeline
 
     monkeypatch.setattr(pipeline, "fetch_tiles", lambda cfg: [FakeItem("TILE_TEST")])
-    monkeypatch.setattr(pipeline, "load", lambda items, geopolygon, chunks: FakeDataset())
-    monkeypatch.setattr(pipeline, "load_cloud_model", lambda path, device: FakeModel(device))
+    monkeypatch.setattr(
+        pipeline, "load", lambda items, geopolygon, chunks: FakeDataset()
+    )
+    monkeypatch.setattr(
+        pipeline, "load_cloud_model", lambda path, device: FakeModel(device)
+    )
     monkeypatch.setattr(
         pipeline,
         "refresh_landmask",
