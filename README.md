@@ -105,9 +105,3 @@ python ice_classification_experimental_copy.py --log DEBUG
 ```
 
 Note that the original heavy checkpoints have been moved to `models/legacy/` (ignored by git); see `archive/legacy_pipeline/ice-final/README.md` for details before running the legacy notebooks.
-
-## Next steps
-
-1. Run the pipeline for a full 2024/2025 winter season to build a long-term CSV baseline.
-2. Integrate the CLI/Docker image into your data orchestration layer (cron, Airflow, Dagster) following `docs/integration.md`.
-3. Consider promoting `scripts/scrape_satellite_images.py` into a proper ingestion module for MODIS daily imagery.
