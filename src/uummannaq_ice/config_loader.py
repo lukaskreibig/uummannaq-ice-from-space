@@ -92,6 +92,10 @@ def _build_from_mapping(data: Mapping[str, Any], *, base_dir: Path) -> RunConfig
             "decode_queue_size",
             Concurrency().decode_queue_size,
         )
+        kwargs["band_workers"] = concurrency_cfg.get(
+            "band_workers",
+            Concurrency().band_workers,
+        )
 
     if "aoi_path" in data:
         kwargs["aoi_path"] = _resolve_optional_path(base_dir, data["aoi_path"])

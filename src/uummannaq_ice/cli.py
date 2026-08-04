@@ -62,10 +62,17 @@ def build_parser() -> argparse.ArgumentParser:
         "--device", type=str, help="Force a specific torch device (cpu, cuda, mps)."
     )
     parser.add_argument(
-        "--threads", type=int, help="Concurrent STAC loads (default: 4)."
+        "--threads", type=int, help="Scenes fetched concurrently (default: 4)."
     )
     parser.add_argument(
-        "--decode-queue", type=int, help="Prefetch queue size (default: 3)."
+        "--decode-queue",
+        type=int,
+        help="Extra fetched scenes allowed to wait in memory (default: 3).",
+    )
+    parser.add_argument(
+        "--band-workers",
+        type=int,
+        help="Bands of one scene fetched concurrently (default: 13, one per band).",
     )
     parser.add_argument("--log-level", type=str, help="Python logging level.")
 
@@ -145,6 +152,8 @@ def _build_kwargs_from_args(args: argparse.Namespace) -> Dict[str, Any]:
         kwargs["download_workers"] = args.threads
     if args.decode_queue is not None:
         kwargs["decode_queue_size"] = args.decode_queue
+    if args.band_workers is not None:
+        kwargs["band_workers"] = args.band_workers
     if args.max_tiles is not None:
         kwargs["max_tiles"] = args.max_tiles
     if args.log_level:
