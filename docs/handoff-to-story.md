@@ -136,7 +136,7 @@ reprocess does not cause either, but it will be the moment somebody notices.
 
 | | `update_fjord_data.py` | `backend/main.py` |
 |---|---|---|
-| fjord area for the spring anomaly | `FJORD_KM2 = 3450` (line 22) | `FJORD_KM2 = 257` (line 96) |
+| fjord area for the spring anomaly | `FJORD_KM2 = 3450` (line 22) | `FJORD_KM2 = 253.5` (line 96), from the land mask |
 | early / late year groups | `EARLY_YRS`, `LATE_YRS` frozen lists (lines 20-21) | derived from `FJORD_LATE_START_YEAR = 2021` (line 71) |
 
 The area is a factor of 13.4 apart, and the comment at `backend/main.py:92`

@@ -13,12 +13,12 @@ arrived at.
 ## 1. Area of interest
 
 A fixed rectangle over the bay, `-52.336121/70.628226` to `-51.945564/70.788206`,
-which is **257 km²** on the WGS84 ellipsoid, about 14.3 by 17.8 km.
+which is **267.3 km²** on the WGS84 ellipsoid, about 14.7 by 18.1 km. Of that, **253.5 km² is water** and 13.7 km² is land, measured from `assets/landmask.tif` rather than assumed: the grid is 1474 by 1812 cells at 10 m and 0.05143 of them are land. The water figure is the one the story multiplies its anomalies by, and it is the only area number that should appear anywhere.
 
 The area is computed from the polygon, not carried as a constant. It was a
 constant, `FJORD_KM2 = 3450`, and that was wrong by a factor of 13.4. Because the
 constant also converted the spring anomaly into square kilometres, the published
-series reported anomalies of up to 1367 km² over an area of 257 km², which is
+series reported anomalies of up to 1367 km² over a water area of 253.5 km², which is
 physically impossible and went unnoticed for the life of the project.
 
 ## 2. Scene selection
