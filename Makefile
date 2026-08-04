@@ -4,7 +4,7 @@
 # The scripts that matter for a run. scripts/scrape_satellite_images.py is
 # deliberately not here: it is an ad-hoc DMI scraper that starts a fifteen-year
 # download at import time and has never been linted.
-RUN_SCRIPTS := scripts/check_summary.py scripts/preflight.py \
+RUN_SCRIPTS := scripts/check_summary.py scripts/preflight.py scripts/watch_archive.py \
 	scripts/validate_sar.py \
                scripts/derive_thresholds.py
 
@@ -53,7 +53,7 @@ PUBLISHED_CSV ?= archive/legacy_pipeline/ice-final/summary_test.csv
 
 # Metadata only, no pixels. Roughly 220 seconds for the full range.
 preflight:
-	AWS_NO_SIGN_REQUEST=YES python3 scripts/preflight.py \
+	AWS_NO_SIGN_REQUEST=YES python3 scripts/preflight.py scripts/watch_archive.py \
 		--start $(ARCHIVE_FIRST_YEAR)-01-01 \
 		--end $(ARCHIVE_LAST_YEAR)-12-31 \
 		--out $(ARCHIVE_OUT)/preflight.json
