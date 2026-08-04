@@ -4,6 +4,25 @@ Sentinel-2 processing pipeline that classifies the Uummannaq fjord (Greenland) s
 
 The original exploratory notebooks and scripts from the climate-dashboard project remain under `archive/legacy_pipeline` for traceability.
 
+## Read this first
+
+The pipeline produces one ice-fraction number per day. Three documents say what
+that number is, what it is not, and how the current version was arrived at.
+
+| | |
+|---|---|
+| [docs/methods.md](docs/methods.md) | Every processing step and the reason for each parameter, with the measurement behind it. |
+| [docs/limitations.md](docs/limitations.md) | What the method cannot do, quantified, ordered by how much it could change a conclusion. |
+| [docs/investigation-log.md](docs/investigation-log.md) | How four systematic errors were found and corrected. None of them raised an exception. |
+| [docs/generalisation.md](docs/generalisation.md) | What it would take to run this at any Arctic coastal site, and what already does. |
+
+Short version of what the record supports: the later seasons hold about **20
+percent** less spring ice than the earlier ones, at **p = 0.056** over nine
+seasons, with no detectable monotone trend and interannual variability nearly as
+large as the difference between periods. The direction is consistent. The
+certainty is not there, and nine winters is why.
+
+
 ## Quick start
 
 ```bash
@@ -89,7 +108,7 @@ The packaged assets are:
 ## Deployment
 
 - CPU Docker image: `docker build -f docker/Dockerfile -t uummannaq-ice:cpu .`
-- CUDA Docker image: `docker build -f docker/Dockerfile.cuda -t uummannaq-ice:cuda .`
+- CUDA Docker image (untested): `docker build -f docker/Dockerfile.cuda -t uummannaq-ice:cuda .`
 - Execute via Docker with volume mounts: `docker run --rm -v "$PWD/out":/app/out uummannaq-ice:cpu --config-file config/baseline.yaml`
 - The benchmarking script and manifest JSON make it easy to plug the pipeline into Airflow, Dagster, Prefect, or cron (see `docs/integration.md`).
 

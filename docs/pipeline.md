@@ -3,12 +3,17 @@
 ## 1. Configuration and logging
 
 - The CLI (`uummannaq_ice.cli`) accepts ISO dates, AOI GeoJSON, checkpoint/landmask overrides, concurrency settings, and individual threshold tweaks.
-- Defaults (replicating the 2025 study):
-  - AOI: polygon around the Uummannaq fjord (`config.DEFAULT_AOI`).
-  - Date window: 2025-05-06 → 2025-06-25.
-  - Thresholds: NDSI solid 0.52, NDSI light 0.31, NDWI 0.25, nodata fraction flag 0.20.
-  - Threading: 4 concurrent loads, decode queue size 3.
+- Defaults live in `config.Thresholds` and `config.Concurrency`; read them there
+  rather than here, because they move. At the time of writing:
+  - AOI: polygon around the Uummannaq fjord (`config.DEFAULT_AOI`), about
+    14 by 18 km, 257 km².
+  - Thresholds: NDSI solid 0.52, NDSI light 0.31, NDWI 0.25, visible brightness
+    floor 0.08, NIR brightness floor 0.17, nodata fraction flag 0.20.
+  - The two NDSI numbers were tuned against reflectances that carried a +0.1
+    bias and have not yet been re-derived. See the reprocessing runbook.
 - Logging format matches the original script (`"%H:%M:%S  LEVEL message"`).
+- For a full archive reprocess, use `docs/reprocessing-runbook.md`, not this
+  page.
 
 ## 2. STAC query
 
@@ -34,7 +39,16 @@ load([item], geopolygon=config.search_aoi, chunks={})
 Per tile:
 
 1. Extract RGB quicklook at 512×512 for the panel layout.
-2. Convert Sentinel-2 DN to TOA reflectance (`dn * 0.0001` plus +0.1 shift for baselines < 4).
+2. Convert Sentinel-2 DN to TOA reflectance. ESA baseline 04.00, from
+   25 January 2022, carries `RADIO_ADD_OFFSET = -1000`, so from that baseline on
+   the conversion is `DN/10000 - 0.1`; before it, `DN/10000`.
+
+   This was wrong for a long time and every published number came out of the
+   wrong version. The code added `+0.1` to the older era and subtracted nothing
+   from the newer, leaving **both** eras 0.1 above true reflectance. Measured on
+   the 2023-08-18 scene, correcting the sign alone moved the ice fraction from
+   0.004 to 0.584: 58 percent of an open summer fjord called ice. Two things had
+   to change with it, and are described in sections 6 and 6b.
 3. Stack the 13 bands in the order expected by the MobilenetV2 UNet.
 4. Average-pool to 40 m resolution via `torch.nn.functional.avg_pool2d`.
 5. Resize the static landmask to match the downsampled grid.
@@ -50,16 +64,57 @@ Per tile:
 
 Computed from the downsampled cube:
 
+Let `usable = ~cloud & ~land & ~nodata` and
+`bright = green > vis_bright_min & nir > nir_bright_min`.
+
 | Mask       | Condition (vectorised)                                                                 |
 |------------|----------------------------------------------------------------------------------------|
-| `ice_solid`| `ndsi > ndsi_solid` and not cloud/land/nodata                                          |
-| `ice_light`| `ndsi_light < ndsi < ndsi_solid` and not cloud/land/nodata                             |
-| `water`    | `ndwi > ndwi_thr` and not (ice or cloud or land or nodata)                             |
+| `ice_solid`| `ndsi > ndsi_solid` **and `bright`** and `usable`                                       |
+| `ice_light`| `ndsi_light < ndsi < ndsi_solid` **and `bright`** and `usable`                          |
+| `water`    | `ndwi > ndwi_thr` and not ice and `usable`                                             |
 | `land`     | From the resized landmask                                                              |
 | `cloud`    | From the UNet                                                                          |
-| `nodata`   | Sum of spectral bands < `1e-6`                                                         |
+| `nodata`   | Every band equal to the per-baseline void reflectance, within `1e-4`                    |
 
-Percentages are stored at 4-decimal precision. Mean NDSI/NDWI are computed conditionally (blank string when no pixels qualify). A binary `edge_gap` flag is raised when nodata ≥ `nodata_fraction`.
+### 6a. Why the brightness gate exists
+
+NDSI alone does not separate ice from water at top of atmosphere. Open water is
+nearly black in the SWIR, so its NDSI runs about 0.82, **higher** than April
+fast ice at about 0.72. While reflectances carried the +0.1 bias, dark pixels
+were compressed far more than bright ones, and that compression was doing the
+separating. Remove the bias and the thresholds alone classify the open fjord as
+ice.
+
+The gate is the Dozier construction the MODIS snow products still use: ice
+requires a high NDSI **and** brightness in the visible and the near infrared,
+because snow and ice are bright in both and water is dark in both.
+
+Note what this does to the job NDSI is left with. Ice versus water is now
+decided by brightness. NDSI's remaining work is mostly separating solid ice from
+thin or wet ice, and the two thresholds should be re-derived with that in mind.
+
+### 6b. Why the void test changed
+
+The void test used to be `sum(bands) < 1e-6`. After the sign fix that would
+throw away real water: 13 bands of -0.09 sum to -1.2, and an actually empty
+pixel sums to -1.3. The test now compares every band against the known
+per-baseline void value, which is `0.0` before baseline 04.00 and `-0.1` from
+04.00 on.
+
+### 6c. Percentages
+
+Percentages are stored at 4-decimal precision and divide by the **whole grid**,
+land, cloud and data gaps included. The `_clear` columns divide instead by the
+cells where the surface could be judged at all, `~cloud & ~land & ~nodata`.
+
+Mean NDSI and NDWI are written as a blank string when no pixel qualifies. A
+binary `edge_gap` flag is raised when nodata ≥ `nodata_fraction`.
+
+A mean NDWI outside -1 to 1 in the output is a real signal, not a rounding
+artefact: it means the selected cells had `green + nir` at or below zero, so
+they were picked by an unstable ratio rather than by being wet. `ice_solid` and
+`ice_light` are shielded from this by the brightness gate; `water` is not.
+`scripts/check_summary.py` reports it.
 
 ## 7. Outputs
 
