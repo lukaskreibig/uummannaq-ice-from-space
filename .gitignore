@@ -26,3 +26,4 @@ data/interim/
 data/processed/
 data/examples/
 models/legacy/
+.coverage

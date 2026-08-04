@@ -63,7 +63,9 @@ def main() -> None:
         base_overrides["device"] = args.device
 
     for iteration in range(1, args.repeat + 1):
-        run_output = args.output_root / f"{args.config.stem}_{timestamp}_iter{iteration}"
+        run_output = (
+            args.output_root / f"{args.config.stem}_{timestamp}_iter{iteration}"
+        )
         overrides = {**base_overrides, "output_dir": run_output}
         config = load_run_config(args.config, overrides=overrides)
 
@@ -85,7 +87,11 @@ def main() -> None:
         return
 
     mean_wall = statistics.mean(wall_times)
-    p95 = statistics.quantiles(wall_times, n=20)[-1] if len(wall_times) > 1 else wall_times[0]
+    p95 = (
+        statistics.quantiles(wall_times, n=20)[-1]
+        if len(wall_times) > 1
+        else wall_times[0]
+    )
     total_tiles = sum(r.get("tiles_processed", 0) for r in results)
 
     print("\nBenchmark summary")
