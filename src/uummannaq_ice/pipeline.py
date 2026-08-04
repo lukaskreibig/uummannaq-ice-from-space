@@ -25,12 +25,14 @@ from .processing import (
     build_rgb_preview,
     classify_tile,
     downsample_cube,
+    export_rgb,
     land_mask_from_raster,
     make_land_mask,
     reflectance_cube,
     refresh_landmask,
     summarise_masks,
 )
+from .scene_export import write_scene_export
 from .stac import fetch_tiles
 
 # Only ask S3 for the bands the classifier consumes.  A Sentinel-2 L1C item also
@@ -75,6 +77,15 @@ if not hasattr(np, "round_"):
     np.round_ = np.round  # type: ignore[attr-defined]
 
 
+def _epsg_or_wkt(crs: Any) -> str:
+    """EPSG:nnnnn where the CRS knows its code, the WKT where it does not."""
+    try:
+        epsg = crs.epsg
+    except AttributeError:
+        epsg = None
+    return f"EPSG:{epsg}" if epsg else str(crs)
+
+
 def run_pipeline(config: RunConfig) -> dict[str, Any]:
     """Execute the full ingestion + classification loop and return run statistics."""
     os.environ.setdefault("AWS_NO_SIGN_REQUEST", "YES")
@@ -84,6 +95,10 @@ def run_pipeline(config: RunConfig) -> dict[str, Any]:
     panels_dir = (config.quicklook_dir / "panels").resolve()
     overlays_dir.mkdir(parents=True, exist_ok=True)
     panels_dir.mkdir(parents=True, exist_ok=True)
+    # Separate from the quicklooks on purpose: those are for judging a scene by
+    # eye, these are for a viewer to build on. See scene_export.
+    classes_dir = (config.quicklook_dir / "classes").resolve()
+    scenes_dir = (config.quicklook_dir / "scenes").resolve()
 
     tiles = fetch_tiles(config)
     started_at = dt.datetime.now(dt.timezone.utc)
@@ -229,6 +244,37 @@ def run_pipeline(config: RunConfig) -> dict[str, Any]:
             classification.panel.suptitle(f"{item.id}  {ts}", fontsize=11)
             classification.panel.savefig(panel_path, dpi=150)
             plt.close(classification.panel)
+
+            # The class raster is the one artefact here that cannot be
+            # reconstructed from anything else afterwards. The overlay has the
+            # classes blended into the photograph and the CSV has only totals,
+            # so without this a viewer that wants per-cell classes means
+            # reprocessing the entire archive a second time.
+            try:
+                write_scene_export(
+                    item.id,
+                    ts,
+                    classification.masks,
+                    export_rgb(dataset),
+                    classes_dir,
+                    scenes_dir,
+                    bounds=list(dataset.odc.geobox.boundingbox),
+                    # The EPSG code, not the full WKT: a viewer needs the identifier
+                    # and 1100 copies of a 1.4 kB projection definition help nobody.
+                    crs=_epsg_or_wkt(dataset.odc.geobox.crs),
+                    indices={
+                        "ndsi": classification.ndsi,
+                        "ndwi": classification.ndwi,
+                    },
+                    extra={
+                        "sun_elev": item.properties.get("view:sun_elevation"),
+                        "eo_cloud_cover": item.properties.get("eo:cloud_cover"),
+                    },
+                )
+            except Exception as error:  # noqa: BLE001 - a viewer file is not
+                # worth losing a measured scene over; the CSV row is written
+                # either way and the export can be rebuilt from a rerun.
+                logging.warning("scene export failed for %s: %s", item.id, error)
 
             metadata: dict[str, float | int | str | None] = {
                 "eo_cloud_cover": item.properties.get("eo:cloud_cover"),

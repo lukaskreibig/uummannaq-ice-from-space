@@ -49,6 +49,37 @@ class TileClassification:
     rgb_preview: Image.Image
 
 
+# The preview is 512 square because that is what six matplotlib panels want. A
+# viewer wants the opposite: the sensor's own detail, so a reader can see the
+# 40 m decision grid sitting on top of a 10 m photograph and judge for
+# themselves how coarse the judgement is. Capped so one scene stays a few
+# hundred kilobytes rather than a few megabytes.
+EXPORT_RGB_MAX_EDGE = 1600
+
+
+def export_rgb(ds, max_edge: int = EXPORT_RGB_MAX_EDGE) -> Image.Image:
+    """True colour at close to native resolution, for the scene viewer."""
+    red_band, green_band, blue_band = [
+        np.asarray(ds[channel][0].values, dtype=np.float32).squeeze()
+        for channel in ("red", "green", "blue")
+    ]
+    scale = 255.0 if red_band.max() <= 1.0 else 255.0 / 10000.0
+    rgb = Image.merge(
+        "RGB",
+        [
+            Image.fromarray(np.clip(channel * scale, 0, 255).astype(np.uint8), "L")
+            for channel in (red_band, green_band, blue_band)
+        ],
+    )
+    longest = max(rgb.size)
+    if longest > max_edge:
+        ratio = max_edge / longest
+        rgb = rgb.resize(
+            (round(rgb.width * ratio), round(rgb.height * ratio)), Image.LANCZOS
+        )
+    return rgb
+
+
 def build_rgb_preview(ds) -> Image.Image:
     """Generate a 512×512 RGB preview for plotting."""
     red_band, green_band, blue_band = [
