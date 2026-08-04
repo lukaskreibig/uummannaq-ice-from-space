@@ -4,7 +4,21 @@
 #
 #   scripts/run_archive.sh                      # 2017 to the current year
 #   scripts/run_archive.sh 2019 2021            # just those seasons
-#   OUT=out/rerun scripts/run_archive.sh        # somewhere else
+#   OUT=/Volumes/disk/archive scripts/run_archive.sh   # somewhere else
+#   JOBS=4 scripts/run_archive.sh               # four seasons at once
+#
+# JOBS, and why more than one is worth it here:
+#
+#   The run moves about 9 MB/s, measured. One curl stream against the same
+#   bucket reaches 30 MB/s and four reach 127, so the line is not the limit.
+#   What costs the time is round trips: thirteen bands, each read as windows,
+#   one scene after another. Seasons are independent, so running several at
+#   once fills the wait.
+#
+#   With JOBS=1 this writes into one summary.csv exactly as before, which is
+#   the path that has been tested. With JOBS>1 each season gets its own
+#   summary_<year>.csv, because two processes appending to one file would
+#   interleave rows, and they are merged at the end with a duplicate check.
 #
 # Why per season and not one long invocation:
 #
@@ -38,6 +52,8 @@ CLI="${CLI:-uummannaq-ice}"
 # command writes a different archive on a machine without a GPU. cpu inference
 # costs about 0.17 s per scene, which is nothing next to the download.
 DEVICE="${DEVICE:-cpu}"
+# Seasons to process concurrently. 1 keeps the original single-file behaviour.
+JOBS="${JOBS:-1}"
 
 # Anonymous access to the Sentinel-2 public bucket. Without it every read is a
 # 403 and the run produces an empty CSV in about a minute.
@@ -68,26 +84,27 @@ echo "resume            $( [ -f "$summary_path" ] && echo "appending to $(($(wc 
 echo
 
 failed_years=()
-for (( year=FIRST_YEAR; year<=LAST_YEAR; year++ )); do
-  log="$OUT/logs/${year}.log"
-  ok=0
+
+# One season, retried. Writes to $2 so the parallel path can give each its own.
+run_season() {
+  local year="$1" csv="$2"
+  local log="$OUT/logs/${year}.log"
+  local attempt status
   for (( attempt=1; attempt<=ATTEMPTS; attempt++ )); do
     echo "[$(date +%H:%M:%S)] season $year, attempt $attempt of $ATTEMPTS -> $log"
     "$CLI" \
       --start-date "${year}-${WINDOW_START}" \
       --end-date "${year}-${WINDOW_END}" \
       --output-dir "$OUT" \
-      --csv-name "$CSV_NAME" \
+      --csv-name "$csv" \
       --device "$DEVICE" \
       --log-level INFO \
       >> "$log" 2>&1
     status=$?
-    if [ "$interrupted" = "1" ]; then exit 130; fi
+    if [ "$interrupted" = "1" ]; then return 130; fi
     if [ $status -eq 0 ]; then
-      ok=1
-      rows=$(( $(wc -l < "$summary_path") - 1 ))
-      echo "[$(date +%H:%M:%S)] season $year done, $rows rows in the CSV so far"
-      break
+      echo "[$(date +%H:%M:%S)] season $year done"
+      return 0
     fi
     echo "[$(date +%H:%M:%S)] season $year exited $status. tail of $log:"
     tail -n 5 "$log" | sed 's/^/    /'
@@ -95,11 +112,62 @@ for (( year=FIRST_YEAR; year<=LAST_YEAR; year++ )); do
     # cheap: it re-queries the catalogue and skips straight to the remainder.
     sleep $(( attempt * 30 ))
   done
-  if [ $ok -eq 0 ]; then
-    echo "[$(date +%H:%M:%S)] season $year gave up after $ATTEMPTS attempts"
-    failed_years+=("$year")
-  fi
-done
+  return 1
+}
+
+if [ "$JOBS" -le 1 ]; then
+  for (( year=FIRST_YEAR; year<=LAST_YEAR; year++ )); do
+    if run_season "$year" "$CSV_NAME"; then
+      echo "[$(date +%H:%M:%S)] $(( $(wc -l < "$summary_path") - 1 )) rows in the CSV so far"
+    else
+      [ "$interrupted" = "1" ] && exit 130
+      failed_years+=("$year")
+    fi
+  done
+else
+  echo "running $JOBS seasons at a time, one CSV each, merged at the end"
+  declare -a pids=() pid_years=()
+  for (( year=FIRST_YEAR; year<=LAST_YEAR; year++ )); do
+    while [ "$(jobs -rp | wc -l)" -ge "$JOBS" ]; do sleep 2; done
+    [ "$interrupted" = "1" ] && break
+    run_season "$year" "summary_${year}.csv" &
+    pids+=($!); pid_years+=("$year")
+  done
+  for i in "${!pids[@]}"; do
+    wait "${pids[$i]}" || failed_years+=("${pid_years[$i]}")
+  done
+  [ "$interrupted" = "1" ] && exit 130
+
+  echo
+  echo "merging per-season files into $summary_path"
+  python3 - "$OUT" "$CSV_NAME" <<'PY'
+import csv, sys, pathlib
+out = pathlib.Path(sys.argv[1]); target = out / sys.argv[2]
+parts = sorted(out.glob("summary_[0-9][0-9][0-9][0-9].csv"))
+if not parts:
+    print("  no per-season files found"); raise SystemExit(1)
+header, rows, seen, dupes = None, [], set(), 0
+for part in parts:
+    with part.open(newline="") as fh:
+        reader = csv.reader(fh)
+        head = next(reader)
+        if header is None:
+            header = head
+        elif head != header:
+            print(f"  FAIL {part.name} has a different column layout"); raise SystemExit(1)
+        n = 0
+        for row in reader:
+            key = (row[0], row[1])          # tile_id, timestamp
+            if key in seen:
+                dupes += 1; continue
+            seen.add(key); rows.append(row); n += 1
+    print(f"  {part.name}: {n} rows")
+rows.sort(key=lambda r: (r[1], r[0]))
+with target.open("w", newline="") as fh:
+    writer = csv.writer(fh); writer.writerow(header); writer.writerows(rows)
+print(f"  wrote {len(rows)} rows to {target}" + (f", {dupes} duplicates dropped" if dupes else ""))
+PY
+fi
 
 elapsed=$(( $(date +%s) - started_at ))
 printf '\nfinished in %dh %dm\n' $(( elapsed / 3600 )) $(( (elapsed % 3600) / 60 ))
