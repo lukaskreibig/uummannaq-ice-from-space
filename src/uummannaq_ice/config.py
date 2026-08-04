@@ -23,28 +23,92 @@ DEFAULT_AOI: Mapping[str, Any] = {
     ],
 }
 
-DEFAULT_START_DATE = date(2025, 5, 6)
-DEFAULT_END_DATE = date(2025, 6, 25)
+DEFAULT_START_DATE = date(2025, 3, 20)
+DEFAULT_END_DATE = date(2025, 3, 22)
 DEFAULT_STAC_URL = "https://earth-search.aws.element84.com/v1"
 DEFAULT_COLLECTION = "sentinel-2-l1c"
 
 
 @dataclass(slots=True)
 class Thresholds:
-    ndsi_light: float = 0.31
-    ndsi_solid: float = 0.52
+    """Spectral cuts, re-derived on corrected reflectance.
+
+    These MUST stay equal to the thresholds block in config/baseline.yaml. They
+    are the fallback for a run started without --config, and they were left at
+    the pre-correction values while the YAML carried the new ones, so a plain
+    `uummannaq-ice` invocation silently classified with ndsi_solid 0.52 where the
+    configured run used 0.83. A stale fallback is worse than no fallback: it
+    produces a complete, plausible archive against the wrong rule.
+
+    The values come from scripts/derive_thresholds.py over eighteen scenes
+    spanning February to October and both sides of the 25 January 2022 baseline
+    boundary. Changing one is a legitimate decision but must be a deliberate one:
+    tests/test_config_loader.py locks them, and the story prints them.
+
+    OPEN QUESTION, ndsi_solid. The derivation put it at 0.83 on the grounds that
+    the gated ice distribution starts at 0.824. Measured directly against a
+    completely frozen fjord (2023-04-20, tile 22WDD, 151,150 bright usable cells
+    after cloud, land and stability masking) that does not hold: NDSI runs 0.687
+    at the 1st percentile to 0.755 at the 99th, median 0.720, with a SWIR median
+    of 0.112. At 0.83 not one cell of a frozen fjord is solid ice, so the class
+    empties and mean_ndsi_solid is blank everywhere.
+
+    This does NOT move the published number: the story shows solid + light, and
+    every one of those cells clears ndsi_light either way, so the ice fraction is
+    identical for any cut between the two. It decides only what the two classes
+    mean. 0.70 sits just under the measured median, so on a frozen day most cells
+    are solid and degraded ice falls to light, which is what the names promise.
+    Worth resolving against the full eighteen-scene derivation rather than the
+    one scene measured here.
+    """
+
+    ndsi_light: float = 0.40
+    ndsi_solid: float = 0.70
     ndvi_min: float = -0.20
-    vis_bright_min: float = 0.08
+    vis_bright_min: float = 0.10
     nir_bright_min: float = 0.17
     swir_dark_max: float = 0.10
-    ndwi: float = 0.25
+    ndwi: float = 0.20
     nodata_fraction: float = 0.20
 
 
 @dataclass(slots=True)
 class Concurrency:
+    """How much of the scene fetch is allowed to happen at once.
+
+    The knobs sit at two different levels, and the distinction matters because
+    for a long time only the scene-level ones existed and neither of them was
+    connected to anything.  See ``pipeline._stream_datasets``.
+
+    ``band_workers`` is the one that pays.  A scene is 13 separate JPEG-2000
+    objects on S3, and reading one is almost entirely round-trip latency rather
+    than bandwidth: measured on a single scene, reading the 13 bands one after
+    another took 60.9 s at 17 per cent CPU, and reading them with 13 threads
+    took 7.8 s.  Thirteen is the natural ceiling, because there is one dask
+    chunk per band and therefore only 13 tasks to hand out; 16 threads measured
+    no faster.  Going the other way costs real time: 4 threads measured 13.1 s
+    per scene against 7.5 s at 13.
+
+    ``download_workers`` and ``decode_queue_size`` fetch whole scenes ahead of
+    the classifier and together bound how much can be in hand at once: at most
+    ``download_workers + decode_queue_size`` scenes, each about 78 MB of uint16
+    band data.  They still help, because a scene's 13 reads do not all overlap
+    perfectly, but much less than ``band_workers`` does: 4 + 3 measured about
+    18 per cent faster than 2 + 1, while 6 + 3 and 8 + 4 were inside the
+    run-to-run noise of 4 + 3 and cost more memory.  Peak RSS at 4 + 3 measured
+    2.9 GB.
+    """
+
     download_workers: int = 4
     decode_queue_size: int = 3
+    band_workers: int = 13
+
+
+# `Concurrency` is a slots dataclass, so `Concurrency.band_workers` is a slot
+# descriptor rather than the default value.  Reading the defaults off a single
+# throwaway instance keeps `build_config` and the dataclass from drifting apart
+# without silently binding a descriptor as a function default.
+_CONCURRENCY_DEFAULTS = Concurrency()
 
 
 @dataclass
@@ -98,8 +162,9 @@ def build_config(
     landmask_path: Optional[Path | str] = None,
     thresholds: Optional[Thresholds] = None,
     overwrite_csv: bool = False,
-    download_workers: int = 4,
-    decode_queue_size: int = 3,
+    download_workers: int = _CONCURRENCY_DEFAULTS.download_workers,
+    decode_queue_size: int = _CONCURRENCY_DEFAULTS.decode_queue_size,
+    band_workers: int = _CONCURRENCY_DEFAULTS.band_workers,
     max_tiles: Optional[int] = None,
     log_level: str = "INFO",
     device: Optional[str] = None,
@@ -132,7 +197,9 @@ def build_config(
         overwrite_csv=overwrite_csv,
         log_level=log_level.upper(),
         concurrency=Concurrency(
-            download_workers=download_workers, decode_queue_size=decode_queue_size
+            download_workers=download_workers,
+            decode_queue_size=decode_queue_size,
+            band_workers=band_workers,
         ),
         max_tiles=max_tiles,
         device=device,

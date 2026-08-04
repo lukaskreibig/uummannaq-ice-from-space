@@ -1,16 +1,59 @@
 # Default production-like run covering late spring 2025 over Uummannaq.
 stac_url: https://earth-search.aws.element84.com/v1
 collection: sentinel-2-l1c
-start_date: 2025-05-06
-end_date: 2025-06-25
+start_date: 2025-04-19
+end_date: 2025-04-21
 output_dir: out/runs/latest
 csv_filename: summary.csv
 quicklook_subdir: quicklooks
 overwrite_csv: false
+# Derived by scripts/derive_thresholds.py on eighteen Sentinel-2 acquisitions
+# over this fjord, February to October, both sides of the processing baseline
+# 04.00 boundary, on RADIOMETRICALLY CORRECTED reflectance. Re-run it to audit
+# any of these numbers; docs and the methodology note carry the reasoning.
+#
+# Every threshold the classifier reads is named here on purpose. Anything left
+# out is filled in from config.Thresholds, whose defaults were tuned on the
+# biased reflectance and are still stale.
 thresholds:
-  ndsi_light: 0.31
-  ndsi_solid: 0.52
-  ndwi: 0.25
+  # The Dozier (1989) / MODIS snow cut. Its job here is only to reject bright
+  # surfaces that are not cryosphere at all: sunlit rock and cloud the segmenter
+  # missed. It cannot separate ice from water and it cannot separate ice types.
+  # Measured over this fjord, NDSI is about 0.94 for solid ice, thin ice AND
+  # open water alike, because all three are nearly black at 1.6 um. The gated
+  # ice distribution starts at 0.824, so this cut has 0.42 of headroom and
+  # touches no ice.
+  ndsi_light: 0.40
+  # The 1st percentile of NDSI over pixels of confirmed shore-to-shore fast ice
+  # that pass the brightness gate, so essentially all ice that is beyond doubt
+  # is classified solid. This is a CONVENTION, not a boundary: the distribution
+  # it cuts is unimodal (Otsu separability 0.80, no valley found), and the light
+  # class it defines carries about one per cent of ice pixels. Do not read the
+  # light class as thin ice. See the note in the derivation script.
+  ndsi_solid: 0.70
+  # Below the 1st percentile of NDWI over measured open water (0.245), so the
+  # cut sits under the population it is meant to accept rather than inside it.
+  # The old 0.25 sat on the percentile itself and put one per cent of the open
+  # fjord into the unclassified bin.
+  ndwi: 0.20
+  # The brightness gate, which is what actually separates ice from water now.
+  # The visible floor clears the 95th percentile of green over open water on the
+  # low-sun anchors, 0.0945 in October at a sun elevation of 12; the old 0.08 sat
+  # BELOW the October open-water median of 0.0905 and did no work at all there.
+  # 0.10 is also the MODIS band 4 floor, arrived at independently.
+  vis_bright_min: 0.10
+  # The near-infrared floor is the one carrying the separation, because path
+  # radiance at low sun lifts water in the visible far more than in the infrared.
+  # The labelled anchors alone permit anything in [0.04, 0.27]; the lower end is
+  # ruled out by the darkest day in the record, 19 February 2025 at a sun
+  # elevation of 8.2, where open water reaches a 95th percentile of 0.078 in the
+  # near infrared. 0.17 clears that by a factor of 2.2 and costs 0.0003 of recall
+  # on unambiguous fast ice relative to 0.11. Kept unchanged from the previous
+  # configuration because it is inside the derived interval and nothing measured
+  # argues for moving it.
+  nir_bright_min: 0.17
+  # Not a spectral threshold. The share of the AOI that may be swath-edge void
+  # before the day is flagged as an edge gap. Unchanged and not re-derived here.
   nodata_fraction: 0.2
 concurrency:
   download_workers: 4

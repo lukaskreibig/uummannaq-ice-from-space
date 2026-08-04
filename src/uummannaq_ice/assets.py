@@ -16,6 +16,17 @@ def package_path(*parts: str) -> Path:
 
 
 def default_landmask_path() -> Path:
+    """The land mask to use, preferring the georeferenced one.
+
+    assets/landmask.tif is derived from imagery and carries its own CRS and
+    transform, so it can be reprojected onto any scene grid. The painted
+    template beside it is the legacy fallback; it stretches to whatever grid it
+    is given and therefore covers the same fraction of the frame rather than the
+    same ground.
+    """
+    raster = package_path("assets", "landmask.tif")
+    if raster.exists():
+        return raster
     return package_path("assets", "landmask_template.png")
 
 
