@@ -74,7 +74,22 @@ mkdir -p "$OUT/logs"
 summary_path="$OUT/$CSV_NAME"
 
 interrupted=0
-trap 'interrupted=1; echo; echo "interrupted. re-run this script to resume."; exit 130' INT TERM
+
+# Ctrl-C has to reach the season jobs, not just this shell. With JOBS>1 the
+# seasons run as background subshells with a python child each, and a trap that
+# only sets a flag leaves all of them running while the outer script exits: the
+# terminal comes back, the archive keeps being written, and the next run appends
+# to a file that something else still has open.
+stop_children() {
+  interrupted=1
+  local pid
+  for pid in $(jobs -p); do
+    pkill -TERM -P "$pid" 2>/dev/null
+    kill -TERM "$pid" 2>/dev/null
+  done
+  pkill -TERM -P $$ 2>/dev/null
+}
+trap 'stop_children; echo; echo "interrupted. re-run this script to resume."; exit 130' INT TERM
 
 started_at=$(date +%s)
 echo "reprocess          $FIRST_YEAR to $LAST_YEAR, $WINDOW_START to $WINDOW_END of each year"
