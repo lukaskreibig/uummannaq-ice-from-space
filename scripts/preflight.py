@@ -178,9 +178,12 @@ def main() -> int:
         dominant, n = tile_mix.most_common(1)[0]
         print(
             f"\n!! the run would mix {len(tile_mix)} MGRS tiles, {dominant} on "
-            f"{n / len(rows):.0%} of days. Different tiles clip the AOI onto "
-            f"different pixel grids, and the static land mask is stretched onto "
-            f"whichever grid arrives."
+            f"{n / len(rows):.0%} of days. The land mask is georeferenced now, "
+            f"so it lands on the right geography either way, but the two tiles "
+            f"still clip the AOI onto different pixel grids and different "
+            f"incidence geometry. Compare per-tile season means before "
+            f"publishing: on the previous archive the two tiles differed by "
+            f"0.14 in the spring mean, which was a third of the headline."
         )
 
     if args.out:

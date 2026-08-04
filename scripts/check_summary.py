@@ -257,9 +257,11 @@ def gate_tiles(frame: pd.DataFrame, report: Report, allowed: set[str]) -> None:
         report.warn(
             "tiles_mixed",
             f"the record mixes {len(counts)} MGRS tiles ({dominant} is {share:.0%}). "
-            f"Different tiles are different UTM zones, so the AOI is clipped onto a "
-            f"different pixel grid and the static land mask is stretched onto it "
-            f"differently. Compare per-tile means before publishing.",
+            f"The land mask is georeferenced, so it no longer stretches onto "
+            f"whichever grid arrives, but the tiles still clip the AOI onto "
+            f"different pixel grids. On the previous archive the two tiles "
+            f"differed by 0.14 in the spring mean, a third of the headline, so "
+            f"compare per-tile means before publishing.",
         )
 
 
