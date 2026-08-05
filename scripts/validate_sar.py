@@ -11,8 +11,9 @@ An earlier framing of this check aimed at cloudy days, on the grounds that the
 reported ice fraction correlates with detected cloud at r = -0.42. That
 correlation turned out to be an artefact of the whole-grid denominator, where a
 cell classified as cloud can never also be counted as ice, so the negative sign
-is forced by construction. On the clear-sky denominator the same correlation is
-+0.058. See `docs/limitations.md`.
+is forced by construction. On the reprocessed archive the whole-grid correlation
+is -0.609 across all 1103 scenes, while on the clear-sky denominator over the
+scenes that clear the visibility gate it is -0.157. See `docs/limitations.md`.
 
 What survives is sharper. Of the February and March scenes that pass the 30
 percent visibility gate, a couple of dozen report almost no ice on the clear-sky
@@ -86,8 +87,18 @@ GREENLAND_TILES = frozenset({"21WXU", "22WDD"})
 # fjord is frozen then, and it is much safer for these two months than for the
 # shoulder of the analysis window.
 FROZEN_MONTHS = (2, 3)
-# August and September, the only time this fjord reliably has open water.
-OPEN_MONTHS = (8, 9)
+# June and July. This used to be August and September, which was right for the
+# published archive because that covered the whole calendar. The reprocess runs
+# 1 February to 15 July, so those months no longer exist in it and the water
+# anchor pool came out empty.
+#
+# The replacement is better rather than merely available. June and July are
+# unambiguous here: over the reprocessed archive the June median clear-sky ice
+# fraction is 0.001 and July 0.002, with 113 scenes across all ten seasons
+# clearing the anchor thresholds. And they sit four months from the February
+# suspects rather than six, which narrows the seasonal confounder in sea state
+# and wind climate that docs/sar-validation.md has to declare either way.
+OPEN_MONTHS = (6, 7)
 
 # The optical pipeline's own usability gate.
 MIN_CLEAR_SHARE = 0.30

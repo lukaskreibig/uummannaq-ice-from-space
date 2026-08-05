@@ -16,65 +16,61 @@ measured properly, most of the apparent cloud artefact was the whole-grid
 denominator rather than the cloud mask, and the correction is worked through
 below.
 
+Two scenes from the reprocessed archive, where ESA's tile-level figure and the
+model's figure over this AOI disagree in opposite directions:
+
 | Scene | ESA `eo:cloud_cover` (tile) | Model, over the AOI |
 |---|---|---|
-| 2023-08-18 | 48.4 % | 22.6 % |
-| 2023-04-20 | 9.6 % | 0.0 % |
-| 2023-02-25 | 32.9 % | 56.0 % |
-| 2019-08-08 | 22.4 % | 50.4 % |
+| 2023-04-20 | 13.4 % | 0.0 % |
+| 2023-02-25 | 25.7 % | 51.0 % |
 
-> **Provenance warning.** These four rows come from interactive scene runs during
-> the cloud investigation and were never written to an artefact. They cannot be
-> reproduced from the published archive, which reports 0.0, 0.0, 22.7 and 0.0
-> percent model cloud for the same dates, nor from any run output on disk. They
-> are kept because the qualitative finding they illustrate is independently
-> supported below, but a number that no stored result can reproduce does not
-> belong in a limitations page. Regenerating them from the reprocessed archive is
-> part of that run.
+An earlier version of this page carried four rows including two August scenes,
+taken from interactive runs during the cloud investigation and never written to
+an artefact. They could not be reproduced from any stored result, which is not a
+defensible state for a limitations page, so they are replaced by rows that come
+straight out of `out/archive/summary.csv`. The two August scenes are gone rather
+than corrected: the reprocess covers 1 February to 15 July and does not contain
+them.
 
-On 2023-08-18 the fjord is visibly overcast in the true-colour composite while
-the model reports 22.6 percent. The thin-cloud and shadow classes almost never
-win the argmax (0.2 and 0.0 percent on that scene), so the four-class head
-behaves as a two-class one.
+The disagreement runs both ways, so it cannot be calibrated away with an offset.
+And the tile figure is not ground truth either: it covers 110 by 110 km while
+this AOI is 15 by 18, so the two can legitimately differ. What the pair shows is
+that neither can be trusted to arbitrate the other.
 
 **An earlier version of this page argued the consequence from a number that does
 not support it, and the correction matters more than the original claim.** It
-reported that ice fraction correlates with detected cloud at r = -0.42 across
-all 1552 archived scenes. That correlation is real (recomputed: -0.419) and it
-is also **mechanically forced**. It was measured against the whole-grid
-denominator, where a cell classified as cloud can never also be counted as ice,
-so more cloud must produce less ice by construction, and a perfect cloud mask
-would produce the same negative sign. On the clear-sky denominator, which is the
-one this project actually publishes, the same correlation is **+0.058** over
-1295 scenes, or -0.097 over the 1120 that clear the 30 percent visibility gate.
-The number proved nothing, and it was the first thing a reviewer would check.
+reported that ice fraction correlates with detected cloud at r = -0.42, and read
+that as proof of a cloud artefact. The correlation is real and it is also
+**mechanically forced**. It was measured against the whole-grid denominator,
+where a cell classified as cloud can never also be counted as ice, so more cloud
+must produce less ice by construction, and a perfect cloud mask would produce
+the same negative sign. On the reprocessed archive the whole-grid correlation is
+**-0.609** across all 1103 scenes, and on the clear-sky denominator, over the
+694 scenes that clear the visibility gate, it is **-0.157**. The number proved
+nothing, and it was the first thing a reviewer would check.
 
 **What the archive does show, on the clear-sky denominator.** February and March,
-277 scenes, a fjord that is frozen with near certainty:
+313 scenes, a fjord that is frozen with near certainty:
 
 | Detected cloud | n | Ice / whole grid | Ice / clear sky |
 |---|---|---|---|
-| 0.00 to 0.05 | 176 | 0.897 | 0.999 |
-| 0.05 to 0.25 | 33 | 0.491 | 0.613 |
-| 0.25 to 0.50 | 18 | 0.376 | 0.655 |
-| 0.50 to 0.75 | 15 | 0.248 | 0.713 |
+| 0.00 to 0.05 | 144 | 0.890 | 0.976 |
+| 0.05 to 0.25 | 21 | 0.687 | 0.918 |
+| 0.25 to 0.50 | 32 | 0.346 | 0.590 |
+| 0.50 to 0.75 | 33 | 0.179 | 0.616 |
 
-Across these four bands the whole-grid column falls by a factor of 3.6 while the
-clear-sky column stays high. The band above 0.75 cloud is left out on purpose:
-there the whole-grid figure reaches 0.017, a fiftyfold collapse, but the
-clear-sky figure is meaningless because `cloud_pct + land_pct + nodata_pct`
-exceeds one in those rows and the denominator goes negative. That is itself a
-defect of the archive and is listed below. So the headline cloud artefact is, to
-a first approximation, **the denominator**, and switching denominators is the fix
-rather than a mitigation.
+The whole-grid column falls by a factor of five across those bands, the clear-sky
+column by a third. So most of the apparent cloud artefact is **the denominator**,
+and switching denominators is the fix rather than a mitigation.
 
-**What survives is smaller, sharper and not a cloud problem.** Of the 233
-February and March scenes that pass the visibility gate, **26 report under 0.15
-ice on the clear-sky denominator with a median detected cloud of 0.055 and 83
-percent of the grid clear**. Cloud does not explain those. Something else does,
-most plausibly the brightness gate at low winter sun, and the archive cannot
-say which, because `sun_elev` was never written to it (all 1552 rows carry 19 of
-the 22 header columns; `sun_elev`, `sun_azim` and `edge_gap` are empty).
+**What survives is smaller, sharper and not a cloud problem.** Of the 219
+February and March scenes that pass the visibility gate, **28 report under 0.15
+ice on the clear-sky denominator**, and several of those sit under a sky the
+pipeline itself calls clear: 2025-02-18 and 2025-03-01 at 0.000 detected cloud,
+2026-03-06 at 0.026. Cloud does not explain those. The most plausible cause is
+the brightness gate at low winter sun, and the reprocessed archive can finally
+be asked, because `sun_elev` is now written to every row. It was empty in the
+previous archive, where the data lines carried 19 of the 22 header columns.
 
 These clear-sky anomalies, not the cloudy days, are the sharper target for the
 SAR cross-check, because no change of denominator can explain them away.
@@ -97,26 +93,27 @@ the bias, which the table above shows to be most of it, and scenes below 30
 percent visibility are marked unusable. Neither helps with cloud the model failed
 to detect at all, and neither explains the 26 clear-sky anomalies.
 
-## The record is nine seasons, and that is short
+## The record is ten seasons, and that is short
 
-Spring means (day of year 60 to 151) per season, from the published archive:
+Spring means (day of year 60 to 151) per season, from the reprocessed archive:
 
 ```
-2017 0.719   2018 0.790   2019 0.536   2020 0.624
-2021 0.269   2022 0.629   2023 0.403   2024 0.552   2025 0.396
+2017 0.877   2018 0.957   2019 0.725   2020 0.787   2021 0.466
+2022 0.941   2023 0.480   2024 0.770   2025 0.456   2026 0.608
 ```
 
-- Early (2017 to 2020) mean 0.667, late (2021 to 2025) mean 0.450.
-- Exact permutation test over all 126 splits: **p = 0.032** with the whole-grid
-  denominator, **p = 0.056** with the clear-sky one.
-- Mann-Kendall for a monotone trend: **p = 0.076** and **p = 0.348**.
+- Early (2017 to 2020) mean 0.836, late (2021 to 2026) mean 0.620, a decline of
+  **25.9 percent**.
+- Exact permutation test over all 210 splits: **p = 0.090**.
+- Mann-Kendall for a monotone trend: **p = 0.107**.
 
-So the early-to-late difference is at best marginal once the cloud artefact is
-removed, and a monotone trend is not detectable at all. The interannual spread
-(standard deviation 0.111 early, 0.142 late) is nearly as large as the difference
-between the period means (0.217), and 2022 sits above both 2019 and 2020.
+So the early-to-late difference does not reach significance at any conventional
+level, and a monotone trend is not detectable at all. The interannual spread
+(standard deviation 0.102 early, 0.198 late) is of the same order as the
+difference between the period means (0.216), and 2022 at 0.941 sits above three
+of the four early seasons.
 
-**The direction is consistent. The certainty is not there, and nine winters is
+**The direction is consistent. The certainty is not there, and ten winters is
 why.**
 
 ## The result depends on two analysis choices
@@ -126,27 +123,35 @@ the favourable end of the defensible range.
 
 | Period boundary | Loss | p | | Season window (doy) | Loss | p |
 |---|---|---|---|---|---|---|
-| from 2019 | 35.5 % | 0.028 | | 45 to 181 | 30.4 % | 0.032 |
-| **from 2021** | **32.6 %** | **0.040** | | **60 to 151** | **32.6 %** | **0.040** |
-| from 2022 | 15.7 % | 0.214 | | 60 to 120 | 26.6 % | 0.008 |
-| from 2024 | 16.4 % | 0.278 | | 100 to 151 | 35.8 % | 0.056 |
+| from 2019 | 28.7 % | 0.111 | | 45 to 180 | 29.1 % | 0.062 |
+| **from 2021** | **25.9 %** | **0.090** | | **60 to 151** | **25.9 %** | **0.090** |
+| from 2022 | 14.6 % | 0.389 | | 60 to 120 | 21.5 % | 0.029 |
+| from 2024 | 18.2 % | 0.333 | | 100 to 151 | 28.4 % | 0.200 |
 
 The 2021 boundary has a substantive justification, but the range across
-defensible choices runs from 16 to 36 percent and that belongs on the page.
+defensible choices runs from 15 to 29 percent and that belongs on the page.
+Across the eleven combinations tested, p runs from 0.03 to 0.39 and exactly one
+falls below 0.05, which out of eleven is what chance alone produces.
 
 ## Sampling is uneven, and 2017 is thin
 
-Measured days inside the analysed window: 2017 has **39**, the other seasons 81
-to 107. Bootstrapping the measured days of each season, 2000 draws, gives the
+Measured days inside the analysed window: 2017 has **31**, the other seasons 53
+to 75. Bootstrapping the measured days of each season, 2000 draws, gives the
 sampling standard error of each season mean:
 
 ```
-2017  0.590 +- 0.064   (39 days)      2022  0.512 +- 0.037  (107)
-2018  0.616 +- 0.044   (81)           2023  0.326 +- 0.036   (93)
-2019  0.426 +- 0.038  (102)           2024  0.449 +- 0.036  (107)
-2020  0.516 +- 0.038  (106)           2025  0.324 +- 0.037  (106)
-2021  0.219 +- 0.029  (106)
+2017  0.703 +- 0.075   (31 days)      2022  0.742 +- 0.043   (75)
+2018  0.851 +- 0.041   (60)           2023  0.496 +- 0.052   (53)
+2019  0.580 +- 0.057   (64)           2024  0.668 +- 0.045   (69)
+2020  0.714 +- 0.048   (72)           2025  0.381 +- 0.049   (66)
+2021  0.294 +- 0.047   (65)           2026  0.443 +- 0.055   (66)
 ```
+
+The mean quoted here is the mean of the measured days, which is what the
+bootstrap resampled. It is not the same number as the gap-filled seasonal mean
+the charts plot, and the API returns both for exactly that reason: pairing an
+interval with the wrong one of the two put the 2018 point below its own lower
+bound.
 
 The API reports these per season so charts can draw a band rather than a point.
 

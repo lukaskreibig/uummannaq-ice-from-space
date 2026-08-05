@@ -66,6 +66,11 @@ EXPECTED_HEADER = [
     "nodata_pct",
     "clear_px",
     "clear_pct",
+    # The visibility verdict. Added to the writer when scenes that saw almost
+    # none of the fjord stopped being averaged into the daily mean, and missed
+    # here, so the first real archive this gate was pointed at failed on its own
+    # stale expectation rather than on the data.
+    "usable",
     "solid_pct_clear",
     "light_pct_clear",
     "water_pct_clear",

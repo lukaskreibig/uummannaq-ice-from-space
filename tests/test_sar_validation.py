@@ -113,8 +113,9 @@ class TestCandidateSelection:
             ("S2B_22WDD_x", "20210220T150000", 0.01, 0.0, 0.0, 0.004, 0.09, 0.0),
             # an ice anchor: February, clear, full ice
             ("S2B_22WDD_y", "20210225T150000", 0.90, 0.01, 0.0, 0.0, 0.09, 0.0),
-            # a water anchor: September, clear, no ice
-            ("S2B_22WDD_z", "20210915T150000", 0.0, 0.0, 0.90, 0.0, 0.09, 0.0),
+            # a water anchor: June, clear, no ice. June and July rather than
+            # August and September since the reprocess stops on 15 July.
+            ("S2B_22WDD_z", "20210615T150000", 0.0, 0.0, 0.90, 0.0, 0.09, 0.0),
             # the same shape as the suspect but from a tile on another continent
             ("S2B_30QUL_q", "20210221T150000", 0.01, 0.0, 0.0, 0.004, 0.09, 0.0),
         ]
@@ -154,7 +155,7 @@ class TestCandidateSelection:
 
         assert by_role[ROLE_SUSPECT].day == date(2021, 2, 20)
         assert by_role[ROLE_ICE].day == date(2021, 2, 25)
-        assert by_role[ROLE_WATER].day == date(2021, 9, 15)
+        assert by_role[ROLE_WATER].day == date(2021, 6, 15)
 
 
 def _prepare(frame: pd.DataFrame) -> pd.DataFrame:
