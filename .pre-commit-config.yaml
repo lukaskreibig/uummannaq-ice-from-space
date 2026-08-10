@@ -1,3 +1,11 @@
+# archive/ holds the superseded first pipeline, kept verbatim as the record of
+# what this project used to be. It predates these hooks and does not pass them,
+# so without this any touch of those files is blocked by style complaints about
+# code nobody will run again. Set here rather than only in pyproject.toml,
+# because pre-commit hands ruff explicit filenames and ruff does not apply its
+# own exclude list to those unless it is also given --force-exclude.
+exclude: ^archive/
+
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.6.9

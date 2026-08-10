@@ -54,6 +54,13 @@ uummannaq-ice = "uummannaq_ice.cli:main"
 requires = ["setuptools>=65", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[tool.ruff]
+# archive/ holds the superseded first pipeline, kept verbatim as the record of
+# what this project used to be. It predates the hook and does not pass it, so
+# linting it means any touch of those files, a credential scrub for instance,
+# is blocked by style complaints about code nobody will run again.
+extend-exclude = ["archive"]
+
 [tool.setuptools]
 package-dir = {"" = "src"}
 include-package-data = true
