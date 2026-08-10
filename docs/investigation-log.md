@@ -213,8 +213,9 @@ After all of this, the honest position is narrower than the one the project
 started with.
 
 - Direction: the later seasons have less spring ice than the earlier ones,
-  by about **20 percent** on the cloud-independent metric.
-- Confidence: **p = 0.056** over nine seasons. Below the conventional threshold.
+  by about **23 percent** on the cloud-independent metric.
+- Confidence: **p = 0.119** over ten seasons, 25 of 210 splits. Above the
+  conventional threshold, and above 0.10 as well.
   A monotone trend is not detectable at all.
 - Interannual variability is nearly as large as the difference between periods.
 

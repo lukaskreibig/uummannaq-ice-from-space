@@ -16,11 +16,17 @@ that number is, what it is not, and how the current version was arrived at.
 | [docs/investigation-log.md](docs/investigation-log.md) | How four systematic errors were found and corrected. None of them raised an exception. |
 | [docs/generalisation.md](docs/generalisation.md) | What it would take to run this at any Arctic coastal site, and what already does. |
 
-Short version of what the record supports: the later seasons hold about **20
-percent** less spring ice than the earlier ones, at **p = 0.056** over nine
-seasons, with no detectable monotone trend and interannual variability nearly as
-large as the difference between periods. The direction is consistent. The
-certainty is not there, and nine winters is why.
+Short version of what the record supports: the later seasons hold about **23
+percent** less spring ice than the earlier ones, at **p = 0.119** over ten
+seasons, with no detectable monotone trend and interannual variability as large
+as the difference between periods. The direction is consistent. The certainty is
+not there, and ten winters is why.
+
+That p is worth reading as what it is. The exact permutation test walks all 210
+ways of cutting ten seasons into four and six; 25 of them open a gap at least as
+wide as the real, chronological one. It is not evidence against the decline,
+which a ten-season record has too little power to establish either way. See
+[docs/limitations.md](docs/limitations.md).
 
 
 ## Quick start

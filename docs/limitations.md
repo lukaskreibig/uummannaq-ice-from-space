@@ -100,57 +100,83 @@ to detect at all, and neither explains the 28 clear-sky anomalies.
 
 ## The record is ten seasons, and that is short
 
-Spring means (day of year 60 to 151) per season, from the reprocessed archive:
+Spring means (day of year 53 to 180) per season, from the reprocessed archive:
 
 ```
-2017 0.877   2018 0.957   2019 0.725   2020 0.787   2021 0.466
-2022 0.941   2023 0.480   2024 0.770   2025 0.456   2026 0.608
+2017 0.738   2018 0.756   2019 0.611   2020 0.631   2021 0.431
+2022 0.766   2023 0.440   2024 0.667   2025 0.389   2026 0.484
 ```
 
-- Early (2017 to 2020) mean 0.836, late (2021 to 2026) mean 0.620, a decline of
-  **25.9 percent**.
-- Exact permutation test over all 210 splits: **p = 0.090**.
-- Mann-Kendall for a monotone trend: **p = 0.107**.
+- Early (2017 to 2020) mean 0.684, late (2021 to 2026) mean 0.529, a decline of
+  **22.6 percent**.
+- Exact permutation test over all 210 splits: **p = 0.119**.
+- Mann-Kendall for a monotone trend: **p = 0.210**.
+
+The permutation test is worth stating concretely, because the number is easier
+to trust than the letter. It walks all 210 ways of cutting the ten seasons into
+a group of four and a group of six and asks how often chance alone opens a gap
+at least as wide as the real one. The real, chronological split gives 0.155.
+**25 of the 210 manage it too**, which is where the 0.119 comes from: about one
+arbitrary split of these ten winters in eight looks like ours. The widest gap of
+all, 0.259, belongs to 2021, 2023, 2025 and 2026 taken together, which is no
+chronology at all.
 
 So the early-to-late difference does not reach significance at any conventional
 level, and a monotone trend is not detectable at all. The interannual spread
-(standard deviation 0.102 early, 0.198 late) is of the same order as the
-difference between the period means (0.216), and 2022 at 0.941 sits above three
-of the four early seasons.
+(standard deviation 0.073 early, 0.151 late) is as large as the difference
+between the period means (0.155), and 2022 at 0.766 sits above all four early
+seasons.
+
+A p above 0.10 is not evidence against the decline, and should not be read as
+one. With ten values the test has very little power, so a real decline of this
+size would often land above 0.10 as well. Absence of proof is not proof of
+absence; it is what a ten-year record can and cannot settle.
 
 **The direction is consistent. The certainty is not there, and ten winters is
 why.**
 
 ## The result depends on two analysis choices
 
-Neither is wrong, but both are choices, and the published combination sits near
-the favourable end of the defensible range.
+Neither is wrong, but both are choices, and both belong on the page.
 
 | Period boundary | Loss | p | | Season window (doy) | Loss | p |
 |---|---|---|---|---|---|---|
-| from 2019 | 28.7 % | 0.111 | | 45 to 180 | 29.1 % | 0.062 |
-| **from 2021** | **25.9 %** | **0.090** | | **60 to 151** | **25.9 %** | **0.090** |
-| from 2022 | 14.6 % | 0.389 | | 60 to 120 | 21.5 % | 0.029 |
-| from 2024 | 18.2 % | 0.333 | | 100 to 151 | 28.4 % | 0.200 |
+| from 2019 | 26.0 % | 0.133 | | 45 to 180 | 22.6 % | 0.119 |
+| **from 2021** | **22.6 %** | **0.119** | | **53 to 180** | **22.6 %** | **0.119** |
+| from 2022 | 13.3 % | 0.413 | | 53 to 151 | 23.2 % | 0.100 |
+| from 2024 | 17.8 % | 0.292 | | 74 to 180 | 18.2 % | 0.176 |
+
+The window row is worth reading twice: **day 45 and day 53 now give the same
+answer to three digits.** They did not before. The gate that asks how much of
+the fjord a scene actually classified, rather than how much of it the scene
+could see, rejects the February scenes the wider window used to admit, so the
+window start stopped carrying weight of its own. A choice that no longer changes
+the result is no longer a choice worth defending.
 
 The 2021 boundary has a substantive justification, but the range across
-defensible choices runs from 15 to 29 percent and that belongs on the page.
-Across the eleven combinations tested, p runs from 0.03 to 0.39 and exactly one
-falls below 0.05, which out of eleven is what chance alone produces.
+defensible choices runs from 13 to 26 percent and that belongs on the page.
+Across the ten combinations tested, p runs from 0.10 to 0.41. **Not one falls
+below 0.05, and not one below 0.10.** An earlier version of this page reported
+one below 0.05 out of eleven and noted that one in eleven is what chance alone
+produces; with the denominator and the gate corrected there is no longer even
+that one.
 
 ## Sampling is uneven, and 2017 is thin
 
-Measured days inside the analysed window: 2017 has **31**, the other seasons 53
-to 75. Bootstrapping the measured days of each season, 2000 draws, gives the
+Measured days inside the analysed window: 2017 has **24**, the other seasons 46
+to 66. Bootstrapping the measured days of each season, 2000 draws, gives the
 sampling standard error of each season mean:
 
 ```
-2017  0.703 +- 0.075   (31 days)      2022  0.742 +- 0.043   (75)
-2018  0.851 +- 0.041   (60)           2023  0.496 +- 0.052   (53)
-2019  0.580 +- 0.057   (64)           2024  0.668 +- 0.045   (69)
-2020  0.714 +- 0.048   (72)           2025  0.381 +- 0.049   (66)
-2021  0.294 +- 0.047   (65)           2026  0.443 +- 0.055   (66)
+2017  0.870 +- 0.054   (24 days)      2022  0.793 +- 0.044   (66)
+2018  0.871 +- 0.040   (58)           2023  0.572 +- 0.056   (46)
+2019  0.655 +- 0.059   (54)           2024  0.746 +- 0.047   (58)
+2020  0.753 +- 0.046   (64)           2025  0.502 +- 0.057   (54)
+2021  0.339 +- 0.054   (59)           2026  0.494 +- 0.060   (60)
 ```
+
+Fewer days than before across the board, because the gate now rejects scenes
+that saw the fjord but classified too little of it.
 
 The mean quoted here is the mean of the measured days, which is what the
 bootstrap resampled. It is not the same number as the gap-filled seasonal mean
@@ -161,10 +187,16 @@ bound.
 The API reports these per season so charts can draw a band rather than a point.
 
 **And the useful conclusion is what they are dwarfed by.** A typical season's
-sampling error is 0.040. The spread between seasons is 0.111 within the early
-period and 0.142 within the late one, three to four times larger. So the limit on
+sampling error is 0.054. The spread between seasons is 0.104 within the early
+period and 0.170 within the late one, two to three times larger. So the limit on
 what this record can say is **not** how many scenes each season got. It is that
 there are ten seasons. More imagery would not help; more years would.
+
+Note also that fewest days and widest interval are not the same season. 2017 has
+by far the fewest at 24 and only the fourth widest interval, because the days it
+did get agree with each other; 2026 has 60 days and the widest, because its
+season runs through break-up. A bootstrap widens with a small n and with spread,
+and the two do not have to point the same way.
 
 ## Melt ponds bias break-up early
 

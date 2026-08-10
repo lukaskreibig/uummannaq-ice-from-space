@@ -201,7 +201,7 @@ late.
 - **It does not correct the archive.** It bounds an error, it does not repair a
   time series. A correction would need a trustworthy per scene ice fraction from
   SAR, and 4.47 dB of class overlap does not provide one.
-- **It says nothing about the trend.** Nine winters remains the binding
+- **It says nothing about the trend.** Ten winters remains the binding
   constraint. The sample is drawn from extreme cases on purpose and is not
   representative, so deriving a correction factor for the seasonal means from it
   would be wrong.
