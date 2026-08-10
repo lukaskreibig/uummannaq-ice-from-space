@@ -74,7 +74,7 @@ from uummannaq_ice.sar import (  # noqa: E402
 
 LOGGER = logging.getLogger("validate_sar")
 
-DEFAULT_ARCHIVE = Path("archive/legacy_pipeline/ice-final/summary_test.csv")
+DEFAULT_ARCHIVE = Path("archive/reprocessed_2026/summary.csv")
 DEFAULT_OUTPUT = Path("out/archive/sar_validation.csv")
 
 # Uummannaq sits on the boundary of two MGRS tiles and the archive also contains
@@ -160,16 +160,30 @@ def read_archive(path: Path) -> pd.DataFrame:
     frame["year"] = pd.to_datetime(frame["day"]).dt.year
     frame["tile"] = frame["tile_id"].str.extract(r"_(\d{2}[A-Z]{3})_")
 
-    # The clear-sky denominator, which is the one this project publishes. It goes
-    # negative in rows where the class percentages sum past the grid, a defect of
-    # the published archive; those rows cannot yield a usable fraction and drop
-    # out through the clear-share gate below.
-    frame["clear"] = 1.0 - frame["cloud_pct"] - frame["land_pct"] - frame["nodata_pct"]
-    frame["ice_clear"] = np.where(
-        frame["clear"] > 0,
-        (frame["solid_pct"] + frame["light_pct"]) / frame["clear"],
-        np.nan,
+    # The clear-sky denominator, which is the one this project publishes.
+    #
+    # Read it from the archive where the archive carries it. Rebuilding it by
+    # subtraction was necessary for the legacy run, which had no such columns,
+    # and it is wrong for the reprocessed one: across its 1103 rows the rebuilt
+    # denominator disagrees with the written `clear_pct` by up to 0.59, 220 rows
+    # move by more than 0.01 in ice fraction, and the rebuild alone produces 162
+    # rows above a fraction of 1 and 215 with a denominator at or below zero.
+    # The written columns produce none of either.
+    has_clear_columns = {"clear_pct", "solid_pct_clear", "light_pct_clear"} <= set(
+        frame.columns
     )
+    if has_clear_columns:
+        frame["clear"] = frame["clear_pct"]
+        frame["ice_clear"] = frame["solid_pct_clear"] + frame["light_pct_clear"]
+    else:
+        frame["clear"] = (
+            1.0 - frame["cloud_pct"] - frame["land_pct"] - frame["nodata_pct"]
+        )
+        frame["ice_clear"] = np.where(
+            frame["clear"] > 0,
+            (frame["solid_pct"] + frame["light_pct"]) / frame["clear"],
+            np.nan,
+        )
     return frame
 
 

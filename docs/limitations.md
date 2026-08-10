@@ -52,12 +52,17 @@ nothing, and it was the first thing a reviewer would check.
 **What the archive does show, on the clear-sky denominator.** February and March,
 313 scenes, a fjord that is frozen with near certainty:
 
-| Detected cloud | n | Ice / whole grid | Ice / clear sky |
+| Detected cloud | n | Median ice / whole grid | Median ice / clear sky |
 |---|---|---|---|
 | 0.00 to 0.05 | 144 | 0.890 | 0.976 |
 | 0.05 to 0.25 | 21 | 0.687 | 0.918 |
 | 0.25 to 0.50 | 32 | 0.346 | 0.590 |
 | 0.50 to 0.75 | 33 | 0.179 | 0.616 |
+
+Medians, not means. Taken as means the same bands read 0.750, 0.580, 0.308 and
+0.180 on the left and 0.805, 0.750, 0.542 and 0.553 on the right, because a few
+near zero scenes pull the average without moving the middle. The conclusion is
+the same either way; the label is there so a reader recomputing it knows which.
 
 The whole-grid column falls by a factor of five across those bands, the clear-sky
 column by a third. So most of the apparent cloud artefact is **the denominator**,
@@ -84,14 +89,14 @@ threshold solves it.
 **What would.** Sentinel-1 radar needs neither sun nor a clear sky, so it can be
 asked directly whether the fjord was frozen on a given day. That is why the SAR
 cross-check moved from optional to load-bearing, and after the correction above
-its target changed: the 26 clear-sky anomalies are the sharper question, because
+its target changed: the 28 clear-sky anomalies are the sharper question, because
 they are the ones no denominator explains. Over Greenland the mission flies HH
 and HV rather than VV and VH, so no threshold calibrated on VV transfers here.
 
 *Mitigations in place:* the clear-sky denominator removes the mechanical part of
 the bias, which the table above shows to be most of it, and scenes below 30
 percent visibility are marked unusable. Neither helps with cloud the model failed
-to detect at all, and neither explains the 26 clear-sky anomalies.
+to detect at all, and neither explains the 28 clear-sky anomalies.
 
 ## The record is ten seasons, and that is short
 
@@ -159,7 +164,7 @@ The API reports these per season so charts can draw a band rather than a point.
 sampling error is 0.040. The spread between seasons is 0.111 within the early
 period and 0.142 within the late one, three to four times larger. So the limit on
 what this record can say is **not** how many scenes each season got. It is that
-there are nine seasons. More imagery would not help; more years would.
+there are ten seasons. More imagery would not help; more years would.
 
 ## Melt ponds bias break-up early
 

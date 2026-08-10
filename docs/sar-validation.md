@@ -32,12 +32,18 @@ over all 1103 scenes; on the clear-sky denominator, restricted to the scenes
 that clear the visibility gate, it is **-0.157**. February and March, grouped by
 detected cloud, make the point without statistics:
 
-| Detected cloud | n | Ice / whole grid | Ice / clear sky |
+| Detected cloud | n | Median ice / whole grid | Median ice / clear sky |
 |---|---|---|---|
 | 0.00 to 0.05 | 144 | 0.890 | 0.976 |
 | 0.05 to 0.25 | 21 | 0.687 | 0.918 |
 | 0.25 to 0.50 | 32 | 0.346 | 0.590 |
 | 0.50 to 0.75 | 33 | 0.179 | 0.616 |
+
+Medians, and the word is load bearing: the same bands taken as means read 0.750,
+0.580, 0.308 and 0.180 on the left and 0.805, 0.750, 0.542 and 0.553 on the
+right, because a handful of near zero scenes drag the average down without
+moving the middle. The conclusion is the same either way, but a reader
+recomputing this deserves to know which one is on the page.
 
 The left column falls by a factor of five, the right one by a third. So most of
 the apparent cloud artefact was the denominator, and a SAR check aimed at cloudy
@@ -45,7 +51,7 @@ days would have spent itself on a problem a division already solves.
 
 **What it tests instead.** February and March days that pass the 30 percent
 visibility gate and still report under 0.15 ice on the clear-sky denominator. On
-the reprocessed archive there are 26 of them, several under a sky the pipeline
+the reprocessed archive there are 28 of them, several under a sky the pipeline
 itself calls clear: 2025-02-18 at 0.000 detected cloud, 2025-03-01 at 0.000,
 2026-03-06 at 0.026. No denominator explains those, and this fjord is frozen in
 February and March with near certainty. Those are the days worth putting a
@@ -159,9 +165,27 @@ open water. Those days are therefore **evidence of a failure in the optical
 chain, not of ice loss**.
 
 The failure is not the cloud mask. These days were chosen for having clear skies.
-The most likely cause is the brightness gate at low winter sun, and this cannot
-be settled from the archive, because `sun_elev` was never written to it: all 1552
-rows carry 19 of the 22 header columns.
+The likeliest cause is the brightness gate at low winter sun, and the reprocessed
+archive can be asked directly, because it writes `sun_elev` to every one of its
+1103 rows. An earlier version of this page said the column had never been written
+and quoted the legacy archive's 1552 rows; that was true of the run this one
+replaced.
+
+Asked, it answers in the expected direction. Over the 219 February and March
+scenes that clear the visibility gate, the 28 suspects sit at a median sun
+elevation of **12.60 degrees against 16.34** for the rest, a difference of 3.74
+degrees at a one-sided permutation p of 0.009. Sun elevation climbs steadily
+through the window, so the test that matters is within a month, and there the
+effect survives: February 8.36 against 10.06 (p = 0.023), March 13.53 against
+18.38 (p = 0.0001).
+
+**It points, it does not settle.** Twelve of the 28 come from 2025, and 2025 is
+the one season in the record that genuinely froze late, so some of its February
+suspects may be open water rather than a gate failure. Drop that season and the
+effect falls to 3.09 degrees at p = 0.059, which is no longer significant at any
+conventional level. What the archive supports is that the anomalies concentrate
+at low sun; what it cannot do is separate a dim scene from a season that started
+late.
 
 ## What this does not establish
 
@@ -189,9 +213,12 @@ rows carry 19 of the 22 header columns.
   climate and water temperature that cannot be removed at this site.
 - **The anchors are labelled by the pipeline under test**, from its clear-sky
   regime. That is defensible, since the error being examined is not a fair
-  weather problem, but it is not independent ground truth. Two water anchors
-  from late September, at -14.14 and -16.79 dB, sit above the ice median, most
-  likely wind roughened water or the first new ice of the season.
+  weather problem, but it is not independent ground truth. One water anchor of
+  the nineteen, 2018-06-27 at -15.30 dB, sits above the ice median, most likely
+  wind roughened water. An earlier version of this page named two anchors from
+  late September at -14.14 and -16.79 dB; those belong to the run whose water
+  anchors came from August and September, and neither value appears in the
+  committed measurements.
 - **Five of the fourteen suspects fall on the water side**, and they are the
   later ones. Wet snow would put ice bearing days there, and so would
   genuinely open water. This method cannot tell those apart, which is the same
