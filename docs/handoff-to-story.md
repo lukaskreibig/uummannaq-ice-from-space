@@ -226,9 +226,11 @@ as well.
 produces has to be copied into both locale files by hand, in both languages, or
 the methodology box describes a pipeline that no longer exists.
 
-The same sentence says "day 45 to 181 of the year". The code uses 45 to 180
-(`backend/main.py:63`, `refresh_fjord_season.py`). Off by one, in both
-languages, already.
+The same sentence used to say "day 45 to 181 of the year" while the code uses 45
+to 180 (`backend/main.py:64`, `refresh_fjord_season.py`), and it contradicted
+itself: further down the same string already quoted a sensitivity figure for
+"day 45 to 180". Both locales now say 180. The water area in that sentence was
+also still the pre-correction 253.5 km²; it is 253.1.
 
 ---
 

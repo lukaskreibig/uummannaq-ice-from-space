@@ -100,23 +100,50 @@ the void value is negative, and a genuinely dark open-water pixel sums to about
 
 **Land.** A GeoTIFF carrying its own CRS and transform, **reprojected** onto each
 scene grid. It is derived from the imagery by `scripts/derive_landmask.py`: land
-is what stays above 0.06 in the 75th percentile of near-infrared reflectance
-across eight clear August scenes spanning 2019 to 2024. Open water is nearly
-black in the near infrared (measured median 0.021) and rock and tundra are not
-(0.141), a separation factor of 6.8, and drifting ice cannot hold a pixel across
-four years.
+is what stays above 0.06 in the **median** near-infrared reflectance across eight
+clear August scenes spanning 2019 to 2024. Open water is nearly black in the near
+infrared (measured median 0.021) and rock and tundra are not (0.141), a
+separation factor of 6.8, and drifting ice cannot hold a pixel across four years.
 
-The 75th percentile rather than the median is deliberate: at 70 degrees north the
-mountain shadows its own eastern face, and a shadowed slope is as dark in the
-near infrared as water. The sun azimuth differs between scenes, so a face
-shadowed in one is lit in another.
+The median is the point. It asks that a cell be bright in most of the scenes, and
+since land does not move and icebergs do, that is what separates them.
+
+**An earlier version of this page argued for the 75th percentile, and the
+argument was wrong.** It said the mountain shadows its own eastern face, that a
+shadowed slope is as dark in the near infrared as water, and that the sun azimuth
+differs between scenes so a face shadowed in one is lit in another. The last step
+does not hold. Sentinel-2 is sun synchronous and crosses at the same local solar
+time every pass: across 116 clear summer scenes from four years the sun azimuth
+runs only 176.3 to 188.7 degrees, a spread of 12. **The eastern face is shadowed
+in every acquisition this satellite will ever make of this island**, so no
+percentile can light it.
+
+Nor are shadow and water separable radiometrically. On a clear August scene the
+shadowed notch has a near-infrared median of 0.0212 against 0.0147 for open
+water, seven thousandths apart. A cut at 0.020 recovers 60 percent of the notch;
+a cut at 0.015 recovers all of it and 36 percent of the ocean with it.
+
+Loosening the percentile also costs what the aggregate was for: at the 75th
+percentile two scenes out of eight sufficed to call a cell land, and the mask
+carried 151 stray fragments totalling 1.06 km², drifting ice frozen into the
+coastline. At the median that falls to 10 fragments and 0.12 km².
+
+So the shadow is closed **geometrically** instead. The island is one closed body,
+so its outline is closed morphologically at a radius of 80 m. That radius is not
+a taste: the added area jumps 1.96 km² at 50 m as the mouth of the notch is
+bridged, flattens to hundredths between 80 and 200 m, and only starts eating real
+coastline past 300 m. 80 m sits on that plateau, and the area it adds is printed
+by the script, so the correction is auditable rather than invisible.
 
 Enclosed inland water counts as land. Uummannaq has lakes and ponds, they are
 dark in the near infrared like the sea, and ice on them is lake ice. Measured:
 4032 cells in 80 patches, largest 0.12 km². This is a sea-ice measurement, so
 they are excluded.
 
-Result: **5.15 percent** of the frame. The painted 512 by 512 template it
+Result: **5.313 percent** of the frame, which is 141 891 of the 2 670 888 cells in
+the shipped `assets/landmask.tif` and the same 0.05313 section 1 derives the
+253.1 km² water area from. This page carried 5.15 percent until the two were
+checked against each other. The painted 512 by 512 template it
 replaced masked a constant 9.00 percent of every scene regardless of grid size,
 including for the two scenes from other continents, so it covered nearly twice
 the island's actual extent.
