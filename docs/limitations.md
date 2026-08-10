@@ -198,15 +198,86 @@ did get agree with each other; 2026 has 60 days and the widest, because its
 season runs through break-up. A bootstrap widens with a small n and with spread,
 and the two do not have to point the same way.
 
-## Melt ponds bias break-up early
+## Melt ponds bias break-up early, and now there is a number
 
 Melt water sits on top of ice and reads as open water in the optical bands, so
 the measured break-up is earlier than the physical one. The bias points the same
 way as the headline result and grows in warm springs, which is the uncomfortable
-direction.
+direction. SAR shares this failure mode for wet surfaces, so a radar cross-check
+bounds it only partially.
 
-It is **not quantified**. SAR shares this failure mode for wet surfaces, so a
-radar cross-check bounds it only partially.
+This page used to say the bias was not quantified. It is now, and the way it was
+measured cost nothing, because the archive had been carrying the answer at both
+ends of the season and the published window threw it away.
+
+**The two anchors.** This fjord is open in July with near certainty: the latest
+break-up in the record is 8 June 2024, and the July median clear-sky ice
+fraction is 0.002. So on a July scene the true ice fraction is zero, and
+whatever the pipeline reports instead is its false ice rate. Symmetrically, the
+earliest break-up in the record is 30 April 2021, day 120, so a window from
+1 to 20 April sits at least ten days before this fjord has ever opened in any of
+the ten seasons. There the true fraction is one, and the shortfall is the false
+water rate. Neither anchor needs a label, a second instrument or a field season.
+Reproduce with `python3 scripts/season_end_calibration.py`.
+
+| Direction | Basis | Median | 95 % CI | Worst scene |
+|---|---|---|---|---|
+| False ice on open water | 51 July scenes, 10 seasons | 0.0025 | 0.0020 to 0.0032 | 0.0118 |
+| False water on fast ice | 102 April scenes, 10 seasons | 0.0019 | 0.0010 to 0.0027 | 0.4793 |
+
+**Read the medians together and the tails separately.** The median scene is
+accurate to about two parts in a thousand in both directions, which is better
+than this page previously implied. The tails are not symmetric at all. Not one
+July scene reports above 0.05 ice, so open water is essentially never called
+ice. But 12 of the 102 April scenes fall below 0.90, down to 0.52, on days when
+this fjord has never once been open.
+
+The mechanism follows from the accounting. A cell that fails the brightness gate
+leaves the denominator rather than becoming water, so a scene cannot reach a low
+ice fraction that way. It can only get there by having cells pass NDWI. On a
+fjord that is certainly frozen, that is melt water or wet snow being read as
+open water. This is the melt-pond bias, caught in the act, on days where the
+right answer is known.
+
+**They are not a slow degradation, they are a switch.** An April scene either
+reads about 0.999 or it drops to around 0.5, with little in between, and the
+cells do not pass through the light ice class on the way: on 12 April 2023 the
+scene holds 61,170 solid cells, 234 light and 56,520 water. That is 121 km2 of a
+253 km2 fjord called open water in one step. A clean April scene for comparison,
+20 April 2018, has 157,730 solid cells and 103 water.
+
+**Ten of the twelve cannot be the fjord opening early.** Measured against each
+season's own break-up rather than against the record's earliest, the picture
+splits. The two 2021 scenes sit 10 and 11 days before that season's break-up on
+30 April, which is close enough that a low reading might be the real thing. The
+other ten sit 24 to 41 days before theirs: 2023 and 2025 both broke up on 14 May,
+and 2020 on 26 May. Three to six weeks before break-up, half a fjord of open
+water is not an early thaw.
+
+**And the part that is uncomfortable.** The 12 outliers are not spread evenly
+across the record. Five fall in 2025, four in 2023, two in 2021, one in 2020,
+and none at all in the remaining six seasons. Dealt out at random across the
+same scenes, holding each season's count fixed, that concentration or worse
+comes up with a permutation p of 0.0018.
+
+2021, 2023 and 2025 have spring means of 0.431, 0.440 and 0.389, the three
+lowest in the record, and all three sit in the late period. So the failure mode
+concentrates in exactly the seasons that carry the measured decline.
+
+Two readings fit, and this measurement cannot separate them. Either the
+classifier reads wet ice as water more often in those seasons, in which case
+part of the measured decline is a reading error rather than ice loss. Or those
+springs genuinely were wetter and their April ice genuinely was closer to
+melting, in which case the low readings are signal. Wet April ice is itself a
+symptom of a warmer spring, so the second reading is not a rescue: it says the
+series is measuring something real, but that the thing it measures is
+"how much of the fjord looks like open water from above" rather than
+"how much of the fjord is covered by ice".
+
+What would separate them is a same-day comparison against an instrument that
+does not confuse wet ice with water. That is the strongest remaining argument
+for the Landsat cross-check, and it is the reason it now sits above the SAR work
+in the queue.
 
 ## The solid/light split
 
@@ -236,9 +307,11 @@ revisiting it.
 
 ## What is not validated at all
 
-- **No comparison against an independent product.** No SAR, no in-situ, no other
-  optical product. The series shows a direction; it is not a calibrated
-  measurement.
+- **No comparison against an independent product.** The Sentinel-1 check bounds
+  one error and does not calibrate the series, and the season-end anchors above
+  are the pipeline checked against itself on days whose answer is known, which
+  is a real error rate but not an independent one. No in-situ, no second optical
+  product. The series shows a direction; it is not a calibrated measurement.
 - **No uncertainty is propagated** from the per-scene classification to the
   seasonal means beyond the sampling term above.
 - **The 40 m analysis grid** resolves nothing smaller. Leads, cracks and the ice

@@ -223,6 +223,19 @@ day-of-year mean, then two passes of a centred 7-day mean.
 They used to be the minimum and maximum of the days above the ice threshold, so a
 single misclassified day decided a season in either direction.
 
+**How accurate a single scene is.** Both error directions are measured against
+days whose answer is known before the pipeline runs, so no labels are involved.
+July is open with near certainty and 1 to 20 April is closed with near certainty,
+the latter because the earliest break-up in the record is 30 April. Across 51
+July scenes the median reported ice fraction is 0.0025, and across 102 April
+scenes the median shortfall from a closed cover is 0.0019. The median scene is
+therefore right to about two parts in a thousand in both directions, while the
+tails are strongly asymmetric. Reproduce with
+`python3 scripts/season_end_calibration.py`, and read
+[limitations.md](limitations.md#melt-ponds-bias-break-up-early-and-now-there-is-a-number)
+for what the twelve April outliers mean, because they are the more informative
+half of that result.
+
 ## 7. Reproducibility
 
 - Scene choice is deterministic; the same window returns the same scenes.
