@@ -1,5 +1,5 @@
 .PHONY: install dev lint lint-fix format test typecheck precommit docs \
-        preflight archive verify publish
+        preflight archive verify publish numbers
 
 # The scripts that matter for a run. scripts/scrape_satellite_images.py is
 # deliberately not here: it is an ad-hoc DMI scraper that starts a fifteen-year
@@ -62,6 +62,11 @@ preflight:
 archive:
 	caffeinate -is scripts/run_archive.sh $(ARCHIVE_FIRST_YEAR) $(ARCHIVE_LAST_YEAR) \
 		2>&1 | tee -a $(ARCHIVE_OUT)/run.log
+
+# Every number the published pages quote, recomputed and compared against the
+# committed claims. Exits non-zero on drift.
+numbers:
+	python3 scripts/story_numbers.py --expect docs/published_numbers.json
 
 # Exits non-zero if any gate failed.
 verify:
