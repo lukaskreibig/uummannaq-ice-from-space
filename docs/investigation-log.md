@@ -91,6 +91,13 @@ archive:
 
 **About a third of the headline was weather.**
 
+> These are the figures as they stood at this point in the investigation, and
+> they are left here because this page records the route rather than the
+> destination. Two of them have since moved: the denominator went one step
+> further, from the clear cells to the classified ones, and the cloud figures
+> above come from the legacy archive. The current table, with a script behind
+> it, is in [methods.md](methods.md#6-from-scene-to-number).
+
 Two independent confirmations followed. A dose-response check: tightening the
 visibility floor from none to 30, 50 and 70 percent gives 20.4, 19.1, 18.9 and
 15.5 percent, monotonically decreasing as the data get cleaner. And a direct one:

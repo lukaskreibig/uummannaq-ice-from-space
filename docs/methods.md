@@ -193,26 +193,58 @@ against thin ice.** See [limitations.md](limitations.md#the-solidlight-split).
 
 ## 6. From scene to number
 
-Per scene the classifier reports pixel counts and two sets of percentages:
+Per scene the classifier reports pixel counts and three possible denominators:
 
-- against the **whole grid** (`solid_pct`, `light_pct`, ...), kept so the change
-  stays auditable
-- against the **clear cells** (`solid_pct_clear`, ...), which is
-  `not cloud and not land and not void`
+- the **whole grid**, every cell of the AOI, kept so the change stays auditable
+- the **clear cells**, `not cloud and not land and not void`, which is the
+  archive's `clear_px` and what the series published until August 2026
+- the **classified cells**, `solid + light + water`, which is what it publishes
+  now
 
-**Use the clear-sky columns.** Dividing by the whole grid makes the measurement
-depend on the weather: cloud cells can never be ice, so a cloudy day mechanically
-reports less ice even when the fjord underneath is unchanged. Cloud is not evenly
-spread over this record. In the analysed window the 2017 to 2020 seasons average
-21.3 percent cloud and the 2021 to 2025 seasons 29.7 percent, so the whole-grid
-denominator turns a weather trend into an apparent ice trend. Measured on the
-published archive, the early-to-late seasonal loss is **35.7 percent with the
-whole-grid denominator and 22.7 percent with the clear-sky one**.
+**Use the classified cells.** Each step from one to the next removes cells that
+sit in a denominator while being unable to reach a numerator, and each time the
+cells removed are not spread evenly over the record.
 
-A scene is marked `usable = 0` when fewer than 30 percent of its cells are clear.
-318 of 1552 published scenes are over 80 percent cloud and entered the daily
-series unfiltered, with a mean reported ice fraction of 0.014. Those are pictures
-of cloud, not measurements of ice.
+The whole grid is the obvious trap: a cloud cell can never be ice, so a cloudy
+day reports less ice however much ice lies under it, and cloud has a trend here.
+Over the story window the 2017 to 2020 seasons average 0.364 cloud cover and the
+seasons from 2021 average 0.447, a rise of 23 percent.
+
+The clear-sky denominator fixes most of that and leaves a smaller version of the
+same error one scale down. A cell can be perfectly visible and still land in no
+class, because ice needs NDSI and both brightness floors while water needs NDWI,
+and a dark cell reaches neither. Those cells were in the denominator and could
+never be in the numerator, so they too only ever pushed the fraction down, and
+they too concentrate at low sun.
+
+Measured on the committed archive, over day 53 to 180, as the mean of the daily
+values in each period:
+
+| Denominator | Days | Early | Late | Decline |
+|---|---|---|---|---|
+| whole grid | 934 | 0.4324 | 0.2795 | 35.4 % |
+| clear cells | 934 | 0.6298 | 0.4611 | 26.8 % |
+| classified, no gate | 886 | 0.7664 | 0.6645 | 13.3 % |
+| **classified, after the gate** | **543** | **0.7749** | **0.5793** | **25.2 %** |
+
+Reproduce with `python3 scripts/denominator_comparison.py`. An earlier version of
+this page gave 35.7 and 22.7 percent for the first two rows and cloud figures of
+21.3 and 29.7 percent. The first of those still reproduces; the others come from
+the legacy archive and do not, which is why this table now has a script behind it
+rather than a memory.
+
+Note what the third row costs. Without the visibility gate the classified
+denominator UNDERSTATES the decline badly, because a scene that classified almost
+nothing still carries a full vote. The gate is not a refinement of that
+denominator, it is part of it: a scene that classified less than 30 percent of
+the AOI is not a measurement of it. 391 of the 934 scenes in the window are
+dropped that way, 41.9 percent.
+
+These are per-day means and they touch no gap filling, which is what makes them
+the right numbers for comparing denominators. They are NOT the published
+headline, which is a gap-filled seasonal mean computed in the story repository
+and lands at 22.6 percent. Two questions, two numbers, and neither is a
+correction of the other.
 
 Daily series (`scripts` in the story repo): ice fraction per scene is
 `solid + light`, averaged over the day's scenes, reindexed to every calendar day,
