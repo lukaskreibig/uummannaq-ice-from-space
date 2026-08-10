@@ -225,13 +225,26 @@ def pad32(tensor: torch.Tensor) -> torch.Tensor:
     return fn.pad(tensor, (0, (-w) % 32, 0, (-h) % 32))
 
 
-# A scene has to show enough of the fjord before its number means anything.
+# A scene has to CLASSIFY enough of the fjord before its number means anything.
 # Measured on the published archive: 318 of 1552 scenes report more than 80
 # percent cloud, and they enter the daily series with a mean reported ice
 # fraction of 0.014. Those are pictures of cloud, not measurements of ice.
 #
+# The gate used to ask only whether the scene could SEE the fjord, and seeing is
+# not the same as reading. A cell needs NDSI plus the brightness floors to be
+# ice and NDWI to be water, and a dark one is neither, so a scene can clear the
+# visibility bar and still come out almost blank. In the reprocessed archive 61
+# of the 694 scenes that passed classified less than half of what they could
+# see. The worst case is not hypothetical: 2017-06-15 saw 90 percent of the
+# fjord and classified nothing at all, and 2017-06-16 classified 6 percent of
+# what it saw and reported 0.51 ice from that sliver, which was enough to set
+# that season's break-up date.
+#
+# So the gate now measures what it always meant: the share of the AOI that came
+# out as ice or water. It removes 77 of 694 scenes.
+#
 # The threshold is deliberately generous. It is not a quality judgement, it only
-# separates "this scene saw the fjord" from "this scene saw the weather".
+# separates "this scene read the fjord" from "this scene read the weather".
 # Override with UUMMANNAQ_MIN_CLEAR_SHARE for a sensitivity run.
 MIN_CLEAR_SHARE = float(os.getenv("UUMMANNAQ_MIN_CLEAR_SHARE", "0.30"))
 
@@ -494,7 +507,13 @@ def summarise_masks(
     cnt_nodata = int(nodata.sum())
     occupied = ice_solid | ice_light | water | cloud | land | nodata
     sum_counts = cnt_solid + cnt_light + cnt_water + cnt_cloud + cnt_land + cnt_nodata
-    unknown = max(sum_counts - int(occupied.sum()), 0)
+
+    # Two different things, and they used to share one column called unknown_px,
+    # which held the OVERLAP. That misleads exactly when it matters: reading it
+    # as "cells in no class" said 1.6 percent of the clear area on average when
+    # the real figure is 11.7, and it hid the defect it looked like it measured.
+    overlap = max(sum_counts - int(occupied.sum()), 0)
+    unclassified = max(total - int(occupied.sum()), 0)
 
     # Cells where the surface could actually be judged: everything that is not
     # cloud, not land and not a data gap.
@@ -510,15 +529,35 @@ def summarise_masks(
     #
     # Both are emitted. The whole-grid columns stay so nothing downstream breaks
     # and the change stays auditable; the _clear columns are the ones to build
-    # on. A clear share below about 0.3 means the day says little either way.
+    # on. This count is reported but no longer gates anything, because seeing
+    # the fjord turned out not to be the same as reading it: see the gate below.
     cnt_clear = int((~cloud & ~land & ~nodata).sum())
-    clear_share = cnt_clear / total if total else 0.0
+
+    # And of those, the cells that actually came out as something.
+    #
+    # A cell can be visible and still land in no class: ice needs NDSI AND the
+    # brightness gate, water needs NDWI above its cut, and a dark cell that
+    # fails both is neither. Shadowed and wet ice at low sun does exactly that.
+    # Counting it in the denominator while it can never reach a numerator is the
+    # same error the whole-grid denominator made, one scale down, and it points
+    # the same way: it can only push the ice fraction down.
+    #
+    # Measured over the reprocessed archive, 282 of the 694 usable scenes carry
+    # such cells. The median scene moves not at all, the mean by +0.008 and the
+    # worst by +0.204, and the early-to-late decline moves from 27.6 to 27.2
+    # percent. Small, and it lifts every season alike, so it was never a
+    # confounder for the trend; it was simply the wrong denominator.
+    #
+    # `clear` stays "what could be seen" because that is what the usability gate
+    # is about, and a separate count carries "what could be judged".
+    cnt_classified = int((ice_solid | ice_light | water).sum())
+    classified_share = cnt_classified / total if total else 0.0
 
     def pct(count: int) -> float:
         return round(count / total, 4) if total else 0.0
 
     def pct_clear(count: int) -> float | str:
-        return round(count / cnt_clear, 4) if cnt_clear else ""
+        return round(count / cnt_classified, 4) if cnt_classified else ""
 
     def safe_mean(arr: np.ndarray, mask: np.ndarray) -> str | float:
         return round(float(np.nanmean(arr[mask])), 4) if mask.any() else ""
@@ -530,7 +569,8 @@ def summarise_masks(
         "cloud_px": cnt_cloud,
         "land_px": cnt_land,
         "nodata_px": cnt_nodata,
-        "unknown_px": unknown,
+        "unknown_px": overlap,
+        "unclassified_px": unclassified,
         "solid_pct": pct(cnt_solid),
         "light_pct": pct(cnt_light),
         "water_pct": pct(cnt_water),
@@ -539,7 +579,8 @@ def summarise_masks(
         "nodata_pct": pct(cnt_nodata),
         "clear_px": cnt_clear,
         "clear_pct": pct(cnt_clear),
-        "usable": int(clear_share >= MIN_CLEAR_SHARE),
+        "classified_px": cnt_classified,
+        "usable": int(classified_share >= MIN_CLEAR_SHARE),
         "solid_pct_clear": pct_clear(cnt_solid),
         "light_pct_clear": pct_clear(cnt_light),
         "water_pct_clear": pct_clear(cnt_water),

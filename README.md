@@ -76,8 +76,8 @@ The packaged assets are:
 
 1. Search the Element84 STAC (`sentinel-2-l1c`) within the configured AOI and date range, deduplicated by observation date.
 2. Stream tiles through `odc-stac.load`, average-pool to 40 m, align with the landmask, and derive NDSI/NDWI.
-3. Run the MobilenetV2 UNet cloud classifier (threshold 0.5 after morphological closing).
-4. Classify pixels into solid ice / light ice / water masks using the thresholds (default NDSI=0.52/0.31, NDWI=0.25).
+3. Run the MobilenetV2 UNet cloud classifier: four CloudSEN12 classes by argmax, everything not clear is masked, then morphologically closed.
+4. Classify pixels into solid ice / light ice / water masks using the thresholds (default NDSI=0.70/0.40, NDWI=0.20) and the brightness gate that does the actual separating (green 0.10, near infrared 0.17).
 5. Persist quicklook overlays + panels, aggregate CSV statistics (includes EO cloud cover and sun geometry), and log ETA estimates.
 
 ## Documentation

@@ -6,9 +6,14 @@
 - Defaults live in `config.Thresholds` and `config.Concurrency`; read them there
   rather than here, because they move. At the time of writing:
   - AOI: polygon around the Uummannaq fjord (`config.DEFAULT_AOI`), about
-    14 by 18 km, 257 km².
-  - Thresholds: NDSI solid 0.52, NDSI light 0.31, NDWI 0.25, visible brightness
-    floor 0.08, NIR brightness floor 0.17, nodata fraction flag 0.20.
+    14 by 18 km, 267.3 km².
+  - Thresholds: NDSI solid 0.70, NDSI light 0.40, NDWI 0.20, visible brightness
+    floor 0.10, NIR brightness floor 0.17, nodata fraction flag 0.20.
+    Authoritative copy: `config/baseline.yaml`, which carries the derivation of
+    each one. The brightness floors are not a detail: over this fjord NDSI runs
+    about 0.94 for solid ice, thin ice and open water alike, because all three
+    are nearly black at 1.6 um, so it is the floors that separate ice from
+    water and not the index.
   - The two NDSI numbers were tuned against reflectances that carried a +0.1
     bias and have not yet been re-derived. See the reprocessing runbook.
 - Logging format matches the original script (`"%H:%M:%S  LEVEL message"`).
@@ -56,7 +61,7 @@ Per tile:
 ## 5. Cloud inference
 
 - `segmentation_models_pytorch.Unet("mobilenet_v2", classes=4)` is loaded with the packaged checkpoint.
-- The tensor is padded to a multiple of 32, evaluated under `torch.amp.autocast`, and the cloud channel (index 1) is thresholded at 0.5.
+- The tensor is padded to a multiple of 32 and evaluated under `torch.amp.autocast`. The four CloudSEN12 classes are reduced by argmax and everything not called clear is masked, then closed with a 3 by 3 element. There is no probability threshold.
 - A morphological closing (`scipy.ndimage.binary_closing`) smooths small gaps.
 - The model honours the preferred device order: MPS → CUDA → CPU unless overridden.
 

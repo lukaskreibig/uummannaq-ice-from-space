@@ -258,10 +258,20 @@ def test_clear_columns_are_present_and_consistent():
     s = summarise_masks(
         masks, np.full(shape, 0.6), np.full(shape, 0.1), nodata_threshold=0.2
     )
-    assert s["clear_px"] == 12
+    # Three different denominators, and the fixture separates all three: 16
+    # cells, 4 of them cloud, 8 solid ice, and the remaining row in no class at
+    # all, which is what a dark cell failing both the ice and the water test
+    # looks like.
+    assert s["clear_px"] == 12  # what could be SEEN
+    assert s["classified_px"] == 8  # what came out as SOMETHING
+    assert s["unclassified_px"] == 4  # seen, and still nothing
     assert s["solid_pct"] == pytest.approx(8 / 16)
-    # the writer rounds to four decimals, like every other percentage column
-    assert s["solid_pct_clear"] == pytest.approx(8 / 12, abs=1e-4)
+
+    # The published fraction divides by what could be judged, not by what could
+    # be seen. Dividing by 12 would put four cells in the denominator that can
+    # never reach a numerator, which only ever pushes the ice fraction down.
+    # The writer rounds to four decimals, like every other percentage column.
+    assert s["solid_pct_clear"] == pytest.approx(8 / 8, abs=1e-4)
 
 
 def test_clear_percentages_are_blank_when_nothing_is_visible():
