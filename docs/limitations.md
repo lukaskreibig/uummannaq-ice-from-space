@@ -274,10 +274,21 @@ series is measuring something real, but that the thing it measures is
 "how much of the fjord looks like open water from above" rather than
 "how much of the fjord is covered by ice".
 
-What would separate them is a same-day comparison against an instrument that
-does not confuse wet ice with water. That is the strongest remaining argument
-for the Landsat cross-check, and it is the reason it now sits above the SAR work
-in the queue.
+**A second optical instrument has since been asked, and it answers half of
+this.** On four of these days Landsat 8 or 9 passed over the fjord within about
+two hours, and running the same thresholds on its surface reflectance gives
+0.3756, 0.4158, 0.5876 and 0.6498 against Sentinel-2's 0.5207, 0.5952, 0.7128
+and 0.8305. Four for four in the same direction, at five to seven times the
+0.026 agreement noise measured on days whose answer was not in doubt. So the
+surface really did read as water to two instruments with independent
+atmospheric corrections and independent cloud masks, and the concentration in
+2023 and 2025 is not a Sentinel-2 defect.
+
+What that still cannot settle is whether the fjord was open, because both
+instruments are optical and meltwater on ice absorbs in the near infrared
+whichever one is looking. See
+[landsat-crosscheck.md](landsat-crosscheck.md), including the one case where it
+contradicts the radar.
 
 ## The solid/light split
 

@@ -52,6 +52,7 @@ nav:
   - How far it holds:
       - Limitations: limitations.md
       - Sentinel-1 cross-check: sar-validation.md
+      - Landsat cross-check: landsat-crosscheck.md
       - Investigation log: investigation-log.md
   - Running it:
       - Architecture: architecture.md

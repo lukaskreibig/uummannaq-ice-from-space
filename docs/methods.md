@@ -268,6 +268,13 @@ tails are strongly asymmetric. Reproduce with
 for what the twelve April outliers mean, because they are the more informative
 half of that result.
 
+**How it compares with another instrument.** Running these same thresholds on
+Landsat 8 and 9 surface reflectance, on days both satellites saw the fjord,
+agrees to an RMSE of 0.026 across 23 days whose answer was not in doubt, and to
+0.0003 on July water. Over all 82 pairs the two series correlate at 0.987. See
+[landsat-crosscheck.md](landsat-crosscheck.md), which also reports where they
+disagree, and why one of those disagreements contradicts the radar check.
+
 ## 7. Reproducibility
 
 - Scene choice is deterministic; the same window returns the same scenes.
