@@ -27,3 +27,6 @@ data/processed/
 data/examples/
 models/legacy/
 .coverage
+
+# mkdocs build output
+site/

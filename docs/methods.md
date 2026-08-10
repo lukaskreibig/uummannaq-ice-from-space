@@ -154,7 +154,7 @@ does not call clear is masked, followed by a 3 by 3 binary closing. Inference
 runs in full precision on every device.
 
 This is the weakest part of the method. See
-[limitations.md](limitations.md#cloud-detection-is-the-largest-remaining-error).
+[limitations.md](limitations.md#cloud-detection-is-unreliable-and-the-denominator-mattered-more).
 
 ## 5. Classification
 
@@ -189,7 +189,7 @@ way. A floor on the denominator (0.02) additionally rejects ratios of two
 near-zero numbers.
 
 **The solid/light split is weakly determined and should not be presented as thick
-against thin ice.** See [limitations.md](limitations.md#the-solid-light-split).
+against thin ice.** See [limitations.md](limitations.md#the-solidlight-split).
 
 ## 6. From scene to number
 

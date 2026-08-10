@@ -1,0 +1,64 @@
+site_name: Uummannaq Ice From Space
+site_description: Sentinel-2 sea-ice classification pipeline for the Uummannaq fjord
+repo_url: https://github.com/lukaskreibig/uummannaq-ice-from-space
+docs_dir: docs
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: blue grey
+      accent: light blue
+      toggle:
+        icon: material/weather-night
+        name: Dark
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: blue grey
+      accent: light blue
+      toggle:
+        icon: material/weather-sunny
+        name: Light
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - toc.follow
+
+plugins:
+  - search
+  - section-index
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.superfences
+
+# Ordered the way somebody unfamiliar with this reads it: what it is, how it
+# works, what it cannot do, and only then how to run and extend it. The two
+# pages that decide whether the result is trustworthy, limitations and the SAR
+# cross-check, sit high on purpose rather than at the back.
+nav:
+  - Overview: overview.md
+  - The method:
+      - Method: methods.md
+      - Pipeline details: pipeline.md
+      - Models: models.md
+      - Datasets and assets: datasets.md
+  - How far it holds:
+      - Limitations: limitations.md
+      - Sentinel-1 cross-check: sar-validation.md
+      - Investigation log: investigation-log.md
+  - Running it:
+      - Architecture: architecture.md
+      - Reprocessing the archive: reprocessing-runbook.md
+      - Handing a run to the story: handoff-to-story.md
+      - Integration: integration.md
+      - Troubleshooting: troubleshooting.md
+  - Taking it elsewhere:
+      - Another coast: generalisation.md
+      - Development: development.md

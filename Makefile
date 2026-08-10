@@ -53,7 +53,7 @@ PUBLISHED_CSV ?= archive/legacy_pipeline/ice-final/summary_test.csv
 
 # Metadata only, no pixels. Roughly 220 seconds for the full range.
 preflight:
-	AWS_NO_SIGN_REQUEST=YES python3 scripts/preflight.py scripts/watch_archive.py \
+	AWS_NO_SIGN_REQUEST=YES python3 scripts/preflight.py \
 		--start $(ARCHIVE_FIRST_YEAR)-01-01 \
 		--end $(ARCHIVE_LAST_YEAR)-12-31 \
 		--out $(ARCHIVE_OUT)/preflight.json
