@@ -30,6 +30,12 @@ CSV_HEADER = [
     # floor, and the only way to get them back was to reprocess the archive.
     "clear_px",
     "clear_pct",
+    # The denominator the series actually publishes, and the one `usable` is
+    # defined on. It was computed on every tile and dropped on the floor for the
+    # same reason clear_px above was, which is the second time this exact defect
+    # has been committed in this file. A reader who trusted `usable` without it
+    # could not tell which denominator the flag meant.
+    "classified_px",
     "usable",
     "solid_pct_clear",
     "light_pct_clear",

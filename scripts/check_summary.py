@@ -48,6 +48,9 @@ import pandas as pd
 
 # Kept as a literal so the checker runs against a CSV produced by any version of
 # the package, including one that is not installed in the current interpreter.
+# Matches processing.py, and the definition gate_derived checks against.
+MIN_CLEAR_SHARE = 0.30
+
 EXPECTED_HEADER = [
     "tile_id",
     "timestamp",
@@ -66,6 +69,12 @@ EXPECTED_HEADER = [
     "nodata_pct",
     "clear_px",
     "clear_pct",
+    # The denominator the series publishes and the one `usable` is defined on.
+    # Third time in this codebase that a column was computed on every tile and
+    # then dropped before writing: clear_px, then usable, now this one. The
+    # check below is the answer to that pattern, since a header list can go
+    # stale but arithmetic cannot.
+    "classified_px",
     # The visibility verdict. Added to the writer when scenes that saw almost
     # none of the fjord stopped being averaged into the daily mean, and missed
     # here, so the first real archive this gate was pointed at failed on its own
@@ -220,6 +229,52 @@ def load(path: Path) -> pd.DataFrame:
     frame["mgrs"] = frame["tile_id"].str.split("_").str[1]
     frame["frac"] = frame["solid_pct"] + frame["light_pct"]
     return frame
+
+
+def gate_derived(frame: pd.DataFrame, report: Report) -> None:
+    """Do the derived columns still agree with their own definitions?
+
+    A header list can go stale and this file has watched that happen three
+    times. Arithmetic cannot. `classified_px` must equal solid + light + water,
+    and `usable` must be that over the whole grid at or above the visibility
+    gate. When the gate's meaning changed from clear cells to classified cells,
+    the flag in the committed archive kept the old meaning and 77 of 1103 rows
+    disagreed with the code that claims to produce them. Every analysis script
+    recomputes the share instead of reading the flag, so nothing published was
+    wrong, and a reader who trusted the column got a different answer with no
+    warning at all. This is that warning.
+    """
+    counts = ("solid_px", "light_px", "water_px", "cloud_px", "land_px", "nodata_px")
+    if any(c not in frame for c in counts):
+        report.warn("derived", "pixel counts missing, cannot check")
+        return
+    classified = frame.solid_px + frame.light_px + frame.water_px
+    grid = classified + frame.cloud_px + frame.land_px + frame.nodata_px
+    share = classified.divide(grid.where(grid > 0))
+
+    if "classified_px" in frame:
+        off = int((frame.classified_px != classified).sum())
+        if off:
+            report.fail("derived_classified", f"{off} rows where it is not s+l+w")
+        else:
+            report.ok("derived_classified", "equals solid + light + water everywhere")
+    else:
+        report.warn("derived_classified", "column absent, written since August 2026")
+
+    expected = (share >= MIN_CLEAR_SHARE).astype(int)
+    off = int((frame.usable.astype(int) != expected).sum())
+    if off:
+        report.fail(
+            "derived_usable",
+            f"{off} of {len(frame)} rows disagree with classified_share >= "
+            f"{MIN_CLEAR_SHARE}. Repair with scripts/repair_derived_columns.py --write",
+        )
+    else:
+        report.ok(
+            "derived_usable",
+            f"{int(expected.sum())} scenes at or above a classified share of "
+            f"{MIN_CLEAR_SHARE}",
+        )
 
 
 def gate_duplicates(frame: pd.DataFrame, report: Report) -> None:
@@ -592,6 +647,7 @@ def main() -> int:
 
     frame = load(args.csv)
     gate_duplicates(frame, report)
+    gate_derived(frame, report)
     gate_tiles(frame, report, KNOWN_TILES | set(args.allow_tile))
     gate_ranges(frame, report)
     gate_indices(frame, report)
