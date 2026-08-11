@@ -177,3 +177,112 @@ wetter still, four times out of four, at five to seven times the agreement noise
 measured on days whose answer was not in doubt. The reading is not a Sentinel-2
 defect. Whether those surfaces were wet ice or open water is a question no
 optical instrument can answer.*
+
+---
+
+# Part two: the same question at low sun, on Level 1
+
+Everything above runs on Collection 2 Level 2, and Level 2 has a floor. Surface
+reflectance is not produced above a solar zenith of 76 degrees, so those 82 pairs
+span sun elevations of 14.3 to 42.5 degrees and cannot speak about the February
+and March scenes that report almost no ice under a sky the pipeline calls clear.
+Those are the sharpest open question this project has.
+
+Collection 2 Level 1 has no such floor and is the closer product besides: the
+pipeline reads Sentinel-2 L1C, which is top of atmosphere, so a Level 1
+comparison changes the sensor and nothing else. Run on 2026-08-11 over the USGS
+landsatlook catalogue, committed as
+`archive/reprocessed_2026/landsat_l1_winter.csv`.
+
+```
+python3 scripts/landsat_l1_crosscheck.py --regime winter
+```
+
+## The factor of seven, stated before any result
+
+Sentinel-2 L1C reflectance is already divided by the cosine of the solar zenith
+angle. **Landsat Level 1 is not.** The MTL coefficients give reflectance without
+that division and it has to be applied by hand. At a sun elevation of 7.75
+degrees the factor is 7.4, and measured on 2019-02-19 fast ice reads 0.081 in
+green uncorrected against 0.601 corrected, where Sentinel-2 over fast ice sits at
+0.44 to 0.74.
+
+Skipping it would not have produced an obvious error. It would have put every
+February scene below the 0.10 brightness floor, Landsat would have reported no
+ice all winter, and that would have read as a triumphant confirmation of the very
+anomalies this comparison exists to test.
+
+## What the two instruments agree on
+
+55 same-day pairs in February and March, all below the Level 2 floor. **15 clear
+the same 0.90 classified-share gate** the Level 2 run established, at sun
+elevations of **6.11 to 13.47 degrees**.
+
+| | bias | RMSE |
+|---|---|---|
+| all 15 | -0.0105 | 0.0602 |
+| the 13 that agree within 0.05 | -0.0009 | **0.0123** |
+
+Two pairs carry the whole spread, 2022-02-21 at +0.072 and 2022-02-28 at -0.217,
+both under moderate scene cloud of 11 and 17 percent.
+
+**And the load-bearing rows are the low ones.** These are the days this project
+has been carrying as unexplained: a fjord reporting almost no ice in February or
+early March, under a sky the pipeline's own mask calls clear.
+
+| Day | sun | Sentinel-2 | Landsat L1 | difference |
+|---|---|---|---|---|
+| 2025-02-19 | 7.95 | 0.014 | 0.013 | -0.001 |
+| 2025-02-20 | 8.30 | 0.013 | 0.014 | +0.001 |
+| 2025-03-01 | 11.66 | 0.072 | 0.086 | +0.013 |
+| 2026-02-14 | 6.11 | 0.279 | 0.274 | -0.004 |
+| 2026-03-04 | 12.72 | 0.060 | 0.051 | -0.009 |
+
+Bias **-0.0001**, RMSE **0.0076**. 2025-03-01 is one of the three scenes
+[limitations.md](limitations.md#cloud-detection-is-unreliable-and-the-denominator-mattered-more)
+names by date as a clear-sky anomaly.
+
+**So the low winter readings are not a Sentinel-2 defect.** A second instrument,
+with its own radiometry, its own orbit and its own cloud mask, standing in the
+same low sun on the same day, reads the same nearly open fjord. What the optical
+chain reported, it reported correctly.
+
+## And the half nobody was looking for
+
+CFMask is the operational cloud mask behind every Landsat Level 2 product in the
+world. Over this fjord it discards the scene in near-perfect proportion to how
+much ice is in it:
+
+| Sentinel-2 ice | n | median share of the fjord Landsat classified |
+|---|---|---|
+| under 0.30 | 9 | 0.91 |
+| 0.30 to 0.70 | 10 | 0.78 |
+| 0.70 to 0.95 | 10 | 0.60 |
+| **0.95 and above** | **20** | **0.17** |
+
+On a fjord that is frozen shore to shore, an independent, mature, operational
+cloud mask throws away **83 percent of it**. On 19 of the 55 pairs it discards
+the fjord entirely, and the median Sentinel-2 ice fraction on those days is
+1.000. On 2019-02-19, at 7.75 degrees, CFMask flags 100 percent of the fjord as
+cloud while the same pixels read 0.606 in green and 0.804 in the near infrared.
+
+This page opened by saying that ice and cloud are both white and bright and that
+no threshold solves it. That was an assertion about this pipeline's own model.
+It is now a measured property of a second, unrelated cloud mask, which makes it a
+statement about optical cloud detection over the cryosphere rather than about
+one checkpoint.
+
+## What this part does not establish
+
+- **The 15 surviving pairs are selected toward low ice**, precisely because
+  CFMask keeps more of a dark fjord than a bright one. The comparison is
+  therefore conditioned on the days it can see. That conditioning happens to
+  favour the question being asked, since the anomalies are low-ice days, but it
+  means the bias and RMSE above are not a general accuracy for winter.
+- **Confirming the reading is not confirming the fjord was open.** Both
+  instruments are optical and share the same physics. What is established is that
+  the surface reported as water read as water to two independent radiometers, not
+  that there was no ice under it. That is the same wall
+  [sar-validation.md](sar-validation.md) runs into from the other side.
+- **40 of 55 pairs were dropped**, 19 of them because CFMask left nothing. A
+  comparison that discards three quarters of its sample is a bound, not a survey.

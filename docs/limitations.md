@@ -25,7 +25,7 @@ turned into a measurement, this is what it cost:
 | A second optical instrument, same day | Landsat agrees to an RMSE of **0.026** over 23 days whose answer was not in doubt | [landsat-crosscheck.md](landsat-crosscheck.md) |
 | Radar on the contested days | Sentinel-1 puts them within about **2 dB** of their own winter fast ice | [sar-validation.md](sar-validation.md) |
 | Can a sub-pixel fraction replace the class | no, the pure ice spectrum moves by a factor of **1.7** across days that are all unambiguously frozen | [unmixing-feasibility.md](unmixing-feasibility.md) |
-| Cloud detection | 28 of 219 winter scenes still read anomalously low under a sky the pipeline calls clear | [below](#cloud-detection-is-unreliable-and-the-denominator-mattered-more) |
+| Cloud detection | 28 of 219 winter scenes still read anomalously low under a sky the pipeline calls clear, and Landsat Level 1 confirms five of them to an RMSE of **0.0076** | [below](#cloud-detection-is-unreliable-and-the-denominator-mattered-more) |
 | The resolution the cloud mask is computed at | up to 0.209 of ice fraction on one scene, **0.2 points** on the decline | [below](#the-resolution-the-mask-is-computed-at-is-worth-more-than-the-grid-itself) |
 | The 40 m analysis grid | 0.0015 across grids from 10 to 80 m | [below](#the-resolution-the-mask-is-computed-at-is-worth-more-than-the-grid-itself) |
 | Uneven sampling | a season's sampling error is 0.054, against a between-season spread of 0.104 to 0.170 | [below](#sampling-is-uneven-and-2017-is-thin) |
@@ -440,6 +440,17 @@ previous archive, where the data lines carried 19 of the 22 header columns.
 
 These clear-sky anomalies, not the cloudy days, are the sharper target for the
 SAR cross-check, because no change of denominator can explain them away.
+
+**A second instrument has since answered them, and the answer is that the
+readings are correct.** Collection 2 Level 2 could never reach this regime,
+because surface reflectance is not produced above a solar zenith of 76 degrees.
+Level 1 has no such floor. On five February and early March days at sun
+elevations of 6.11 to 12.72 degrees, including 2025-03-01 from the list above,
+Landsat Level 1 and Sentinel-2 agree to a bias of **-0.0001** and an RMSE of
+**0.0076**: 0.014 against 0.013, 0.013 against 0.014, 0.072 against 0.086, 0.279
+against 0.274, 0.060 against 0.051. Two radiometers, two orbits, two cloud masks,
+the same nearly open fjord. See
+[landsat-crosscheck.md](landsat-crosscheck.md#part-two-the-same-question-at-low-sun-on-level-1).
 
 **Two physical supplements were tried and rejected.** The cirrus band B10 adds
 essentially nothing here. A brightness and whiteness test flags **27.8 percent of
