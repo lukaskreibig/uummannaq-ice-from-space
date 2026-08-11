@@ -26,6 +26,8 @@ turned into a measurement, this is what it cost:
 | Radar on the contested days | Sentinel-1 puts them within about **2 dB** of their own winter fast ice | [sar-validation.md](sar-validation.md) |
 | Can a sub-pixel fraction replace the class | no, the pure ice spectrum moves by a factor of **1.7** across days that are all unambiguously frozen | [unmixing-feasibility.md](unmixing-feasibility.md) |
 | Cloud detection | 28 of 219 winter scenes still read anomalously low under a sky the pipeline calls clear | [below](#cloud-detection-is-unreliable-and-the-denominator-mattered-more) |
+| The resolution the cloud mask is computed at | up to 0.209 of ice fraction on one scene, **0.2 points** on the decline | [below](#the-resolution-the-mask-is-computed-at-is-worth-more-than-the-grid-itself) |
+| The 40 m analysis grid | 0.0015 across grids from 10 to 80 m | [below](#the-resolution-the-mask-is-computed-at-is-worth-more-than-the-grid-itself) |
 | Uneven sampling | a season's sampling error is 0.054, against a between-season spread of 0.104 to 0.170 | [below](#sampling-is-uneven-and-2017-is-thin) |
 
 **Three readings of that table, and all three belong here.** Separate the two
@@ -491,10 +493,27 @@ depends on the regime, which is the same both-ways error this section opens with
 now located in a specific choice rather than in the model.
 
 Settling it needs labels on scenes, which this project does not have and which is
-its own piece of work. Until then the honest statement is that the pipeline
-inherits a resolution for its cloud mask that nobody chose deliberately, and that
-this choice is worth more than every threshold and window decision on this page
-except the period boundary.
+its own piece of work.
+
+**And then the headline barely notices.** Applying the per-season shift to the
+published means, the same way the gate sweep does:
+
+| | decline | permutation p |
+|---|---|---|
+| pooled mask, as published | 22.6 % | 0.119 |
+| native mask | **22.4 %** | 0.129 |
+
+The largest per-scene lever in this pipeline is worth **0.2 points** on the
+result. It scatters rather than aligning with the period split: the two seasons
+that move most are 2020 at -0.070 and 2024 at -0.046, one in each period, and
+they cancel. It is also not mainly a low-sun effect, -0.018 below 15 degrees
+against -0.011 above, correlating with sun elevation at r = +0.14.
+
+So the honest statement is in two parts, and the second one is the important one.
+The pipeline inherits a resolution for its cloud mask that nobody chose
+deliberately, and on a single scene that inheritance is worth up to 0.209 of ice
+fraction. Across a season it averages out, which is what every other stress test
+on this page has also found.
 
 ## Sampling is uneven, and 2017 is thin
 
