@@ -4,7 +4,8 @@
 
 - **File**: `src/uummannaq_ice/models/unet_mobv2_v2.pt`
 - **Architecture**: `segmentation_models_pytorch.Unet` with MobilenetV2 encoder, 13-channel input, 4 output classes.
-- **Lineage**: This is the May 2025 checkpoint used in `ice_classification_experimental_copy.py`. It was trained on Sentinel-2 crops labelled with the CloudSEN12 taxonomy (cloud / thin cloud / surface / nodata).
+- **Lineage**: third party, not ours, and the previous wording here was ambiguous about that. The legacy entry point `archive/legacy_pipeline/ice-final/ice_classification_experimental_copy.py` declares `CHECKPOINT_FILE = "UNetMobV2_V2.pt"`, builds the matching architecture with `encoder_weights=None`, and loads the file while stripping `module.` and `model.` prefixes with `strict=False`. It contains no training code. Prefix stripping is what a foreign checkpoint needs, and the filename, the architecture and the four-class CloudSEN12 label set (cloud / thin cloud / surface / nodata) all match the model published by the CloudSEN12 project.
+- **Licence**: not recorded, and not guessed. See [NOTICE](https://github.com/lukaskreibig/uummannaq-ice-from-space/blob/main/NOTICE) at the repository root. The terms have to be read at the source and honoured before this checkpoint is redistributed as part of anything, and a public repository is already redistribution.
 - **Usage**: Loaded once per run (`model.load_state_dict(...)`, strict=False to ignore auxiliary keys) and evaluated under `torch.autocast`. Output channel 1 corresponds to “cloud”.
 
 ### Retraining guidance

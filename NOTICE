@@ -1,0 +1,38 @@
+# Third-party material shipped in this repository
+
+## Cloud segmentation checkpoint
+
+`src/uummannaq_ice/models/unet_mobv2_v2.pt`, 26,796,072 bytes.
+
+**This is not our model.** The evidence is in the repository rather than in
+memory. The legacy entry point this pipeline grew out of,
+`archive/legacy_pipeline/ice-final/ice_classification_experimental_copy.py`,
+declares `CHECKPOINT_FILE = "UNetMobV2_V2.pt"`, builds
+`smp.Unet("mobilenet_v2", encoder_weights=None, in_channels=13, classes=4)` to
+receive it, and loads it while stripping `module.` and `model.` prefixes with
+`strict=False`. It contains no training code at all. Prefix stripping is what
+you do to a checkpoint someone else saved, and the filename, the architecture
+and the four-class CloudSEN12 label set all match the model published by the
+CloudSEN12 project.
+
+**What is not established, and what has to happen before this is redistributed
+as anything.** The licence terms of that checkpoint are not recorded anywhere in
+this repository, and they were not guessed here. Sitting in a public repository
+is already redistribution, so the terms need to be read at the source, honoured,
+and written into this file. If they turn out to forbid what this repository does
+with them, there are three honest ways out: download the weights on first run
+instead of shipping them, keep them in a separate artefact with their own terms,
+or replace them with a permissively licensed cloud mask. The last one is the
+worst of the three on the science, because
+[docs/limitations.md](docs/limitations.md) shows every available alternative
+either throws away the SWIR band that separates snow from cloud, or scores a
+pixel against a history that a fjord does not have.
+
+## Data
+
+Sentinel-1 and Sentinel-2 imagery: Copernicus Sentinel data, processed by ESA.
+Landsat 8 and 9 imagery: courtesy of the U.S. Geological Survey.
+Sea ice index and concentration: National Snow and Ice Data Center.
+
+Nothing in `archive/reprocessed_2026/` is raw imagery. Those files are counts and
+statistics derived from it.

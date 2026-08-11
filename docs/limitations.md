@@ -442,6 +442,17 @@ previous archive, where the data lines carried 19 of the 22 header columns.
 These clear-sky anomalies, not the cloudy days, are the sharper target for the
 SAR cross-check, because no change of denominator can explain them away.
 
+**And another team met the same wall on this fjord and stepped around it.** Steiro
+et al. (2021) mapped travel conditions on Uummannaq shorefast ice from 1985 to
+2019 using Level-1 top-of-atmosphere imagery from Sentinel-2 and Landsat,
+classifying snow, ice and water on near-infrared reflectance. Their section 2.3
+reports that shadows from the low sun early in the season made snow and ice hard
+to tell from water, and that they therefore excluded every February image from
+the analysis. So the defect this page reports against itself is a known property
+of optical remote sensing at this place, found independently, and the difference
+is one of choice rather than of quality: they dropped February, this project
+keeps it and states what it costs.
+
 **A second instrument has since answered them, and the answer is that the
 readings are correct.** Collection 2 Level 2 could never reach this regime,
 because surface reflectance is not produced above a solar zenith of 76 degrees.

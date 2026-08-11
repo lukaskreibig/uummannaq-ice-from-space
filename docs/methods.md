@@ -10,6 +10,33 @@ arrived at.
 
 ---
 
+## 0. What the published quantity is, and what it is not
+
+**It is the share of the classifiable water surface that came out as ice**, on
+one Sentinel-2 scene, over a fixed rectangle, averaged to a season. A fraction,
+between zero and one, over a denominator that is itself measured per scene.
+
+**It is not a landfast ice extent.** WMO No. 259 and the Mahoney line of work
+define fast ice by immobility and attachment to the coast, and nothing in this
+pipeline tests either. No pair of scenes is checked for displacement, no
+connectivity to the shore is required, and a detached floe drifting through the
+bay counts exactly like a sheet frozen to the rock. Calling it fast ice would
+claim a measurement that was never made.
+
+**It is not an area either, unless it is multiplied out.** The series is a
+fraction. Where square kilometres appear, they are that fraction times the
+253.1 km² of water in section 1, and that multiplication belongs in the open.
+
+**And the two class names promise more than they deliver.** `solid` and `light`
+sound like ice integrity, like thick against thin. They are cuts on NDSI, which
+over this fjord responds to snow grain size and wetness rather than to thickness,
+and [limitations.md](limitations.md#the-solidlight-split) shows the cut sits
+inside a unimodal distribution with no valley to find. The published series is
+`solid + light`, so nothing downstream depends on where the cut falls, but the
+names should not be read as a statement about the ice.
+
+---
+
 ## 1. Area of interest
 
 A fixed rectangle over the bay, `-52.336121/70.628226` to `-51.945564/70.788206`,
@@ -47,6 +74,12 @@ Honest counterpoint, worth knowing before defending this: the European
 operational Sentinel-2 snow products (Theia, Copernicus HRSI) do use L2A, but
 produced by **MAJA**, not Sen2Cor. Switching the collection string on Earth Search
 gives Sen2Cor, which is the one option the literature rules out.
+
+And one precedent on this exact fjord: Steiro et al. (2021) mapped Uummannaq
+shorefast ice from 1985 to 2019 and used Level-1 top-of-atmosphere imagery from
+both Sentinel-2 and Landsat, classifying on near-infrared reflectance. Same
+place, same processing level, and the same physical discriminator this pipeline's
+brightness gate rests on.
 
 **Which scene, when several are on offer.** One scene per calendar day, chosen
 deterministically:
@@ -295,5 +328,10 @@ disagree, and why one of those disagreements contradicts the radar check.
   Document and MOD10A1 V006 User Guide.
 - ESA SentiWiki, Sentinel-2 products: radiometric offset from processing
   baseline 04.00.
+- Steiro, V. D., Ryan, J. C., Cooley, S. W., Smith, L. C., Dale, B., Lynch,
+  A. H., Veland, S. (2021). Changes in sea ice travel conditions in Uummannaq
+  Fjord, Greenland (1985 to 2019) assessed through remote sensing and
+  transportation accessibility modeling. *Polar Geography*.
+  doi:10.1080/1088937X.2021.1938271
 - Aybar, C. et al. CloudSEN12, a global dataset for semantic understanding of
   cloud and cloud shadow in Sentinel-2.
