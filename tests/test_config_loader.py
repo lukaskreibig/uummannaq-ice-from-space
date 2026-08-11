@@ -151,7 +151,7 @@ def test_the_dataclass_fallback_matches_the_shipped_yaml():
         "nir_bright_min",
         "nodata_fraction",
     ):
-        assert getattr(fallback, field) == pytest.approx(
-            getattr(configured, field)
-        ), f"{field} differs between the dataclass default and baseline.yaml"
+        assert getattr(fallback, field) == pytest.approx(getattr(configured, field)), (
+            f"{field} differs between the dataclass default and baseline.yaml"
+        )
         assert getattr(Thresholds(), field) == pytest.approx(getattr(configured, field))

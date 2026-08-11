@@ -27,7 +27,12 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
   "ipython",
-  "ruff>=0.6",
+  # Pinned to a minor range, not ">=0.6". The formatter is a gate in CI and
+  # ruff changes its output between minors: 0.6 and 0.14 disagree on how an
+  # assert with a message is wrapped, so an unpinned CI and a pinned
+  # pre-commit hook reformatted the same two test files back and forth. Keep
+  # this and .pre-commit-config.yaml on the same version.
+  "ruff>=0.14,<0.15",
   "pre-commit>=3.7",
   "mypy>=1.11",
   "pytest>=8.3",

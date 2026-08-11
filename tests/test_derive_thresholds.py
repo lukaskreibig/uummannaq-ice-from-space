@@ -263,12 +263,12 @@ def test_every_anchor_is_labelled_on_both_sides_of_the_boundary():
     for label in ("ice", "water"):
         anchors = [s.day for s in derive.SCENES if s.label == label]
         assert len(anchors) >= 3, f"too few {label} anchors"
-        assert any(
-            d < BASELINE_FOUR_START for d in anchors
-        ), f"{label} anchors are all post-04.00"
-        assert any(
-            d >= BASELINE_FOUR_START for d in anchors
-        ), f"{label} anchors are all pre-04.00"
+        assert any(d < BASELINE_FOUR_START for d in anchors), (
+            f"{label} anchors are all post-04.00"
+        )
+        assert any(d >= BASELINE_FOUR_START for d in anchors), (
+            f"{label} anchors are all pre-04.00"
+        )
 
 
 def test_labels_are_only_ever_ice_water_or_absent():
