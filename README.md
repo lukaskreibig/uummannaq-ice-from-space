@@ -131,12 +131,6 @@ The packaged assets are:
 
 ## Pipeline overview
 
-![One scene through the pipeline: RGB, cloud mask, land mask, solid ice, light ice, and the overlay](docs/images/pipeline-panel-2017-02-19.jpg)
-
-*One scene, 19 February 2017, at every stage. Panels like this are written for
-every scene in a run, and looking at them is how the land mask defect in
-docs/investigation-log.md was found: it was invisible in every statistic.*
-
 `docs/pipeline.md` describes every stage in detail; at a high level:
 
 1. Search the Element84 STAC (`sentinel-2-l1c`) within the configured AOI and date range, deduplicated by observation date.
