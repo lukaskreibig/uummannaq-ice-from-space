@@ -20,6 +20,65 @@ that day to within a hundredth, so it is not the instrument. Found in the course
 of asking whether the record began on an unusually icy stretch, and it turned out
 to matter more than the question. `scripts/figure_dark_ice.py`.*
 
+## One scene, and a defect you can see
+
+![One scene through the pipeline: RGB, cloud mask, land mask, solid ice, light ice, and the overlay](docs/images/pipeline-panel-2017-02-19.jpg)
+
+*One scene, 19 February 2017, at every stage, from a run of the current code.
+**Look at the long blue wedge north of the island in the overlay.** That is the
+mountain's shadow on sea ice, and the chain calls it open water, because a
+shadowed surface is dark and a dark surface fails the brightness gate. On this
+day it costs 9.9 percent of the readable fjord on ice that is frozen shore to
+shore. `scripts/shadow_bias.py` measures it across the record: 0.216 in the first
+fortnight of the window and 0.003 by April, because the shadow shortens as the
+sun climbs. It very nearly cancels between the two periods only because both are
+sampled at the same days of the year, median day 78 against 80. Panels like this
+are written for every scene, and looking at them is how both this and the land
+mask defect in docs/investigation-log.md were found.*
+
+## What was asked, and what it cost
+
+Every row is a question this project put to its own result, a script that
+answers it, and a committed artefact under `archive/reprocessed_2026/`. The
+right-hand column is what the answer did to the headline, because a check that
+cannot move a number is not a check.
+
+| The question | Answer | Headline |
+|---|---|---|
+| What does the choice of denominator do? `denominator_comparison.py` | cloud is not evenly spread across the years, and a cell called cloud can never be ice | **35.4 to 25.2 %** |
+| Where should the brightness gate sit? `gate_sensitivity.py` | 19.4 to 23.0 across a range wider than anyone would defend | **20.3 %** if it tracks each season's own ice |
+| How much rests on twelve suspect April scenes? `wet_day_sensitivity.py` | hand every one back a frozen fjord | 22.6 to **21.6 %** |
+| What does the 40 m grid cost? `grid_resolution.py` | 0.0015 across grids from 10 to 80 m; the cloud mask's own resolution is the real lever | **0.2 points** |
+| Does fast ice have a spectrum? `ice_endmember_stability.py` | no. It moves by a factor of **1.7** across days that are all unambiguously frozen | kills sub-pixel |
+| Can a sub-pixel fraction replace the class? `endmember_separability.py` | the arithmetic is sound and the anchor is not | abandoned, with the reason |
+| What is break-up, on observed days? `breakup_definitions.py` | 30 definitions, direction unanimous, magnitude **-0.7 to -53 days** | the shift is a choice |
+| Does a second optical sensor agree? `landsat_crosscheck.py` | RMSE **0.026** over 23 days whose answer was not in doubt | thresholds are not overfitted |
+| And at low winter sun, where Level 2 cannot go? `landsat_l1_crosscheck.py` | yes, and CFMask discards **83 %** of a frozen fjord | a fact about optical cloud masks |
+| Does radar back the contested days? `validate_sar.py`, `sar_wet_days.py` | within about **2 dB** of that season's own fast ice | the ice was still there |
+| Did the record begin on an unusually icy stretch? `landsat_season_series.py` | no. Four seasons further back move the baseline by under **0.04** either way | not a lucky start |
+| Was Landsat 8 wrong in March 2013, or was the fjord? `commissioning_check.py` | the fjord. My own hypothesis, refuted by the one scene it had discarded | the route is in the log |
+| What does a thermometer say, on every day? `thermal_audit.py` | **36 of 226** days call the fjord open while it radiates below the freezing point of seawater, twice as often after 2021 | the largest open item |
+| Closed ice, or floes the chain read correctly? `sar_thermal_days.py` | 8 like fast ice, 6 like open water, 13 between | both extremes refused |
+| What does that cost the published series? `sentinel_correction.py` | matched, corrected, and the published cleaning rerun unchanged | 22.6 to **19.5 %** |
+| The mountain's shadow on the sea ice? `shadow_bias.py` | **0.216** of the fjord called water in mid February, 0.003 by April | cancels, because both periods sit on the same days |
+| Do the published numbers still reproduce? `story_numbers.py` | recomputed from the archive and diffed against a committed set | **runs in CI** |
+
+Five systematic errors were found this way and none of them raised an exception.
+[docs/investigation-log.md](docs/investigation-log.md) is the route rather than
+the destination, including four of my own and one hypothesis that did not survive
+its own test.
+
+## The scale of it
+
+```
+   1103 scenes        10 seasons, 2017 to 2026, Sentinel-2 L1C
+     28 scripts       one question each, all committed with their artefacts
+     23 artefacts     archive/reprocessed_2026, every published figure traceable to one
+      4 instruments   Sentinel-2 optical, Landsat optical, Landsat thermal, Sentinel-1 radar
+   4004 lines         documentation, ordered by how much each weakness could change a conclusion
+    114 tests         plus two number gates that run on every push
+```
+
 ## Check a number yourself
 
 Every published figure has a committed artefact and a script. These run offline,
@@ -34,7 +93,7 @@ python scripts/validate_sar.py --analyse-only --output archive/reprocessed_2026/
 python scripts/check_summary.py archive/reprocessed_2026/summary.csv
 ```
 
-The last two of those are the CI gate. `.github/workflows/ci.yml` runs them on
+The first and the last of those are the CI gate. `.github/workflows/ci.yml` runs them on
 every push, so a page that has gone stale against the data fails the build rather
 than waiting to be noticed. The daily series they read is committed as
 `archive/reprocessed_2026/daily_series.csv`; `story_numbers.py --live` reads the
@@ -77,6 +136,35 @@ the part of this project worth reading if you only read one thing:
 Where the evidence lives: `archive/reprocessed_2026/` holds the 1103-scene run
 behind every figure plus 24 result artefacts, one per measurement. It is tracked,
 not ignored, and it is not the legacy material described further down.
+
+---
+
+## What is still open
+
+Ten seasons are processed and committed, so the open items are no longer about
+coverage.
+
+1. **Carry the dark-ice correction into the pipeline rather than alongside it.**
+   It is currently measured and disclosed; the published series is uncorrected.
+   See docs/limitations.md.
+2. **Reach further back than 2013.** The archive holds 36 seasons from 1990 and
+   the blocker is calibration across sensor boundaries, not data. The one
+   untested route is a per-season adaptive brightness gate, which stops carrying
+   an absolute threshold across the boundary at the cost of a quantity that is no
+   longer identical across seasons. It would be a second series, not a
+   replacement.
+3. **MODIS from 2000.** 250 m over a 253 km² fjord is about 4000 water cells, and
+   it carries thermal bands. It would nearly double the record at a coarser
+   resolution.
+4. Put `make numbers` in CI. It exists, it catches exactly the drift this project
+   treats as a class of defect, and nothing runs it automatically.
+
+---
+
+# Running it yourself
+
+Everything above is the work. Everything below is the tool: how to install it,
+how to run it, and how it is packaged.
 
 ## Quick start
 
@@ -130,20 +218,6 @@ The packaged assets are:
 - `config/*.yaml`: Versioned run presets (supports `extends` for layered configs).
 
 ## Pipeline overview
-
-![One scene through the pipeline: RGB, cloud mask, land mask, solid ice, light ice, and the overlay](docs/images/pipeline-panel-2017-02-19.jpg)
-
-*One scene, 19 February 2017, at every stage, from a run of the current code.
-**Look at the long blue wedge north of the island in the overlay.** That is the
-mountain's shadow on sea ice, and the chain calls it open water, because a
-shadowed surface is dark and a dark surface fails the brightness gate. On this
-day it costs 9.9 percent of the readable fjord on ice that is frozen shore to
-shore. `scripts/shadow_bias.py` measures it across the record: 0.216 in the first
-fortnight of the window and 0.003 by April, because the shadow shortens as the
-sun climbs. It very nearly cancels between the two periods only because both are
-sampled at the same days of the year, median day 78 against 80. Panels like this
-are written for every scene, and looking at them is how both this and the land
-mask defect in docs/investigation-log.md were found.*
 
 `docs/pipeline.md` describes every stage in detail; at a high level:
 
@@ -207,22 +281,3 @@ python ice_classification_experimental_copy.py --log DEBUG
 
 Note that the original heavy checkpoints have been moved to `models/legacy/` (ignored by git); see `archive/legacy_pipeline/ice-final/README.md` for details before running the legacy notebooks.
 
-## Next steps
-
-Ten seasons are processed and committed, so the open items are no longer about
-coverage.
-
-1. **Carry the dark-ice correction into the pipeline rather than alongside it.**
-   It is currently measured and disclosed; the published series is uncorrected.
-   See docs/limitations.md.
-2. **Reach further back than 2013.** The archive holds 36 seasons from 1990 and
-   the blocker is calibration across sensor boundaries, not data. The one
-   untested route is a per-season adaptive brightness gate, which stops carrying
-   an absolute threshold across the boundary at the cost of a quantity that is no
-   longer identical across seasons. It would be a second series, not a
-   replacement.
-3. **MODIS from 2000.** 250 m over a 253 km² fjord is about 4000 water cells, and
-   it carries thermal bands. It would nearly double the record at a coarser
-   resolution.
-4. Put `make numbers` in CI. It exists, it catches exactly the drift this project
-   treats as a class of defect, and nothing runs it automatically.
