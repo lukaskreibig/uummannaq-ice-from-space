@@ -211,13 +211,54 @@ scenes whose labels were confirmed one by one.
 The whole gate range, 19.4 to 23.0 percent, sits **inside** the 13 to 26 percent
 this page already reports for the other two choices, so it widens nothing.
 
-Two limits on the table. Only 49 of the 80 sampled scenes move at all when the
-gate moves; the rest are a frozen fjord or an open one, where every cell sits
-far from the cut. That is a property of this fjord and the published daily
-series is composed the same way, but it means a season's row can rest on as few
-as two informative scenes. And the decline column is an estimate: the measured
-shifts are applied to the published means rather than the series being rebuilt,
-because an exact answer means reclassifying all 1103 scenes five times.
+**And the counterfactual that actually matters.** Moving the gate by the same
+amount in every season is not the right question. If the ice of 2023 is a third
+darker, a fixed cut sits higher relative to *that* season's surface and lower
+relative to a bright one, so the correction is to move the cut only where the
+ice moved. Sweeping every season together even understates it, because it lifts
+the bright seasons too.
+
+Putting the gate at 0.17 times each season's own measured brightness, which
+holds it in the same place relative to the ice it is cutting:
+
+| Season | brightness | its gate | ice, fixed | ice, tracking | difference |
+|---|---|---|---|---|---|
+| 2017 | 1.02 | 0.173 | 0.723 | 0.720 | -0.002 |
+| 2018 | 1.00 | 0.170 | 0.738 | 0.738 | +0.000 |
+| 2019 | 1.06 | 0.180 | 0.515 | 0.511 | -0.004 |
+| 2020 | 0.98 | 0.166 | 0.686 | 0.687 | +0.001 |
+| 2021 | 0.96 | 0.164 | 0.343 | 0.345 | +0.002 |
+| 2022 | 1.06 | 0.181 | 0.734 | 0.734 | -0.001 |
+| **2023** | **0.66** | **0.112** | **0.373** | **0.437** | **+0.064** |
+| 2024 | 1.02 | 0.174 | 0.712 | 0.711 | -0.001 |
+| 2025 | 0.90 | 0.153 | 0.363 | 0.379 | +0.016 |
+| 2026 | 0.89 | 0.151 | 0.431 | 0.441 | +0.010 |
+
+| | decline | permutation p |
+|---|---|---|
+| fixed at 0.17 | 22.6 % | 0.119 |
+| tracking the ice | **20.3 %** | **0.119** |
+
+**That is the bound the brightness finding was asking for.** Correcting the gate
+for the darkness of each season's own ice costs the headline 2.3 points and
+moves the significance not at all. One season does nearly all of it: 2023 gains
+0.064 of ice fraction, 2025 and 2026 gain 0.016 and 0.010, and the remaining
+seven move by 0.004 or less.
+
+The proportional scaling is an assumption, and the plainest one available: a
+surface uniformly darker by a third crosses a cut set a third lower at the same
+place. It is not derived from anything, and a real implementation would derive
+the gate per scene rather than per season.
+
+Three limits on all of the above. Only 49 of the 80 sampled scenes move at all
+when the gate moves; the rest are a frozen fjord or an open one, where every
+cell sits far from the cut. That is a property of this fjord and the published
+daily series is composed the same way, but it means a season's row can rest on
+as few as two informative scenes. The decline columns are estimates: the
+measured shifts are applied to the published means rather than the series being
+rebuilt, because an exact answer means reclassifying all 1103 scenes five times.
+And the tracking gate reads each season's curve by interpolating between the
+five measured points.
 
 ## Sampling is uneven, and 2017 is thin
 

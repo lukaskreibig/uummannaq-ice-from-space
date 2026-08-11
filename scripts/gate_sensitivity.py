@@ -403,6 +403,74 @@ def anchor_cost(frame: pd.DataFrame) -> None:
     )
 
 
+def gate_that_tracks_the_ice(per_season: pd.DataFrame) -> None:
+    """The counterfactual the whole sweep was really asking about.
+
+    Moving the gate by the same amount in every season is not the right question.
+    If the ice of 2023 is a third darker, a fixed cut sits higher relative to
+    THAT season's surface and lower relative to a bright one, so the correction
+    is to move the cut only where the ice moved. Sweeping all seasons together
+    even understates it, because it lifts the bright seasons too.
+
+    So this puts the gate at 0.17 times each season's own measured brightness,
+    which holds it in the same place relative to the ice it is cutting, and
+    reads each season's ice fraction there by interpolating between the five
+    measured gates.
+
+    The proportional scaling is an assumption, and the plainest one available: a
+    surface uniformly darker by a third crosses a cut set a third lower at the
+    same place. It is not derived from anything.
+    """
+    darkness = season_brightness()
+    if darkness is None or not PUBLISHED_NUMBERS.exists():
+        return
+    import json  # noqa: PLC0415
+
+    published = json.loads(PUBLISHED_NUMBERS.read_text())["spring_means"]
+    published = {int(k): float(v) for k, v in published.items()}
+    seasons = [s for s in published if s in per_season.index and s in darkness]
+    if len(seasons) < len(published):
+        return
+
+    gates = np.array(NIR_GATES)
+    print()
+    print("A gate that follows the ice instead of standing still")
+    print("=" * 78)
+    print(
+        f"{'season':8s}{'brightness':>12s}{'its gate':>10s}"
+        f"{'ice, fixed':>12s}{'ice, tracking':>15s}{'difference':>12s}"
+    )
+    shifted = {}
+    for season in seasons:
+        gate = PUBLISHED_GATE * darkness[season]
+        fixed = float(per_season.loc[season, PUBLISHED_GATE])
+        curve = per_season.loc[season, list(NIR_GATES)].to_numpy()
+        tracking = float(np.interp(gate, gates, curve))
+        shifted[season] = published[season] + (tracking - fixed)
+        print(
+            f"{season:<8d}{darkness[season]:12.2f}{gate:10.3f}"
+            f"{fixed:12.3f}{tracking:15.3f}{tracking - fixed:+12.3f}"
+        )
+
+    fixed_decline, fixed_p = decline_at(published)
+    tracked_decline, tracked_p = decline_at(shifted)
+    print()
+    print(
+        f"fixed at {PUBLISHED_GATE}      decline {fixed_decline:5.1f} %   permutation p {fixed_p:.3f}"
+    )
+    print(
+        f"tracking the ice   decline {tracked_decline:5.1f} %   permutation p {tracked_p:.3f}"
+    )
+    print(f"difference         {tracked_decline - fixed_decline:+5.1f} points")
+    print()
+    print(
+        "This is the bound the brightness finding was asking for. Correcting the\n"
+        "gate for the darkness of each season's own ice costs the headline about\n"
+        "two points and moves the significance not at all, and one season does\n"
+        "nearly all of it."
+    )
+
+
 def report(frame: pd.DataFrame) -> None:
     wide = frame.pivot_table(index=["season", "day"], columns="gate", values="ice")
     print()
@@ -494,6 +562,7 @@ def report(frame: pd.DataFrame) -> None:
 
     anchor_cost(frame)
     implied_decline(per_season)
+    gate_that_tracks_the_ice(per_season)
 
 
 def main(argv: list[str] | None = None) -> int:
