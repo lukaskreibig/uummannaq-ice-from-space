@@ -274,6 +274,25 @@ series is measuring something real, but that the thing it measures is
 "how much of the fjord looks like open water from above" rather than
 "how much of the fjord is covered by ice".
 
+**A third measurement now speaks to that fork, and it leans toward the second
+reading.** [unmixing-feasibility.md](unmixing-feasibility.md) measured the
+spectrum of the ice itself on 17 days that the archive scores at 0.99 ice or
+better, two per season across all ten seasons. The 2023 days are **34 percent
+darker** than the ten-season median, 2025 and 2026 are 10 and 11 percent darker,
+and every other season sits within 6 points of it. That difference is not the
+sun, which explains 7 percent of the variance, and it is not the January 2022
+radiometric offset, since post-offset seasons span the whole range: 2022 reads
+1.06 of the median and 2023 reads 0.66. On days when this fjord was
+unambiguously frozen, the ice of 2023 really did look different.
+
+That also names the mechanism for the first reading. The brightness gate is a
+pair of fixed cuts, green above 0.10 and near infrared above 0.17, applied to a
+surface whose brightness moves by a third between seasons. The two 2023 anchor
+days read NIR 0.47 and 0.52 against a ten-season median of 0.76, so more of the
+distribution sits near the gate and more of its lower tail crosses. The two
+readings are therefore not alternatives. The springs were darker, and a fixed
+gate turns a darker spring into a larger reading error, in the same direction.
+
 **A second optical instrument has since been asked, and it answers half of
 this.** On four of these days Landsat 8 or 9 passed over the fjord within about
 two hours, and running the same thresholds on its surface reflectance gives

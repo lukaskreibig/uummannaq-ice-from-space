@@ -131,6 +131,10 @@ like that.
   threshold is the likely mechanism, because near NDWI 0.20 a small radiometric
   difference moves a great deal of area, and it is the strongest argument in this
   project for a sub-pixel treatment that reports a fraction instead of a class.
+  That argument has since been tested and lost:
+  [unmixing-feasibility.md](unmixing-feasibility.md) finds the arithmetic sound
+  and the anchor unusable, because the pure ice spectrum moves by a factor of
+  1.7 across days that are all unambiguously frozen.
 - **The winter row is not clean.** Ordinary winter days sit at a bias of -0.041
   with an RMSE of 0.133, and three of the 20 disagree by more than 0.1. Winter is
   where low sun, long shadows from 1000 m walls and thin cloud all bite hardest,

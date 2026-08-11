@@ -53,6 +53,7 @@ nav:
       - Limitations: limitations.md
       - Sentinel-1 cross-check: sar-validation.md
       - Landsat cross-check: landsat-crosscheck.md
+      - Can a fraction be recovered: unmixing-feasibility.md
       - Investigation log: investigation-log.md
   - Running it:
       - Architecture: architecture.md
