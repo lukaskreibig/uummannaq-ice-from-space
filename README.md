@@ -39,11 +39,13 @@ mask defect in docs/investigation-log.md were found.*
 ## What was asked, and what it cost
 
 Every row is a question this project put to its own result, a script that
-answers it, and a committed artefact under `archive/reprocessed_2026/`. The
-right-hand column is what the answer did to the headline, because a check that
-cannot move a number is not a check.
+answers it, and a committed artefact under `archive/reprocessed_2026/`. Six of
+them moved the headline and the right-hand column says by how much. The other
+eleven settled something no percentage could carry: an approach abandoned with
+its reason, a threshold shown not to be overfitted, a bias shown to cancel. Both
+kinds belong here, and only one kind can be a number.
 
-| The question | Answer | Headline |
+| The question | Answer | What came of it |
 |---|---|---|
 | What does the choice of denominator do? `denominator_comparison.py` | cloud is not evenly spread across the years, and a cell called cloud can never be ice | **35.4 to 25.2 %** |
 | Where should the brightness gate sit? `gate_sensitivity.py` | 19.4 to 23.0 across a range wider than anyone would defend | **20.3 %** if it tracks each season's own ice |
@@ -57,7 +59,7 @@ cannot move a number is not a check.
 | Does radar back the contested days? `validate_sar.py`, `sar_wet_days.py` | within about **2 dB** of that season's own fast ice | the ice was still there |
 | Did the record begin on an unusually icy stretch? `landsat_season_series.py` | no. Four seasons further back move the baseline by under **0.04** either way | not a lucky start |
 | Was Landsat 8 wrong in March 2013, or was the fjord? `commissioning_check.py` | the fjord. My own hypothesis, refuted by the one scene it had discarded | the route is in the log |
-| What does a thermometer say, on every day? `thermal_audit.py` | **36 of 226** days call the fjord open while it radiates below the freezing point of seawater, twice as often after 2021 | the largest open item |
+| What does a thermometer say, on every day? `thermal_audit.py` | **36 of 226** days call the fjord open while it radiates below the freezing point of seawater, twice as often after 2021 | the correction below, 22.6 to 19.5 |
 | Closed ice, or floes the chain read correctly? `sar_thermal_days.py` | 8 like fast ice, 6 like open water, 13 between | both extremes refused |
 | What does that cost the published series? `sentinel_correction.py` | matched, corrected, and the published cleaning rerun unchanged | 22.6 to **19.5 %** |
 | The mountain's shadow on the sea ice? `shadow_bias.py` | **0.216** of the fjord called water in mid February, 0.003 by April | cancels, because both periods sit on the same days |
@@ -93,15 +95,13 @@ python scripts/validate_sar.py --analyse-only --output archive/reprocessed_2026/
 python scripts/check_summary.py archive/reprocessed_2026/summary.csv
 ```
 
-The first and the last of those are the CI gate. `.github/workflows/ci.yml` runs them on
-every push, so a page that has gone stale against the data fails the build rather
-than waiting to be noticed. The daily series they read is committed as
+The first and the last are the CI gate: `.github/workflows/ci.yml` runs them on
+every push, so a page that has drifted from the data fails the build instead of
+waiting to be noticed. `docs/published_numbers.json` holds the figures the
+documentation quotes and is what `story_numbers.py` diffs against. The daily
+series it reads is committed as
 `archive/reprocessed_2026/daily_series.csv`; `story_numbers.py --live` reads the
 story repo's working copy instead and fails if the snapshot has drifted from it.
-
-`docs/published_numbers.json` holds the figures the documentation quotes.
-`story_numbers.py` recomputes them from the daily series and exits non-zero if
-they have drifted, which is the fastest way to catch a page that has gone stale.
 
 **One dependency is outside this repository.** The scene-to-day conversion, the
 gap filling and the smoothing live in the story repo next door, at
@@ -124,8 +124,8 @@ is not, and how it was arrived at.
 | [docs/methods.md](docs/methods.md) | Every processing step and the reason for each parameter, with the measurement behind it. |
 | [docs/generalisation.md](docs/generalisation.md) | What it would take to run this at any Arctic coastal site, and what already does. |
 
-And the three attempts to break the result with a different instrument, which are
-the part of this project worth reading if you only read one thing:
+And the attempts to break the result with a different instrument, which are the
+part of this project worth reading if you only read one thing:
 
 | | |
 |---|---|
@@ -133,9 +133,8 @@ the part of this project worth reading if you only read one thing:
 | [docs/sar-validation.md](docs/sar-validation.md) | Sentinel-1 on the winter days the optical chain cannot explain, including where two of this project's own cross-checks contradict each other. |
 | [docs/unmixing-feasibility.md](docs/unmixing-feasibility.md) | Whether a sub-pixel fraction could replace the hard class. The arithmetic is sound, the anchor is not, and a systematically shaped residual that looked exactly like a melt pond was Rayleigh scattering. |
 
-Where the evidence lives: `archive/reprocessed_2026/` holds the 1103-scene run
-behind every figure plus 24 result artefacts, one per measurement. It is tracked,
-not ignored, and it is not the legacy material described further down.
+`archive/reprocessed_2026/` is where all of that evidence sits. It is tracked
+rather than ignored, and it is not the legacy material described further down.
 
 ---
 
@@ -221,10 +220,10 @@ archive/reprocessed_2026/  # THE EVIDENCE: the committed run and one artefact pe
 archive/legacy_pipeline/   # Unmodified legacy notebooks and outputs, kept for traceability
 config/                 # YAML run configurations (supports inheritance)
 data/                   # Raw/interim/processed datasets (ignored by git by default)
-docs/                   # Extended documentation (architecture, pipeline, datasets, integration)
+docs/                   # limitations, investigation log, three cross-checks, methods, runbooks
 docker/                 # Container definitions (CPU + CUDA)
-notebooks/              # Exploratory notebooks (moved from legacy pipeline)
-scripts/                # Utilities (benchmarking, satellite scraping)
+notebooks/              # Exploratory notebooks, superseded by scripts/
+scripts/                # THE ANALYSIS: 28 scripts, one question each, listed at the top of this file
 src/uummannaq_ice/      # Production Python package and CLI
 tests/                  # Pytest suite (unit + mocked integration)
 out/                    # Default runtime outputs (Git-ignored)
@@ -269,7 +268,9 @@ directory:
 - `docs/models.md`: MobilenetV2 cloud model lineage and retraining guidance.
 - `docs/published_numbers.json`: the figures the documentation quotes, machine
   readable, regenerated by `make numbers`.
-- `CHANGELOG.md`: project history (update when shipping user-facing changes).
+- `CHANGELOG.md`: packaging and tooling history only. The scientific history is
+  in `docs/investigation-log.md` and in the commit messages, which carry the
+  measurements rather than summarising them.
 
 ## Configuration & manifests
 
