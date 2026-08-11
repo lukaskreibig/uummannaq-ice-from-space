@@ -131,6 +131,20 @@ The packaged assets are:
 
 ## Pipeline overview
 
+![One scene through the pipeline: RGB, cloud mask, land mask, solid ice, light ice, and the overlay](docs/images/pipeline-panel-2017-02-19.jpg)
+
+*One scene, 19 February 2017, at every stage, from a run of the current code.
+**Look at the long blue wedge north of the island in the overlay.** That is the
+mountain's shadow on sea ice, and the chain calls it open water, because a
+shadowed surface is dark and a dark surface fails the brightness gate. On this
+day it costs 9.9 percent of the readable fjord on ice that is frozen shore to
+shore. `scripts/shadow_bias.py` measures it across the record: 0.216 in the first
+fortnight of the window and 0.003 by April, because the shadow shortens as the
+sun climbs. It very nearly cancels between the two periods only because both are
+sampled at the same days of the year, median day 78 against 80. Panels like this
+are written for every scene, and looking at them is how both this and the land
+mask defect in docs/investigation-log.md were found.*
+
 `docs/pipeline.md` describes every stage in detail; at a high level:
 
 1. Search the Element84 STAC (`sentinel-2-l1c`) within the configured AOI and date range, deduplicated by observation date.

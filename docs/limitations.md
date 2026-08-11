@@ -31,6 +31,7 @@ turned into a measurement, this is what it cost:
 | Uneven sampling | a season's sampling error is 0.054, against a between-season spread of 0.104 to 0.170 | [below](#sampling-is-uneven-and-2017-is-thin) |
 | **How break-up is defined** | direction unanimous across 30 definitions, but the shift spans **-0.7 to -53 days** against a published -10.2 | [below](#smoothing-shifts-break-up-earlier-and-the-definition-shifts-it-much-more) |
 | Did the record start on an icy stretch | no; four Landsat seasons before 2017 move the early baseline by less than **0.04** either way | [landsat-crosscheck.md](landsat-crosscheck.md) |
+| **The mountain's shadow on the ice** | **0.216 of the fjord called water in mid February against 0.003 in April, on ice that is certainly frozen; it cancels only because both periods sit on the same days of the year** | [below](#the-mountains-shadow-is-read-as-open-water) |
 | **A thermometer on 226 days** | **36 days report a mostly open fjord while more than half of it radiates below the freezing point of seawater, and they are twice as common after 2021** | [below](#a-thermometer-and-the-largest-open-question-in-this-project) |
 | **Radar on those days** | **only 8 of 27 read like closed fast ice and only 6 like open water; a radar-informed correction halves the Landsat decline, 20.6 to 10.9 percent** | [below](#and-radar-which-settles-the-size-to-within-about-a-factor-of-two) |
 | **The same correction on the published series** | **22.6 to 19.5 percent, and 17.9 to 20.9 across matching windows** | [below](#and-carried-onto-the-published-series-it-costs-three-points) |
@@ -224,6 +225,50 @@ eighth of its own, because the two series are estimated differently.
 **So the headline survives, three points lighter.** Every defensible treatment of
 this bias now lands between 18 and 23 percent, which is inside the range the
 sensitivity table above already reported for the period boundary alone.
+
+## The mountain's shadow is read as open water
+
+Found by eye in a quicklook, by someone who had not read any of the code, and it
+is the clearest single instance of the failure the rest of this page measures
+statistically. The island carries a 1170 m mountain. In February the sun sits
+under ten degrees and the shadow reaches kilometres north across the fjord. Ice
+in that shadow is dark, a dark surface fails the brightness gate, and the gate is
+what separates ice from water. So the shadow is classified as open water.
+
+`python3 scripts/shadow_bias.py`, over the 264 scenes in day 45 to 105 that clear
+the visibility gate, a window in which this fjord has never once been open:
+
+| day of year | scenes | median sun | median water called | worst |
+|---|---|---|---|---|
+| 45 to 60 | 43 | 9.8 | **0.216** | 0.987 |
+| 60 to 75 | 63 | 14.9 | 0.038 | 0.997 |
+| 75 to 90 | 80 | 20.2 | 0.006 | 0.940 |
+| 90 to 105 | 72 | 26.3 | 0.003 | 0.479 |
+
+The fjord is frozen across all of them. What changes is the sun, and the bias
+falls by a factor of seventy as it climbs.
+
+**Whether that reaches the headline turns on one thing.** Sentinel-2 is sun
+synchronous, so the shadow falls in nearly the same place on every scene ever
+taken and its length depends on the day of the year rather than the year. A bias
+of that shape cancels between two periods sampled at the same days of the year
+and does not cancel at all between two that are not. Measured:
+
+```
+early   99 scenes   median day 78   median sun 18.9   median water 0.005
+late   165 scenes   median day 80   median sun 19.4   median water 0.009
+```
+
+Two days apart, and 0.004 of water between them. **It cancels.** But it is worth
+seeing how narrowly: the median in the first fortnight of the window is 0.216,
+so had one period been sampled there and the other in April, the shadow alone
+would have opened a gap wider than the decline this project reports. That is an
+argument for the day-of-year balance the record happens to have, not for the
+robustness of the method.
+
+This is also why [the February caveat](#the-seasonal-window-is-hard-coded) is
+not decoration. February rests on few scenes under very low sun, and this is the
+number behind that sentence.
 
 ## The result depends on three analysis choices
 
