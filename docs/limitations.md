@@ -790,11 +790,14 @@ revisiting it.
 
 ## What is not validated at all
 
-- **No comparison against an independent product.** The Sentinel-1 check bounds
-  one error and does not calibrate the series, and the season-end anchors above
-  are the pipeline checked against itself on days whose answer is known, which
-  is a real error rate but not an independent one. No in-situ, no second optical
-  product. The series shows a direction; it is not a calibrated measurement.
+- **No in-situ measurement, and no calibration.** This bullet used to say there
+  was no second optical product either, and that is no longer true: Landsat now
+  agrees to an RMSE of 0.026 over 23 days whose answer was not in doubt, reaches
+  four seasons further back, and supplied the thermal band behind the correction
+  above. What has not changed is what any of it establishes. Agreement between
+  instruments is consistency, not accuracy. Nobody stood on this ice with a
+  drill, and no reference product calibrates the fraction. **The series shows a
+  direction; it is not a calibrated measurement.**
 - **No uncertainty is propagated** from the per-scene classification to the
   seasonal means beyond the sampling term above.
 - **The 40 m analysis grid** resolves nothing smaller. Leads, cracks and the ice

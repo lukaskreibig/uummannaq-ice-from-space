@@ -4,8 +4,10 @@ How the current version of this pipeline was arrived at, written down because th
 route is more instructive than the destination.
 
 The pipeline had been producing a plausible time series for years. It contained
-four systematic errors, none of which raised an exception, logged a warning or
-produced an obviously wrong picture. Every one of them was found by checking a
+five systematic errors, none of which raised an exception, logged a warning or
+produced an obviously wrong picture. Four were found and fixed; the fifth is a
+property of the classifier that cannot be fixed by a threshold, only measured,
+and it is the only one still moving the headline after the others were closed. Every one of them was found by checking a
 number against something outside the code: a physical expectation, a published
 convention, an independent measurement, or an image looked at with human eyes.
 
@@ -106,6 +108,15 @@ of 0.72** while the rest have **0.00**. In the depth of winter, on a fjord that
 is certainly frozen, the pipeline reports "no ice" precisely when it is cloudy.
 Across all scenes, ice fraction and cloud correlate at **r = -0.42**.
 
+> **Correction.** That correlation is retracted as evidence, and the retraction
+> belongs here rather than only in limitations.md. On the whole-grid denominator a
+> cell classified as cloud can never also be counted as ice, so a negative sign is
+> forced by construction and proves nothing. On the clear-sky denominator, over
+> the scenes that clear the visibility gate, it is -0.157. The median cloud cover
+> figures above stand and are the real evidence; the single correlation
+> coefficient was the first thing a reviewer would have checked, and it would not
+> have held.
+
 **Why it survived:** every individual number was inside its plausible range.
 
 ## The land mask that covered a fraction, not a place
@@ -122,7 +133,7 @@ Rendered over a summer scene it was obvious in one look: the island was roughly
 covered, and a diagonal band of mask sat over open water.
 
 Replaced by a mask derived from the imagery. Land is what stays above 0.06 in the
-75th percentile of near-infrared reflectance across eight clear August scenes
+MEDIAN of near-infrared reflectance across eight clear August scenes
 spanning 2019 to 2024, since open water is nearly black there (median 0.021) and
 rock is not (0.141), and drifting ice cannot hold a pixel across four years. The
 result is a GeoTIFF with its own CRS, reprojected per scene.
@@ -130,9 +141,17 @@ result is a GeoTIFF with its own CRS, reprojected per scene.
 Actual land share: **5.15 percent**. The painted mask had covered nearly twice
 the island.
 
-Two refinements came out of looking again. The 75th percentile rather than the
-median, because at 70 degrees north the mountain shadows its own eastern face and
-a shadowed slope is as dark in the near infrared as water. And filling enclosed
+> **Correction.** An earlier version of this section, and of methods.md, argued
+> for the 75th percentile rather than the median, on the grounds that at 70
+> degrees north the mountain shadows its own eastern face and a shadowed slope is
+> as dark in the near infrared as water. The argument is wrong and methods.md now
+> says so: Sentinel-2 is sun-synchronous, so that face is shadowed in every
+> acquisition this satellite will ever make, and a percentile cannot recover a
+> surface no acquisition ever lit. The shipped mask is the median, and the land
+> share is 5.313 percent rather than the 5.15 recorded above. Kept visible
+> because retracting an argument is part of the route this page exists to record.
+
+One refinement came out of looking again: filling enclosed
 holes, because the island's lakes and ponds are dark too, and ice on them is lake
 ice, not sea ice.
 
@@ -194,6 +213,72 @@ percent fill while the median band is under 50, which resampling can never
 produce, and the post-run validator fails on any scene whose mean NDWI is exactly
 1.0. Both were needed, because that value sits inside every other range check.
 
+## The ice that was too dark to be ice
+
+This one is different from the four above. Those were found and fixed, and after
+each fix the headline moved by a point or two. This one was found last, it is the
+only one still moving the headline after all the others were closed, and it was
+found by a hypothesis of mine that turned out to be wrong.
+
+The route matters more than the result, so here it is in order.
+
+**The wrong hypothesis.** Four Landsat scenes in March and early April 2013 read
+5, 10, 15 and 15 percent ice over a fjord that every other year says is frozen
+shore to shore, under a nearly cloud-free sky. Landsat 8 launched in February
+2013 and reached its operational orbit on 11 April, and all four are earlier. So
+the satellite was still being commissioned, the readings were an artefact, and
+the season came out of the series. That explanation is plausible, it is
+supported by a published mission date, and it is wrong.
+
+**The test that killed it.** A census of the whole Landsat archive over this
+fjord had turned up exactly two same-overpass ETM+ against OLI pairs in forty
+years, and one of them is 30 March 2013: same hour, same sun elevation, both
+under one percent cloud. ETM+ had been in normal operations for fourteen years.
+Run through this pipeline it reads green 0.223 against OLI's 0.226 and near
+infrared 0.120 against 0.115. **The radiometry was never the problem.** The one
+scene that could refute the hypothesis was the one the hypothesis had thrown
+away.
+
+**What was actually wrong.** Both satellites carry a thermal band. Seawater at
+this salinity freezes near 271.35 K and open water cannot radiate colder. Those
+four days read 263.7 to 267.7 K, against 260.0 on a frozen control day of the
+same season and 272.7 and 278.3 on two open ones. The fjord was frozen. The chain
+called it water because the surface was dark, and a dark surface fails the
+brightness gate that separates ice from water.
+
+That is the failure limitations.md had already documented on twelve wet April
+days. What was new was its size.
+
+**Measured on all 226 days.** Where the chain reports 0.90 ice or more, the fjord
+is 100 percent below freezing. Where it reports under 0.10, none of it is. In
+between the two do not agree at all. 36 days are contradicted, and they are not
+spread evenly: 9 of 91 early against 27 of 135 late. An error twice as common in
+the later period, always in one direction, is part of the measured decline rather
+than noise around it. Sentinel-2 makes it too, at r = +0.986 on the days both
+satellites saw.
+
+**And the thermometer could not finish it.** A frozen surface is not a closed
+one: floe tops radiate exactly as cold as a sheet, and leads narrower than the
+thermal band resolves average away. Radar can tell them apart, and 27 of the days
+could be placed between their own season's fast ice and its own open water. 8
+read like fast ice, 6 like open water, 13 between, at a median position of 0.43
+where the chain reported 0.17. Both extremes fall. The fjord held more ice than
+the chain said and much less than a closed sheet.
+
+Setting each day where radar puts it takes the Landsat decline from 20.6 percent
+to 10.9, and the published Sentinel-2 figure from 22.6 to about 19.5. The two
+differ because the estimators differ, not because the ice does.
+
+**What this one is worth as a lesson.** Every error above was found by checking a
+number against something outside the code. This one was found by checking a
+STORY against something outside the code, and the check that killed it was
+already sitting in an artefact from a different question. The hypothesis was
+comfortable: it blamed the instrument, it had a published date behind it, and it
+removed an inconvenient season. That is exactly the shape of an explanation that
+should be tested hardest.
+
+---
+
 ## Two errors of my own, worth recording
 
 Neither of these was in the original pipeline. Both were introduced while fixing
@@ -212,6 +297,31 @@ transform put the mask in the top-left corner of the frame. The land share read
 Caught only because the printed land share was compared against the previous
 value.
 
+**A bin one day wide.** The Landsat season series averages over fifteen-day bins
+so that a season crowded with April scenes cannot outvote one weighted towards
+February. The edges ran `np.arange(45, 181, 15)`, which puts an edge exactly on
+day 180, a day the season window admits. That opens a TENTH bin one calendar day
+wide which still casts a full vote, and four scenes land in it, all after
+break-up at near zero ice. It moved one season's mean by 0.084, ten times the
+effect the file was built to measure. Found by an adversarial pass over my own
+freshly committed work, not by me.
+
+**A mean over whichever part of the season happened to be sampled.** The same
+function averaged over the bins a sensor had actually filled. Landsat 2017
+samples February to mid May and nothing after, so its 0.993 stood in the same
+column as whole-season means and manufactured a difference of +0.129 against
+Sentinel-2 that had nothing to do with instruments. On the bins both sensors
+filled it is +0.012. Same pass, same day. Both of these were in a commit whose
+message claimed the analysis was solid.
+
+**An artefact with no script behind it.** The radar verdicts that carry the
+correction to the published figure were produced by an inline calculation and
+committed, so the chain from acquisitions to the corrected headline could not be
+reproduced from this repository. It is the one property this project claims about
+itself, and it was broken in the commit that needed it most. The classification
+now lives in the script that writes both artefacts, and the rerun reproduced the
+hand calculation exactly.
+
 ---
 
 ## What the record actually supports
@@ -220,7 +330,10 @@ After all of this, the honest position is narrower than the one the project
 started with.
 
 - Direction: the later seasons have less spring ice than the earlier ones,
-  by about **23 percent** on the cloud-independent metric.
+  by about **23 percent** on the cloud-independent metric as the pipeline
+  measures it, and about **19.5 percent** once the dark-ice bias above is
+  corrected with the radar placement. Every defensible treatment of that bias
+  lands between 18 and 23.
 - Confidence: **p = 0.119** over ten seasons, 25 of 210 splits. Above the
   conventional threshold, and above 0.10 as well.
   A monotone trend is not detectable at all.
@@ -247,5 +360,13 @@ Things that repeatedly turned out to be worth the time:
    subjected to a significance test, and that turned out to change the
    conclusion.
 7. **Have someone adversarial re-run the numbers.** Several claims in this
-   document, including two of my own, did not survive independent reproduction
-   the first time.
+   document, including four of my own, did not survive independent reproduction
+   the first time. Two of those were in a commit written the same hour, whose
+   message asserted the work was solid.
+8. **Test the comfortable explanation hardest.** The 2013 hypothesis blamed the
+   instrument, cited a published mission date, and removed an inconvenient
+   season. All three of those are reasons to distrust it, and the measurement
+   that refuted it was already on disk from a different question.
+9. **Ask an instrument that measures something else.** Two optical sensors
+   agreeing tells you they agree. A thermometer and a radar answered a question
+   neither of them could.

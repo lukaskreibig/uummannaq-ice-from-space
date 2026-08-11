@@ -19,11 +19,11 @@ flowchart TD
 
 ## Components
 
-- **CLI / Config Loader** – Combines command-line overrides with YAML configuration files (`config/*.yaml`). The loader supports inheritance (`extends`) and produces a fully validated `RunConfig`.
-- **Pipeline** – Streams STAC items, applies the UNet cloud model, derives masks, summarises statistics, and saves artefacts. Execution metadata is returned to the caller and written to `run_metadata/run_<timestamp>.json`.
-- **Processing module** – Houses reflectance preparation, mask logic, and quicklook rendering. These functions are unit testable in isolation.
-- **Manifest** – Captures environment info (Python, git commit), run statistics, and the resolved configuration.
-- **Outputs** – CSV summaries plus overlay/panel PNGs stored under the configured `output_dir`.
+- **CLI / Config Loader**: Combines command-line overrides with YAML configuration files (`config/*.yaml`). The loader supports inheritance (`extends`) and produces a fully validated `RunConfig`.
+- **Pipeline**: Streams STAC items, applies the UNet cloud model, derives masks, summarises statistics, and saves artefacts. Execution metadata is returned to the caller and written to `run_metadata/run_<timestamp>.json`.
+- **Processing module**: Houses reflectance preparation, mask logic, and quicklook rendering. These functions are unit testable in isolation.
+- **Manifest**: Captures environment info (Python, git commit), run statistics, and the resolved configuration.
+- **Outputs**: CSV summaries plus overlay/panel PNGs stored under the configured `output_dir`.
 
 ## Concurrency model
 
@@ -33,7 +33,7 @@ flowchart TD
 
 ## Extensibility points
 
-- **New data products** – Extend `processing.classify_tile` or add additional summary metrics before writing to CSV.
-- **Alternate configs** – Place YAML files in `config/` and reference them via `uummannaq-ice --config-file`.
-- **Storage adapters** – Hook into `_write_run_manifest` or `SummaryWriter` to stream outputs to object storage.
-- **Orchestration** – Call `run_pipeline()` directly in Python or shell out to the CLI/Docker images in schedulers.
+- **New data products**: Extend `processing.classify_tile` or add additional summary metrics before writing to CSV.
+- **Alternate configs**: Place YAML files in `config/` and reference them via `uummannaq-ice --config-file`.
+- **Storage adapters**: Hook into `_write_run_manifest` or `SummaryWriter` to stream outputs to object storage.
+- **Orchestration**: Call `run_pipeline()` directly in Python or shell out to the CLI/Docker images in schedulers.

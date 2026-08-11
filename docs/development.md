@@ -2,7 +2,7 @@
 
 ## Environment
 
-1. Create a virtual environment (Python 3.10–3.13 are supported) and install dependencies:
+1. Create a virtual environment (Python 3.10 to 3.13 are supported) and install dependencies:
 
    ```bash
    python3 -m venv .venv
@@ -20,10 +20,10 @@
 
 ## Tooling shortcuts
 
-- `make dev` – install project + dev/test/docs extras and set up pre-commit.
-- `make lint` / `make format` / `make typecheck` – run Ruff and mypy targets.
-- `make test` – execute the pytest suite with coverage.
-- `pre-commit run --all-files` – mirror the CI checks locally.
+- `make dev`: install project + dev/test/docs extras and set up pre-commit.
+- `make lint` / `make format` / `make typecheck`: run Ruff and mypy targets.
+- `make test`: execute the pytest suite with coverage.
+- `pre-commit run --all-files`: mirror the CI checks locally.
 
 ## Running the pipeline locally
 
@@ -53,7 +53,7 @@ uummannaq-ice --start-date 2025-05-06 --end-date 2025-06-25 \
 ## Releasing & collaboration
 
 - Update `pyproject.toml` and `CHANGELOG.md` when cutting a release.
-- CI (`.github/workflows/ci.yml`) enforces linting, typing, and tests—keep it green before merging.
+- CI (`.github/workflows/ci.yml`) enforces linting, typing, and tests, keep it green before merging.
 - Docker images (`docker/Dockerfile*`) provide reproducible environments for clients and schedulers.
 
 ## Troubleshooting

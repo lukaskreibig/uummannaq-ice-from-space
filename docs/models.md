@@ -28,7 +28,7 @@
 
 ## Legacy models
 
-`models/legacy/` contains Keras checkpoints (`backup_best_cloud_model.keras`, `backup_best_ice_model.keras`) and the legacy `cloud_unet_rgb.pt` export that originally lived in `archive/legacy_pipeline/ice-final/`. These binaries exceed GitHub's size limits and are therefore ignored by git—copy them into `models/legacy/` manually (or retrieve them from a secure artefact store) if you need to reproduce the old notebooks. Treat the directory as read-only unless you intend to resurrect the earlier architecture.
+`models/legacy/` contains Keras checkpoints (`backup_best_cloud_model.keras`, `backup_best_ice_model.keras`) and the legacy `cloud_unet_rgb.pt` export that originally lived in `archive/legacy_pipeline/ice-final/`. These binaries exceed GitHub's size limits and are therefore ignored by git, so copy them into `models/legacy/` manually (or retrieve them from a secure artefact store) if you need to reproduce the old notebooks. Treat the directory as read-only unless you intend to resurrect the earlier architecture.
 
 ## Recommendations
 

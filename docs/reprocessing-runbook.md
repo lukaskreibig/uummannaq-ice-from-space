@@ -250,7 +250,7 @@ reports the season at the end with a non-zero exit. Look at
 | `Failed to load <id>: ... 403` | `AWS_NO_SIGN_REQUEST` is not set | export it and re-run |
 | `Failed to load <id>: ...` on scattered scenes | transient S3 or DNS | re-run; the retry picks up only the misses |
 | `HeaderMismatchError` | the CSV was written by a different version | point `OUT` at a fresh directory |
-| `skipped – RGB bands missing` | the catalogue entry is incomplete | nothing to do, that scene has no usable data |
+| `skipped: RGB bands missing` | the catalogue entry is incomplete | nothing to do, that scene has no usable data |
 | process killed, no message | most likely the OOM killer | re-run; the fragment is trimmed automatically |
 
 A single scene that raises inside classification, rather than during loading,

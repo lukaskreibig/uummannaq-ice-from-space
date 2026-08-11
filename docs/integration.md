@@ -71,6 +71,6 @@ python scripts/benchmark.py --config config/single_tile_debug.yaml --repeat 3 --
 
 ## CI/CD
 
-- GitHub Actions (`.github/workflows/ci.yml`) enforces linting, formatting, typing, and tests on Python 3.10–3.12.
+- GitHub Actions (`.github/workflows/ci.yml`) enforces linting, formatting, typing, and tests on Python 3.10 to 3.12.
 - Use branch protection rules to require the CI workflow before merging.
 - Version bumps should update `CHANGELOG.md` and tag releases; Docker images can be built from the provided Dockerfiles.
