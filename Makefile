@@ -1,5 +1,5 @@
 .PHONY: install dev lint lint-fix format test typecheck precommit docs \
-        preflight archive verify publish numbers
+        preflight archive verify publish numbers audit
 
 # The scripts that matter for a run. scripts/scrape_satellite_images.py is
 # deliberately not here: it is an ad-hoc DMI scraper that starts a fifteen-year
@@ -7,6 +7,20 @@
 RUN_SCRIPTS := scripts/check_summary.py scripts/preflight.py scripts/watch_archive.py \
 	scripts/validate_sar.py \
                scripts/derive_thresholds.py
+
+# Every analysis that runs from the committed archive alone: no network, no
+# credentials, no AWS bill. This is the list a reader can run after a clone.
+# gate_sensitivity.py and grid_resolution.py are deliberately absent because
+# they re-read scenes, and breakup_definitions.py because it imports the
+# detector that ships with the story repo rather than a copy of it.
+AUDIT_SCRIPTS := scripts/robustness.py \
+                 scripts/noise_floor.py \
+                 scripts/clear_sky_conditioning.py \
+                 scripts/shadow_bias.py \
+                 scripts/shadow_discriminant.py \
+                 scripts/denominator_comparison.py \
+                 scripts/wet_day_sensitivity.py \
+                 scripts/sentinel_correction.py
 
 # ---------------------------------------------------------------- development
 
@@ -67,6 +81,16 @@ archive:
 # committed claims. Exits non-zero on drift.
 numbers:
 	python3 scripts/story_numbers.py --expect docs/published_numbers.json
+
+# Every offline analysis, in order, from the committed archive. Nothing here
+# touches the network. Exits non-zero on the first one that fails, which is what
+# makes it usable as a gate rather than only as a report.
+audit:
+	@set -e; for script in $(AUDIT_SCRIPTS); do \
+		echo "=== $$script"; \
+		python3 $$script; \
+		echo; \
+	done
 
 # Exits non-zero if any gate failed.
 verify:

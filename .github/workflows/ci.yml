@@ -60,3 +60,10 @@ jobs:
 
       - name: Published numbers have not drifted
         run: python scripts/story_numbers.py --expect docs/published_numbers.json
+
+      # Every analysis that runs from the committed archive alone. Two of them
+      # refuse to print anything unless the published headline still reproduces,
+      # so this catches a change to the estimator that the two gates above would
+      # not see: they check the numbers, this checks that the checks still work.
+      - name: Offline analyses still run
+        run: make audit

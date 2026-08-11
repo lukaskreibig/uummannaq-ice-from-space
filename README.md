@@ -139,6 +139,11 @@ here, and only one kind can be a number.
 | Closed ice, or floes the chain read correctly? `sar_thermal_days.py` | 8 like fast ice, 6 like open water, 13 between | both extremes refused |
 | What does that cost the published series? `sentinel_correction.py` | matched, corrected, and the published cleaning rerun unchanged | 22.6 to **19.5 %** |
 | The mountain's shadow on the sea ice? `shadow_bias.py` | **0.216** of the fjord called water in mid February, 0.003 by April | cancels, because both periods sit on the same days |
+| Can the shadow be told from water at all? `shadow_discriminant.py` | yes. Skylight is blue, so shadowed ice reads NDSI **0.960** where open water reads 0.866 | a discriminant, not yet a correction |
+| Or one out of a hundred and twenty? `robustness.py` | 116 of 120 specifications find a decline; the published one sits at the **42nd percentile** | not the flattering corner |
+| Is one season carrying it? `robustness.py` | drop any of the ten and it stays between **18.5 and 29.5 %** | no |
+| How big does a difference have to be? `noise_floor.py` | one day apart on frozen ice: **0.003** at the median, **0.152** at the 90th | the tail is the late period |
+| Does cloud choose the answer? `clear_sky_conditioning.py` | at break-up the cloudiest scenes read **0.726** ice and the clearest **0.533** | pushes the decline down, not up |
 | Do the published numbers still reproduce? `story_numbers.py` | recomputed from the archive and diffed against a committed set | **runs in CI** |
 
 Five systematic errors were found along the way and none of them raised an
@@ -150,29 +155,49 @@ that did not survive its own test.
 
 ```
    1103 scenes        10 seasons, 2017 to 2026, Sentinel-2 L1C
-     28 scripts       one question each, all committed with their artefacts
-     23 artefacts     archive/reprocessed_2026, every published figure traceable to one
+     33 scripts       one question each, all committed with their artefacts
+     28 artefacts     archive/reprocessed_2026, every published figure traceable to one
       4 instruments   Sentinel-2 optical, Landsat optical, Landsat thermal, Sentinel-1 radar
-   4004 lines         documentation, ordered by how much each weakness could change a conclusion
-    114 tests         plus two number gates that run on every push
+   4187 lines         documentation, ordered by how much each weakness could change a conclusion
+    124 tests         plus three gates that run on every push, one of them `make audit`
 ```
 
 ## Check a number yourself
 
-Every published figure has a committed artefact and a script. These run offline,
-against `archive/reprocessed_2026/`, with no credentials and no network:
+Every published figure has a committed artefact and a script. After a clone, one
+command runs every analysis that needs nothing but the committed archive: no
+credentials, no network, no AWS bill.
+
+```bash
+make audit
+```
+
+That is eight scripts in order, and it exits non-zero on the first one that
+fails. Two of them refuse to print anything unless the published headline still
+reproduces to a tenth of a point, so the target gates the estimator and not only
+the numbers it produced. Individually, if you want one answer rather than all of
+them:
 
 ```bash
 python scripts/story_numbers.py                       # the headline, and every number the story shows
-python scripts/denominator_comparison.py              # the denominator table above
+python scripts/robustness.py                          # the same headline under 120 other defensible choices
+python scripts/noise_floor.py                         # how much two scenes of one frozen fjord disagree
+python scripts/clear_sky_conditioning.py              # whether the weather is choosing the answer
 python scripts/shadow_bias.py                         # the shadow in the panel above
-python scripts/gate_sensitivity.py  --reuse --out archive/reprocessed_2026
-python scripts/grid_resolution.py   --reuse --out archive/reprocessed_2026
-python scripts/validate_sar.py --analyse-only --output archive/reprocessed_2026/sar_validation.csv
+python scripts/shadow_discriminant.py                 # and whether the two indices can see it
+python scripts/denominator_comparison.py              # the denominator table above
 python scripts/check_summary.py archive/reprocessed_2026/summary.csv
 ```
 
-The first and the last are the CI gate: `.github/workflows/ci.yml` runs them on
+Three more need the network because they re-read scenes rather than the archive:
+
+```bash
+python scripts/gate_sensitivity.py  --reuse --out archive/reprocessed_2026
+python scripts/grid_resolution.py   --reuse --out archive/reprocessed_2026
+python scripts/validate_sar.py --analyse-only --output archive/reprocessed_2026/sar_validation.csv
+```
+
+The first and the last of the offline block are the CI gate: `.github/workflows/ci.yml` runs them on
 every push, so a page that has drifted from the data fails the build instead of
 waiting to be noticed. `docs/published_numbers.json` holds the figures the
 documentation quotes and is what `story_numbers.py` diffs against. The daily
@@ -243,15 +268,31 @@ that spans 17.9 to 20.9 percent, so the pipeline would carry a choice that the
 evidence does not pin down. Reopen it when the matching window can be closed, not
 before.
 
-**4. A cast-shadow mask from a digital elevation model.** `shadow_bias.py` shows
-the mountain's shadow costs 0.216 of the fjord in mid February and 0.003 by
-April, and that it cancels between the periods because both are sampled at the
-same days of the year. A DEM plus the per-scene sun geometry, both already
-available, would let the chain treat shadow the way it treats cloud: an area it
-cannot read rather than water. Not done, and not obviously worth it: the bias
-cancels, and masking it would drop February scenes below the visibility gate
-entirely, trading a measured bias for missing days in the thinnest part of the
-record.
+**4. A per cell map, which is the strongest single thing outstanding.** Two of
+the checks above end at the same wall. `clear_sky_conditioning.py` shows that at
+break-up the cloudiest scenes read 0.726 ice and the clearest 0.533, and it can
+say the consequence but not the cause: to know whether cloud sits over the water,
+you need a map of where cloud falls beside a map of where the ice goes first.
+`shadow_discriminant.py` finds that shadowed ice reads NDSI 0.960 where open
+water reads 0.866, and it rests on the one scene whose per cell rasters are
+committed. Both want the same artefact, which is a per cell "last ice day" grid
+across the record. It is the strongest available discriminant between signal and
+defect, because real melt advances coherently from the fjord mouth while a
+mountain shadow sits in the same place every February regardless of the year. It
+needs a reprocess that writes per cell output, which this project has not run.
+
+**5. Deciding what to do about the shadow, now that it can be seen.** Three
+routes, and they are not equivalent. A cast-shadow mask from a digital elevation
+model plus the per-scene sun geometry, both already available, would let the
+chain treat shadow the way it treats cloud: an area it cannot read rather than
+water. An NDSI cut on cells already called water is far cheaper and needs no DEM,
+but it does not separate shadow from wet ice and it would move the break-up date.
+Or leave it measured and disclosed, which is where it stands, on the grounds that
+`shadow_bias.py` shows the bias cancels between the two periods because both are
+sampled at the same days of the year. Masking has a real cost: it would drop
+February scenes below the visibility gate entirely, trading a measured bias for
+missing days in the thinnest part of the record. Not decided.
+
 ---
 
 # Running it yourself
