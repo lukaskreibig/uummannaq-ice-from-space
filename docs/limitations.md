@@ -284,11 +284,24 @@ surface really did read as water to two instruments with independent
 atmospheric corrections and independent cloud masks, and the concentration in
 2023 and 2025 is not a Sentinel-2 defect.
 
-What that still cannot settle is whether the fjord was open, because both
-instruments are optical and meltwater on ice absorbs in the near infrared
-whichever one is looking. See
-[landsat-crosscheck.md](landsat-crosscheck.md), including the one case where it
-contradicts the radar.
+**And radar has since answered the half that optics cannot.** On those same
+April days Sentinel-1 gamma0 HH over the fjord sits within about 2 dB of that
+season's own February and March fast ice, and 4.5 to 6.2 dB above the record's
+open water anchor. The ice was still there, under a wet surface, and the optical
+chain read the meltwater as open water.
+
+So the melt-pond bias is no longer a footnote in any sense. It has a magnitude
+from the season-end anchors, a confirmation from a second optical instrument, and
+now a third instrument saying the ice underneath was physically present. It also
+means the ice fraction on wet spring days is biased LOW, in the same direction as
+the headline, which is the uncomfortable direction and is stated here rather than
+buried.
+
+Three independent radar looks cover the four days, since two of them share an
+acquisition, and one of the four sits 2.12 dB below its winter ice, which is the
+direction wet snow pushes and therefore the weakest of the set. See
+[landsat-crosscheck.md](landsat-crosscheck.md) and
+[sar-validation.md](sar-validation.md#the-wet-april-days-asked-separately-and-answered).
 
 ## The solid/light split
 

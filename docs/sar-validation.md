@@ -187,6 +187,71 @@ conventional level. What the archive supports is that the anomalies concentrate
 at low sun; what it cannot do is separate a dim scene from a season that started
 late.
 
+## The wet April days, asked separately and answered
+
+The section above compares a group of suspect days against anchors pooled over
+nine winters, and says itself that this leaves a seasonal confounder. A later
+question needed a tighter design, and got one.
+
+[landsat-crosscheck.md](landsat-crosscheck.md) established that on four April
+days the pipeline reports a half open fjord weeks before that season had ever
+broken up, and that Landsat sees the same surface and reads it as wetter still.
+Two optical instruments agreeing does not say whether the fjord was open or
+whether ice was still there under meltwater, because that distinction is
+invisible to optics. Radar can see it, so radar was asked.
+
+The design differs from the one above in two ways that matter. Each April day is
+compared against February and March days of **its own season**, chosen where the
+optical chain reported a solidly frozen fjord, so the question is not whether a
+day resembles ice somewhere in the record but whether it resembles the ice that
+was there six weeks earlier. And the comparison holds the relative orbit fixed
+where a same-orbit reference exists, because incidence angle alone moves the
+fjord median by whole decibels.
+
+Reproduce with `python3 scripts/sar_wet_days.py --window 4`. The run is committed
+as `archive/reprocessed_2026/sar_wet_days.csv`.
+
+| Day | Sentinel-2 | Landsat | gamma0 HH | its own winter ice | difference |
+|---|---|---|---|---|---|
+| 2023-04-11 | 0.595 | 0.416 | -16.52 dB | -16.98 dB (n=4, same orbit) | **+0.47 dB** |
+| 2023-04-12 | 0.521 | 0.376 | -16.52 dB | -16.98 dB (n=4, same orbit) | **+0.47 dB** |
+| 2025-04-17 | 0.713 | 0.588 | -16.64 dB | -16.14 dB (n=9, mixed orbits) | **-0.49 dB** |
+| 2025-04-18 | 0.831 | 0.650 | -18.26 dB | -16.14 dB (n=4, same orbit) | **-2.12 dB** |
+
+**The ice was still there.** All four sit within about 2 dB of their own winter's
+fast ice and 4.5 to 6.2 dB above the open water anchor of -22.73 dB. On those
+days this fjord was frozen under a wet surface, and the optical chain read the
+meltwater as open water. That is the melt-pond bias caught by a third instrument,
+and it is the direction limitations.md has always said it points.
+
+Three cautions, because four rows is not four measurements. The 11th and 12th of
+April 2023 resolve to the **same** acquisition, so this is three independent
+radar looks, not four. 2025-04-17's nearest pass is a day earlier and on an orbit
+with no same-orbit reference, so its comparison is the weakest of the four.
+And 2025-04-18 at -2.12 dB is the furthest from its winter ice, which is the
+direction wet snow pushes: a low reading is ambiguous between a wet surface and
+open water, and only a reading AT the winter ice level is decisive. Three of the
+four are at that level.
+
+## The contested day, resolved against this page
+
+The one winter anomaly where the two cross-checks had something to say about the
+same date is 15 March 2025, where Sentinel-2 reports 0.0032 ice and Landsat,
+independently, 0.0029. Both optical sensors call the fjord open, while the
+analysis above puts the suspect group at fast-ice backscatter.
+
+There is no acquisition on the day itself. The two that bracket it read **-22.85
+dB** four days before, on orbit 90, and **-20.79 dB** four days after, on orbit
+25. Its own winter's fast ice is -16.14 dB and the record's open water anchor is
+-22.73 dB.
+
+So on this date radar sides with the optics: that fjord was open. 2025 is also
+the one season in the record that genuinely froze late, which makes an open fjord
+in mid March physically unremarkable there. The group-level conclusion above
+stands as a statement about a group; it does not transfer to this individual day,
+and this page now says so rather than leaving two of its own findings to
+contradict each other in silence.
+
 ## What this does not establish
 
 - **It does not validate the ice fraction.** The comparison is frozen against
