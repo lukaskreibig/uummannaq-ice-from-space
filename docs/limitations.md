@@ -235,6 +235,35 @@ under ten degrees and the shadow reaches kilometres north across the fjord. Ice
 in that shadow is dark, a dark surface fails the brightness gate, and the gate is
 what separates ice from water. So the shadow is classified as open water.
 
+**The mechanism is sharper than "dark", and it is measurable.** A shadow is not
+switched off. It is lit by skylight, which is Rayleigh scattered and therefore
+steeply blue: green keeps roughly a third of its light, the near infrared about a
+tenth, the shortwave infrared at 1.6 um almost nothing. Every index with green in
+the numerator rises while the brightness collapses, so shadowed ice reads as
+simultaneously snowier and wetter than any sunlit surface can be.
+
+`python3 scripts/shadow_discriminant.py`, on the one scene whose per cell rasters
+are committed and against the endmembers measured elsewhere:
+
+| surface | NDSI | spread | NDWI |
+|---|---|---|---|
+| open water, July 2019 | 0.866 | 0.014 | 0.511 |
+| fast ice, April 2018 | 0.871 | 0.005 | -0.015 |
+| 2017-02-19, cells the chain called ice | 0.839 | | -0.095 |
+| **2017-02-19, cells the chain called water** | **0.960** | 5th pct 0.942 | **0.410** |
+
+Two things follow. NDSI separates fast ice from open water by 0.004, which is
+nothing, because snow and water both absorb the shortwave infrared. That is why a
+brightness gate has to exist at all, and why losing brightness costs this
+classifier everything. And the false water on a frozen February day sits five
+spreads *above* open water, where no sunlit surface reaches. 76 percent of those
+15,601 cells form a single connected plume.
+
+That is a discriminant the pipeline could use and does not. It is one scene, it
+does not separate shadow from wet ice, and deploying it would move the break-up
+date, so it is recorded here as a measured hypothesis rather than a correction.
+Nothing published uses it.
+
 `python3 scripts/shadow_bias.py`, over the 264 scenes in day 45 to 105 that clear
 the visibility gate, a window in which this fjord has never once been open:
 
