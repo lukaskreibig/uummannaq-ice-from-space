@@ -376,21 +376,45 @@ def report(frame: pd.DataFrame) -> None:
     print()
     print("How far each season moves when the gate moves, against the published 0.17")
     print("-" * 78)
+    # A frozen fjord and an open one both ignore the gate: every cell is far
+    # from the cut either way. Only scenes in transition can move, and this
+    # fjord spends most of its season at one end or the other, so the count of
+    # scenes that actually moved is the honest sample size behind each row.
     print(
         f"{'season':8s}{'0.09':>10s}{'0.13':>10s}{'0.21':>10s}{'0.25':>10s}"
-        f"{'span':>10s}"
+        f"{'span':>10s}{'n moved':>9s}"
     )
     spans = {}
+    moved_counts = {}
     for season, row in per_season.iterrows():
         base = row[PUBLISHED_GATE]
         deltas = {g: row[g] - base for g in NIR_GATES if g != PUBLISHED_GATE}
         span = max(deltas.values()) - min(deltas.values())
         spans[season] = span
+        block = wide.loc[season]
+        moved = int(
+            (
+                block[list(NIR_GATES)].max(axis=1) - block[list(NIR_GATES)].min(axis=1)
+                > 0.001
+            ).sum()
+        )
+        moved_counts[season] = moved
         print(
             f"{season:<8d}"
             + "".join(f"{deltas[g]:+10.3f}" for g in (0.09, 0.13, 0.21, 0.25))
-            + f"{span:10.3f}"
+            + f"{span:10.3f}{moved:>6d}/{len(block):<3d}"
         )
+    total_moved = sum(moved_counts.values())
+    print()
+    print(
+        f"{total_moved} of {len(wide)} sampled scenes move at all when the gate moves.\n"
+        "The rest are a frozen fjord or an open one, where every cell sits far\n"
+        "from the cut. That ratio is a property of this fjord rather than of the\n"
+        "sample: the published daily series is composed the same way, which is\n"
+        "why the sample is spread evenly over the season instead of being aimed\n"
+        "at the transition. It does mean each season's row rests on very few\n"
+        "scenes, and the per-season numbers should be read with that in mind."
+    )
 
     print()
     print("Is the gate more expensive in the seasons whose ice is darker?")
