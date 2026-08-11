@@ -293,6 +293,39 @@ distribution sits near the gate and more of its lower tail crosses. The two
 readings are therefore not alternatives. The springs were darker, and a fixed
 gate turns a darker spring into a larger reading error, in the same direction.
 
+**So how much of the headline rests on those twelve days?** The question has an
+answer, and it is the answer a reader will ask for first. Reproduce with:
+
+```
+python3 scripts/wet_day_sensitivity.py
+```
+
+The same raw archive is pushed three times through the story's own cleaning
+implementation, `clean_series` in `refresh_fjord_season.py`, rather than through
+a second copy of it. Rebuilt untouched it returns the published numbers to four
+decimals, which is what makes the other two rows comparable.
+
+| Variant | early | late | decline | permutation p | Mann-Kendall p |
+|---|---|---|---|---|---|
+| **published** | 0.6839 | 0.5296 | **22.6 %** | 0.119 | 0.210 |
+| suspect scenes dropped | 0.6843 | 0.5352 | 21.8 % | 0.119 | 0.210 |
+| suspect scenes forced fully frozen | 0.6844 | 0.5365 | **21.6 %** | 0.119 | 0.210 |
+
+The third row is the bound. Hand every one of the twelve back a completely
+frozen fjord, which is the most generous assumption available and certainly
+wrong in the generous direction, and the decline goes from 22.6 to 21.6 percent.
+**96 percent of it survives**, and neither p moves at all. The season means move
+by 0.009 in 2021, 0.016 in 2023, 0.018 in 2025 and 0.002 in 2020, against a gap
+between the periods of 0.154.
+
+**What that does not bound.** Only the days that crossed 0.90 are tested. The
+brightness shift behind them runs through a whole season, not through twelve
+days, so a milder version of the same error can sit on every day of 2023 and
+2025 without any single one falling far enough to be caught here. That version
+has no anchor: outside the April window and before July there is no day in this
+fjord whose answer is certain, so there is nothing to measure it against. The
+table bounds the identified days, not the mechanism.
+
 **A second optical instrument has since been asked, and it answers half of
 this.** On four of these days Landsat 8 or 9 passed over the fjord within about
 two hours, and running the same thresholds on its surface reflectance gives
