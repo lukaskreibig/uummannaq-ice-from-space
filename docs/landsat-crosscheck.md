@@ -139,9 +139,20 @@ like that.
   with an RMSE of 0.133, and three of the 20 disagree by more than 0.1. Winter is
   where low sun, long shadows from 1000 m walls and thin cloud all bite hardest,
   and this comparison does not resolve them.
-- **One anomaly is not a sample.** Only a single February or March anomaly had a
-  clear Landsat partner, 2025-03-15, where Sentinel-2 reports 0.0032 ice and
-  Landsat 0.0029. Both call that fjord open.
+- **One anomaly is not a sample, and the reason is structural.** Only a single
+  February or March anomaly had a clear Landsat partner here, 2025-03-15, where
+  Sentinel-2 reports 0.0032 ice and Landsat 0.0029. Both call that fjord open.
+  That scarcity is not bad luck: Collection 2 Level 2 surface reflectance is not
+  produced above a solar zenith of 76 degrees, so these 82 pairs span sun
+  elevations of 14.3 to 42.5 degrees, and the 28 clear-sky winter anomalies all
+  sit below that floor. **This page therefore cannot speak about the one regime
+  where the pipeline is unexplained.** Level 1 has no such floor and is also the
+  closer product, since the pipeline reads top-of-atmosphere itself. Over this
+  fjord it holds 865 daylight Landsat 8 and 9 scenes in the window, 320 of them
+  below the Level 2 floor, and **55 same-day pairs with Sentinel-2 in February or
+  March**. Reaching the pixels needs a credential this repository does not have;
+  `scripts/landsat_l1_inventory.py` counts what is there and documents both
+  routes.
 
 ## The tension worth stating
 
