@@ -644,6 +644,98 @@ direction wet snow pushes and therefore the weakest of the set. See
 [landsat-crosscheck.md](landsat-crosscheck.md) and
 [sar-validation.md](sar-validation.md#the-wet-april-days-asked-separately-and-answered).
 
+## How large does a difference have to be before it means anything
+
+Nothing on this page answered that until now. The per season bootstrap answers a
+different question: it resamples the days that were measured and reports how much
+a season mean would wander, which is sampling error *given* the measurement. It
+says nothing about how good a single measurement is.
+
+There is a way to ask without a reference dataset. Between day 45 and 105 this
+fjord is landfast shore to shore in every season of the record, so two scenes one
+day apart are looking at the same surface and any difference between them is the
+chain. `python3 scripts/noise_floor.py`, over 121 such pairs:
+
+| days apart | pairs | median | 90th pct | worst |
+|---|---|---|---|---|
+| 1 | 121 | 0.003 | 0.152 | 0.940 |
+| 2 | 117 | 0.005 | 0.329 | 0.940 |
+| 3 | 121 | 0.006 | 0.251 | 0.980 |
+| 5 | 141 | 0.008 | 0.244 | 0.997 |
+| 10 | 139 | 0.011 | 0.485 | 0.997 |
+
+The typical scene is very good and the tail is very bad. At the median the
+one-day difference is 0.003, which is 47 times smaller than the 0.154 this
+project publishes between its two periods. At the ninetieth percentile it is
+0.152, which **is** the published gap: one scene in ten disagrees with the scene
+beside it by as much as the entire signal, on a surface that did not change. Four
+pairs differ by more than 0.50, and they are not noise in any ordinary sense:
+
+| date | doy | ice | next day | sun |
+|---|---|---|---|---|
+| 2025-03-19 | 78 | 0.060 | 1.000 | 19.2 |
+| 2021-03-12 | 71 | 0.256 | 0.897 | 16.4 |
+| 2025-02-24 | 55 | 0.178 | 0.734 | 10.2 |
+| 2026-03-09 | 68 | 1.000 | 0.481 | 15.1 |
+
+The lag column is the check on the premise: the median grows only from 0.003 to
+0.011 between one day and ten, so the surface really is holding still.
+
+**All four of those pairs are in the late period, and the tail is not symmetric.**
+The ninetieth percentile is 0.021 early against 0.263 late, a factor of twelve.
+Shadow, thin ice and wet ice all move cells from ice to water and none of them
+move a cell back, so a noisier period reads as a less icy one. That is a one way
+pull on the late period, and it means the published decline is if anything too
+large. It is the same direction the thermal and radar chain reaches
+[above](#and-carried-onto-the-published-series-it-costs-three-points), arrived at
+from a completely different question.
+
+## The estimator assumes the visible fjord looks like the hidden one
+
+Reporting ice among the **classified** cells rather than the whole grid was the
+right fix, and the reason is [below](#cloud-detection-is-unreliable-and-the-denominator-mattered-more).
+It carries an assumption no page stated: dividing by what was visible is only
+independent of how much was visible if the visible part is representative.
+
+`python3 scripts/clear_sky_conditioning.py` tests it on 543 scenes:
+
+| day of year | scenes | ice, cloudiest third | ice, clearest third |
+|---|---|---|---|
+| 53 to 85 | 139 | 0.827 | 0.899 |
+| 85 to 117 | 158 | 0.934 | 0.992 |
+| **117 to 149** | **136** | **0.726** | **0.533** |
+| 149 to 181 | 110 | 0.081 | 0.026 |
+
+The assumption holds in three windows and fails in the fourth, which is break-up.
+There the cloudiest scenes report **more** ice, and that is where a fjord coming
+apart would put it: fog and low cloud form over open water and over leads, so the
+part of a break-up scene that cloud hides is the part that has already opened.
+What stays visible is icier than the fjord.
+
+The late period is the cloudier one, at a median classified share of 0.908
+against 0.938, so it carries more of a bias that overstates ice. Every resampling
+moves the headline up and none moves it down:
+
+| sampling | scenes | decline |
+|---|---|---|
+| all scenes above the 0.30 gate | 543 | 27.0 % |
+| only scenes that classified 50 % or more | 495 | 29.6 % |
+| only scenes that classified 70 % or more | 434 | 31.1 % |
+| only scenes that classified 90 % or more | 314 | 27.3 % |
+| reweighted to the early period's visibility | 536 | 26.9 % |
+
+These are scene-level figures and the published 22.6 comes from the gap-filled
+daily series, so the two are not the same estimator and are not expected to
+agree. What matters is the stability and the direction.
+
+**The two findings above point opposite ways, and that is not a problem to be
+tidied.** The noise floor says the late period loses ice it has; the conditioning
+says the late period keeps ice it has lost. Both are measured, neither is large
+enough to change the sign, and the honest summary is that the number is bracketed
+rather than centred. What would test the cause rather than the consequence is a
+per cell map of where cloud falls against a per cell map of where the ice goes
+first, and that needs a reprocess this project has not run.
+
 ## Cloud detection is unreliable, and the denominator mattered more
 
 The CloudSEN12 checkpoint does not reliably find cloud over this fjord, and the
