@@ -457,6 +457,45 @@ the bias, which the table above shows to be most of it, and scenes below 30
 percent visibility are marked unusable. Neither helps with cloud the model failed
 to detect at all, and neither explains the 28 clear-sky anomalies.
 
+### The resolution the mask is computed at is worth more than the grid itself
+
+`compute_cloud_mask` receives the pooled 40 m cube, so UNetMobV2 sees a cloud at
+a sixteenth of the pixel count it was trained on. That is an unexamined choice,
+and it turns out to be the largest one behind the 40 m number. Reproduce with:
+
+```
+python3 scripts/grid_resolution.py
+```
+
+Thirty scenes, three per season, each classified at 10, 20, 40 and 80 m and each
+masked twice, once on the pooled cube and once natively.
+
+| Question | Answer |
+|---|---|
+| Does the grid move the result? | Mean ice fraction 0.5075 at 10 m, 0.5081 at 40 m, 0.5090 at 80 m. Across a factor of eight, **0.0015**. Worst single scene 0.012. |
+| Does pooling before the indices cost anything? | The 10 m reference sits **0.0006** below the published value, worst scene 0.011. Only 2.5 percent of 40 m cells are mixed at 10 m. |
+| Does the mask resolution matter? | Pooled mask 0.175 cloud, native mask 0.279. They agree on **87.4 percent** of cells, worst scene 58.6. On the reported ice fraction: mean -0.014, **worst 0.209**. |
+
+So the two questions that motivated the test are answered and both are
+negligible: **40 m is neither right nor wrong, it is free**, and the
+non-linearity of NDSI and NDWI under pooling costs less than a thousandth. The
+third question, which was not the one being asked, is worth up to 0.209 of ice
+fraction on a single scene, more than the 0.154 between the period means.
+
+**Which mask is closer to the truth is not decided, and looking at them refuses
+an easy answer.** On 2018-04-26, a visibly cloudless white fjord, the pooled mask
+already flags 17 percent and the native mask flags 57, including the island
+itself. On 2025-02-24, a scene under real haze at a sun elevation of 10 degrees,
+the native mask catches veil that the pooled mask leaves in. The direction
+depends on the regime, which is the same both-ways error this section opens with,
+now located in a specific choice rather than in the model.
+
+Settling it needs labels on scenes, which this project does not have and which is
+its own piece of work. Until then the honest statement is that the pipeline
+inherits a resolution for its cloud mask that nobody chose deliberately, and that
+this choice is worth more than every threshold and window decision on this page
+except the period boundary.
+
 ## Sampling is uneven, and 2017 is thin
 
 Measured days inside the analysed window: 2017 has **24**, the other seasons 46
