@@ -355,6 +355,54 @@ def implied_decline(per_season: pd.DataFrame) -> None:
     )
 
 
+def anchor_cost(frame: pd.DataFrame) -> None:
+    """What each gate costs on days whose answer is not in doubt.
+
+    A decline that shrinks at a lower gate is only interesting if the lower gate
+    is defensible, and the way to ask that is the way derive_thresholds.py asks
+    it: against surfaces whose answer is known. A lower cut recovers ice on a
+    frozen fjord and invents it on an open one, and both have to be on the page
+    or the sweep reads as an invitation to pick the gate that suits the argument.
+
+    This is the cruder of the two checks and it says so. derive_thresholds.py
+    works from eighteen scenes with labels confirmed on their own previews.
+    These anchors are taken from whatever the sweep happened to sample.
+    """
+    wide = frame.pivot_table(index=["day", "doy"], columns="gate", values="ice")
+    wide = wide.reset_index()
+    # Late June onward: the latest break-up in the record is 8 June 2024, so any
+    # ice reported here is false ice.
+    open_days = wide[wide.doy >= 170]
+    # Through mid April, on days that already read as a closed cover: anything
+    # missing is ice the gate did not recover.
+    frozen_days = wide[(wide.doy <= 110) & (wide[PUBLISHED_GATE] >= 0.95)]
+    if open_days.empty or frozen_days.empty:
+        return
+
+    print()
+    print("What each gate costs on days whose answer is not in doubt")
+    print("-" * 78)
+    print(
+        f"{'gate':>6s}{'false ice':>12s}{'worst':>9s}{'closed cover':>15s}{'worst':>9s}"
+    )
+    for gate in NIR_GATES:
+        mark = "  published" if gate == PUBLISHED_GATE else ""
+        print(
+            f"{gate:6.2f}{open_days[gate].mean():12.4f}{open_days[gate].max():9.4f}"
+            f"{frozen_days[gate].mean():15.4f}{frozen_days[gate].min():9.4f}{mark}"
+        )
+    print()
+    print(
+        f"false ice over {len(open_days)} certainly open days, closed cover over "
+        f"{len(frozen_days)} certainly frozen ones.\n"
+        "Both move, and both stay small: the lowest gate roughly doubles the false\n"
+        "ice while recovering a comparable amount of real ice. That is why the\n"
+        "primary justification for 0.17 stays with derive_thresholds.py, which\n"
+        "works from eighteen scenes whose labels were confirmed one by one, and\n"
+        "not with this table."
+    )
+
+
 def report(frame: pd.DataFrame) -> None:
     wide = frame.pivot_table(index=["season", "day"], columns="gate", values="ice")
     print()
@@ -444,6 +492,7 @@ def report(frame: pd.DataFrame) -> None:
         "reading depends on where the cut was put."
     )
 
+    anchor_cost(frame)
     implied_decline(per_season)
 
 

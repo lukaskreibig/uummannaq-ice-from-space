@@ -135,9 +135,9 @@ absence; it is what a ten-year record can and cannot settle.
 **The direction is consistent. The certainty is not there, and ten winters is
 why.**
 
-## The result depends on two analysis choices
+## The result depends on three analysis choices
 
-Neither is wrong, but both are choices, and both belong on the page.
+None is wrong, but all three are choices, and all three belong on the page.
 
 | Period boundary | Loss | p | | Season window (doy) | Loss | p |
 |---|---|---|---|---|---|---|
@@ -160,6 +160,64 @@ below 0.05, and not one below 0.10.** An earlier version of this page reported
 one below 0.05 out of eleven and noted that one in eleven is what chance alone
 produces; with the denominator and the gate corrected there is no longer even
 that one.
+
+### And the third choice: where the brightness gate sits
+
+[unmixing-feasibility.md](unmixing-feasibility.md) showed that the ice this
+pipeline gates is 34 percent darker in 2023 than the ten-season median, so a
+fixed cut at near infrared 0.17 does not sit in the same place relative to the
+ice from one season to the next. That makes the gate an analysis choice like the
+other two. Reproduce with:
+
+```
+python3 scripts/gate_sensitivity.py
+```
+
+Eighty scenes, eight per season, spread evenly across the season window rather
+than picked for coverage, each loaded once and classified at five gates. At the
+published gate the run reproduces the archive's own ice fractions **exactly**,
+to six decimals, which is what makes the other four columns readable.
+
+**The mechanism is confirmed.** How far a season moves when the gate moves
+correlates with how bright its ice is at **r = -0.675**. The two darkest
+seasons, 2023 and 2025, span 0.140 and 0.124 of ice fraction across the sweep;
+the two brightest, 2018 and 2022, span 0.016 and 0.017. 2017 is the exception,
+bright ice and a span of 0.114, and it is also the thinnest season in the record.
+
+**The headline barely moves.** Applying the measured per-season shifts to the
+published season means:
+
+| NIR gate | decline | permutation p | false ice | closed cover |
+|---|---|---|---|---|
+| 0.09 | 19.4 % | 0.105 | 0.0081 | 0.9983 |
+| 0.13 | 21.9 % | 0.105 | 0.0051 | 0.9951 |
+| **0.17 (published)** | **22.6 %** | **0.119** | **0.0036** | **0.9926** |
+| 0.21 | 22.8 % | 0.124 | 0.0027 | 0.9920 |
+| 0.25 | 23.0 % | 0.129 | 0.0020 | 0.9919 |
+
+The last two columns are the price of each gate on days whose answer is not in
+doubt: false ice over 9 certainly open days after 20 June, and how much of a
+closed cover survives over 29 certainly frozen days before mid April.
+
+Three things follow. The published gate sits just past a knee, not on a cliff:
+everything above it changes the decline by at most 0.4 points. Below it the
+decline falls, to 19.4 percent at a gate of 0.09, which is the only value in the
+sweep that moves the answer materially. And that value is not free, because it
+roughly doubles the false ice, though both rates stay under one percent, so
+these anchors do not sharply prefer 0.17 over 0.13. The primary justification
+for 0.17 therefore stays with `derive_thresholds.py`, which works from eighteen
+scenes whose labels were confirmed one by one.
+
+The whole gate range, 19.4 to 23.0 percent, sits **inside** the 13 to 26 percent
+this page already reports for the other two choices, so it widens nothing.
+
+Two limits on the table. Only 49 of the 80 sampled scenes move at all when the
+gate moves; the rest are a frozen fjord or an open one, where every cell sits
+far from the cut. That is a property of this fjord and the published daily
+series is composed the same way, but it means a season's row can rest on as few
+as two informative scenes. And the decline column is an estimate: the measured
+shifts are applied to the published means rather than the series being rebuilt,
+because an exact answer means reclassifying all 1103 scenes five times.
 
 ## Sampling is uneven, and 2017 is thin
 
