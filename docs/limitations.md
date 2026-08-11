@@ -32,6 +32,7 @@ turned into a measurement, this is what it cost:
 | **How break-up is defined** | direction unanimous across 30 definitions, but the shift spans **-0.7 to -53 days** against a published -10.2 | [below](#smoothing-shifts-break-up-earlier-and-the-definition-shifts-it-much-more) |
 | Did the record start on an icy stretch | no; four Landsat seasons before 2017 move the early baseline by less than **0.04** either way | [landsat-crosscheck.md](landsat-crosscheck.md) |
 | **A thermometer on 226 days** | **36 days report a mostly open fjord while more than half of it radiates below the freezing point of seawater, and they are twice as common after 2021** | [below](#a-thermometer-and-the-largest-open-question-in-this-project) |
+| **Radar on those days** | **only 8 of 27 read like closed fast ice and only 6 like open water; a radar-informed correction halves the Landsat decline, 20.6 to 10.9 percent** | [below](#and-radar-which-settles-the-size-to-within-about-a-factor-of-two) |
 
 **Three readings of that table, and all three belong here.** Separate the two
 kinds of entry first, because they are not the same thing. Correcting a bias
@@ -49,14 +50,17 @@ the darkness is melt water or bare ice. It pushes the ice fraction **down**, it
 concentrates in the seasons that carry the decline, and it therefore points the
 same way as the published result.
 
-That entry has since grown, and it is the only line on the table whose upper
-bound is not small. Twelve wet April days cost the headline at most one point. A
-thermal reading of 226 Landsat days finds the same failure on 36 of them, twice
-as often after 2021 as before, and correcting those at the most generous extreme
-would take a 20.6 percent Landsat decline to 0.8. That extreme is not an
-estimate and no reading supports it, but the honest statement is that this bias
-is bounded above by something large rather than by 2.3 points, and closing that
-gap is the first thing this project should do next.
+That entry has since grown, and it is now the only line on the table that moves
+the result by more than a couple of points. Twelve wet April days cost the
+headline at most one point. A thermal reading of 226 Landsat days finds the same
+failure on 36 of them, twice as often after 2021 as before, and radar placed 27
+of those between their own season's fast ice and its open water. The result is a
+correction rather than a bound: **the Landsat decline falls from 20.6 percent to
+about 11 once those days are set where radar puts them.** Three instruments now
+agree that the classifier loses dark ice to the water class, that it does so more
+often in the later period, and that this accounts for roughly half of what the
+Landsat series measures. Whether it accounts for half of the published
+Sentinel-2 figure has not been computed and is the next thing to do.
 
 ---
 
@@ -146,18 +150,44 @@ it.** And it is in the published series, not only in Landsat: on the 23
 contradicted days both satellites saw, Landsat reads a median 0.160 and
 Sentinel-2 0.176, correlated at r = +0.986.
 
-How much of the decline it accounts for is not settled. Handing every
-contradicted day a completely frozen fjord, which is far more than the thermal
-reading supports, takes the Landsat decline from 20.6 percent to 0.8; requiring
-a 2 K margin against the missing atmospheric correction leaves 13.2 percent, and
-4 K leaves 16.4. Nor is the interpretation closed: ice broken into floes with
-leads narrower than the thermal band resolves would read frozen to the
-thermometer and open to the classifier, and both would be right.
+### And radar, which settles the size to within about a factor of two
 
-**This is the largest unresolved item in the project.** It does not overturn the
-direction, which every treatment keeps. It does mean the size of the decline is
-less certain than a single figure suggests, and in a direction that makes the
-published number too large rather than too small.
+A thermometer cannot say whether a frozen surface is one closed sheet the
+classifier misread or a field of floes the classifier read correctly, because
+floe tops radiate as cold as a sheet and leads narrower than 100 m average away.
+Sentinel-1 can, and it was asked about all 36 days. Seven, four in 2013 and three
+in 2014, predate usable radar over this fjord and cannot be reached; they are
+seven of the nine early ones, so radar characterises the late period and cannot
+test the asymmetry itself.
+
+Each reachable day was placed between its own season's fast ice and its own
+season's open water. Of the 27 that could be placed, 8 read like fast ice, 6 like
+open water and 13 between, at a **median position of 0.43** against the 0.17 the
+optical chain reported on the same days.
+
+Both extremes are therefore refused. The fjord on the median contradicted day
+held more ice than the chain said and much less than a closed sheet.
+
+| | decline |
+|---|---|
+| as measured | 20.6 % |
+| every contradicted day handed a frozen fjord | 0.8 % |
+| **radar-placed days set to their radar position** | **10.9 %** |
+| and the unreachable days set to the median position | 11.9 % |
+
+**A radar-informed correction roughly halves the measured Landsat decline, from
+about 21 percent to about 11.** The direction survives everything. The size does
+not, and this is the first estimate here that is neither the raw reading nor a
+bound.
+
+Three things it is not. A radar position is an interpolation between two
+endpoints, not a measurement of area, because backscatter in decibels does not
+mix linearly. Only contradicted days are corrected, so if the same bias operates
+more weakly elsewhere the correction is incomplete and in the same direction. And
+it is measured on the Landsat series; the two sensors agree on these days to
+r = +0.986, so the failure is in both, but the size of the correction has not been
+recomputed on the published Sentinel-2 series and must not be assumed to transfer
+unchanged. **That recomputation is the next thing this project should do.**
 
 ## The result depends on three analysis choices
 

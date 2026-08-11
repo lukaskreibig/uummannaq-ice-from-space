@@ -538,3 +538,102 @@ between-season spread of 0.25.
   they inherit whatever OLI does on this fjord without a second opinion.
 - **Nine to thirty days a season is thin.** The bins fix the weighting and the
   interpolation fills gaps inside the sampled range; neither creates coverage.
+
+# Part four: radar on the contradicted days
+
+Part three left one question open and it is the one that decides the size of the
+correction. A thermometer says a surface is frozen. It cannot say whether that
+surface is one closed sheet the classifier misread, or a field of floes with
+leads between them that the classifier read correctly, because floe tops radiate
+exactly as cold as a closed sheet and leads narrower than 100 m average away.
+
+Sentinel-1 can separate them, and it was asked about all 36 days.
+
+```
+python3 scripts/sar_thermal_days.py --window 2 --ref-window 5
+```
+
+`archive/reprocessed_2026/sar_thermal_days.csv` and `sar_thermal_verdicts.csv`.
+
+## What could not be asked
+
+Sentinel-1A launched in April 2014 and the archive over this fjord is thin before
+2016, so **seven of the 36 days cannot be reached at all**: four in 2013 and
+three in 2014. Those are seven of the nine EARLY ones. What is left is 2 early
+days against 27 late. This part can therefore characterise the late period, where
+the failure concentrates and where it moves the decline, and it cannot test the
+early-late asymmetry itself. That asymmetry rests on the thermal count.
+
+Sentinel-1B failed in December 2021 and the revisit halved, which is why 2023 and
+2024 hold six acquisitions each where 2026 holds 33, and why the reference window
+had to be widened to five days either side. That widening applies to references
+only: midwinter fast ice and post-break-up open water are stable over days, while
+a suspect day's state is the question.
+
+## The discriminant that was announced, and did not work
+
+The prediction written into the script before the run was that SPREAD would
+separate a closed sheet from a broken field: one surface is narrow, floes and
+leads together are wide. Measured on the two classes whose answer is known, it
+separates them at an AUC of **0.81**, against **0.92** for the plain median and
+**0.96** for the p95.
+
+The likely reason is grounded icebergs. This fjord carries them all year and they
+are extremely bright in C band, so the spread over the fjord is wide whatever the
+sea ice is doing and cannot be read as a count of surfaces. The classification
+below therefore uses the level, which is what measurably separates known ice from
+known water here, and the spread is printed beside it as description rather than
+evidence. The prediction was wrong; the instrument test is why it is not in the
+result.
+
+## What radar says
+
+Each day is placed between its own season's fast ice (1.00) and its own season's
+open water (0.00), same relative orbit wherever one exists. 27 of the 29
+reachable days could be placed.
+
+| verdict | total | early | late |
+|---|---|---|---|
+| reads like its own fast ice | 8 | 1 | 7 |
+| between the two | 13 | 0 | 13 |
+| reads like open water | 6 | 1 | 5 |
+
+**Median position 0.43, mean 0.38, against a median of 0.17 that the optical
+chain reported on the same days.**
+
+Both extremes are refused. Only 8 of 27 look like the closed fast ice that the
+most generous repair assumed for all of them, so **the 0.8 percent scenario in
+part three is refuted**. Only 6 look like open water, so the chain was not simply
+right either. The fjord on the median contradicted day held more ice than the
+chain reported and much less than a closed sheet.
+
+## What that costs the decline
+
+| | early | late | decline |
+|---|---|---|---|
+| as measured | 0.6363 | 0.5052 | 20.6 % |
+| every contradicted day handed a frozen fjord | 0.7200 | 0.7141 | 0.8 % |
+| **radar-placed days set to their radar position** | **0.6376** | **0.5678** | **10.9 %** |
+| and the unreachable days set to the median position | 0.6538 | 0.5759 | 11.9 % |
+| only the 8 days that read like fast ice set to 1.00 | 0.6421 | 0.5344 | 16.8 % |
+
+**A radar-informed correction roughly halves the measured Landsat decline, from
+about 21 percent to about 11.** That is the number this chain of measurements
+produces, and it is the first estimate in this project that is neither the raw
+reading nor a bound.
+
+## What part four does not establish
+
+- **A radar position is not an ice fraction.** Backscatter in decibels does not
+  mix linearly across a partly frozen fjord, so placing a day between two
+  endpoints of its own season is an interpolation and a proxy. It is a better
+  proxy than either extreme and it is not a measurement of area.
+- **Only contradicted days are corrected.** If the same bias operates more weakly
+  on days that passed the thermal test, this correction is incomplete and in the
+  same direction.
+- **The correction is measured on Landsat, and the story publishes Sentinel-2.**
+  Part three showed the two agree on these days to r = +0.986, so the failure is
+  in both, but the size of the correction has not been recomputed on the
+  published series and should not be assumed to transfer unchanged.
+- **Two early days cannot carry a period.** Every statement here about the early
+  side of the split is weak, by construction, because radar could not look.
