@@ -1,0 +1,5 @@
+quantity,column,ice,water,separation_auc
+median dB,water_median_db,-17.446,-22.267,0.9200757575757575
+p5 to p95 spread,spread_db,8.603,7.671,0.8085227272727272
+p5 dB,water_p5_db,-21.883,-26.112,0.9009469696969697
+p95 dB,water_p95_db,-13.348,-18.384999999999998,0.9613636363636363

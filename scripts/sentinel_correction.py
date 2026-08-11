@@ -93,7 +93,9 @@ def evidence(thermal: Path, verdicts: Path) -> pd.DataFrame:
     t = pd.read_csv(thermal)[["day", "frozen_share", "landsat_ice"]]
     t["date"] = pd.to_datetime(t.day).astype("datetime64[ns]")
     v = pd.read_csv(verdicts)
-    v = v[v.verdict != "keine Referenz"][["day", "pos", "verdict"]]
+    # A day radar could not place carries no position; filter on that
+    # rather than on the label, which is prose and may be reworded.
+    v = v[v.pos.notna()][["day", "pos", "verdict"]]
     out = t.merge(v, on="day", how="left")
     out["radar_ice"] = out.pos.clip(0.0, 1.0)
     return out.sort_values("date")

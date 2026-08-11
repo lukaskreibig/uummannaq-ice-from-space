@@ -52,14 +52,20 @@ rather than on any single day.
 
 AND THE DISCRIMINANT ABOVE DID NOT WORK, which is recorded here rather than
 quietly replaced. The instrument test runs first, on the two classes whose answer
-is known, and the spread separates them at an AUC of only 0.81 against 0.98 for
-the plain median and 1.00 for the p95. Icebergs are the likely reason: this fjord
+is known, and the spread separates them at an AUC of only 0.81 against 0.92 for
+the plain median and 0.96 for the p95. Icebergs are the likely reason: this fjord
 carries grounded bergs that are extremely bright in C band all year, so the
 spread over the fjord is wide whatever the sea ice is doing, and it cannot be
-read as a count of surfaces. So the classification below uses the LEVEL, which is
-what measurably separates known ice from known water here, and the spread is
-printed beside it as description rather than evidence. The prediction was wrong;
-the test that caught it is the reason it is not in the result.
+read as a count of surfaces. So the placement uses the LEVEL, which is what
+measurably separates known ice from known water here, and the spread is printed
+beside it as description rather than evidence. The prediction was wrong; the test
+that caught it is the reason it is not in the result.
+
+Both artefacts come out of this file: `sar_thermal_days.csv` is every acquisition
+and `sar_thermal_verdicts.csv` is one row per contradicted day. An earlier version
+produced the second by hand and committed it, which left the chain from radar to
+the corrected headline unreproducible from this repository, and
+sentinel_correction.py reads it.
 """
 
 from __future__ import annotations
@@ -71,6 +77,7 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -103,6 +110,10 @@ LATE_FROM = 2021
 # fjord is thin before 2016. Days earlier than this cannot be asked at all, which
 # is a limit on the answer and not a choice inside it.
 RADAR_FROM = "2016-01-01"
+# Where a placed day stops being ambiguous. A quarter of the way from one
+# reference to the other in either direction.
+LIKE_ICE = 0.75
+LIKE_WATER = 0.25
 
 
 def series(path: Path) -> pd.DataFrame:
@@ -162,6 +173,96 @@ def measure(
             )
             rows.append(row)
     return rows
+
+
+def separation(positive, negative) -> float:
+    """AUC. 0.5 is no separation between the two classes, 1.0 is perfect."""
+    pos, neg = np.asarray(positive, float), np.asarray(negative, float)
+    if not pos.size or not neg.size:
+        return float("nan")
+    greater = (pos[:, None] > neg[None, :]).mean()
+    equal = (pos[:, None] == neg[None, :]).mean()
+    return float(greater + 0.5 * equal)
+
+
+def instrument_test(kept: pd.DataFrame) -> pd.DataFrame:
+    """Do the two classes whose answer is known separate at all, and on what?
+
+    This runs before any suspect day is judged, and it is allowed to end the
+    exercise. A discriminant that cannot tell known ice from known water cannot
+    classify anything, and the one this script was built around is the one that
+    fails: see the note at the top of the file.
+    """
+    ice = kept[kept.role == "closed_ice"]
+    water = kept[kept.role == "open_water"]
+    rows = []
+    for label, column in (
+        ("median dB", "water_median_db"),
+        ("p5 to p95 spread", "spread_db"),
+        ("p5 dB", "water_p5_db"),
+        ("p95 dB", "water_p95_db"),
+    ):
+        rows.append(
+            {
+                "quantity": label,
+                "column": column,
+                "ice": float(ice[column].median()),
+                "water": float(water[column].median()),
+                "separation_auc": separation(ice[column], water[column]),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def place(kept: pd.DataFrame, column: str = "water_median_db") -> pd.DataFrame:
+    """Put every suspect day on a scale from its own season's water to its ice.
+
+    1.00 is that season's fast ice, 0.00 is its open water, and the same relative
+    orbit is used on both sides wherever one exists, because incidence angle
+    moves the fjord median by whole decibels. A day whose season has no reference
+    of one kind cannot be placed and says so rather than borrowing another
+    season's.
+    """
+    rows: list[dict[str, Any]] = []
+    for (season, day), group in kept[kept.role == "suspect"].groupby(
+        ["season", "target_day"]
+    ):
+        ice = kept[(kept.season == season) & (kept.role == "closed_ice")]
+        water = kept[(kept.season == season) & (kept.role == "open_water")]
+        if ice.empty or water.empty:
+            rows.append(
+                {"season": season, "day": day, "verdict": "no reference", "pos": None}
+            )
+            continue
+        orbits = set(group.relative_orbit.dropna())
+        ice_orbit = ice[ice.relative_orbit.isin(orbits)]
+        water_orbit = water[water.relative_orbit.isin(orbits)]
+        matched = not ice_orbit.empty and not water_orbit.empty
+        ice_ref = float((ice_orbit if matched else ice)[column].median())
+        water_ref = float((water_orbit if matched else water)[column].median())
+        value = float(group[column].median())
+        pos = (value - water_ref) / (ice_ref - water_ref)
+        rows.append(
+            {
+                "season": int(season),
+                "day": day,
+                "acquisitions": len(group),
+                "orbit_matched": matched,
+                "ice_ref_db": round(ice_ref, 3),
+                "water_ref_db": round(water_ref, 3),
+                "value_db": round(value, 3),
+                "pos": pos,
+                "spread_db": float(group.spread_db.median()),
+                "verdict": (
+                    "like fast ice"
+                    if pos >= LIKE_ICE
+                    else "like open water"
+                    if pos <= LIKE_WATER
+                    else "between"
+                ),
+            }
+        )
+    return pd.DataFrame(rows).sort_values("day")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -241,22 +342,66 @@ def main(argv: list[str] | None = None) -> int:
         f"{len(kept)} of {len(frame)} acquisitions pass the geometry and coverage gates"
     )
     print("=" * 78)
+
+    # The instrument test first, because it is allowed to end the exercise.
+    checks = instrument_test(kept)
+    checks.to_csv(args.out / "sar_thermal_separation.csv", index=False)
     print()
-    print(f"{'role':14s}{'n':>5s}{'median dB':>11s}{'p5 to p95 spread':>19s}")
-    for role in ("closed_ice", "open_water", "suspect"):
-        block = kept[kept.role == role]
-        if block.empty:
+    print("Do the two classes whose answer is known separate, and on what?")
+    print(f"  {'quantity':20s}{'ice':>9s}{'water':>9s}{'AUC':>7s}")
+    for r in checks.itertuples():
+        print(f"  {r.quantity:20s}{r.ice:9.2f}{r.water:9.2f}{r.separation_auc:7.2f}")
+    by_name = checks.set_index("quantity").separation_auc
+    print()
+    print(
+        f"  AUC 0.50 is no separation and 1.00 is perfect. The spread this script was\n"
+        f"  built around manages {by_name['p5 to p95 spread']:.2f} and cannot classify "
+        f"anything. The placement uses\n"
+        f"  the median at {by_name['median dB']:.2f} rather than the p95 at "
+        f"{by_name['p95 dB']:.2f}, and the better number\n"
+        "  is deliberately not the one taken: the p95 is the bright tail, which over\n"
+        "  this fjord is grounded icebergs and deformed ice, while the question is\n"
+        "  what the fjord as a whole looked like. Both are in the artefact."
+    )
+
+    placed = place(kept)
+    placed.to_csv(args.out / "sar_thermal_verdicts.csv", index=False)
+    judged = placed[placed.verdict != "no reference"]
+    print()
+    print("Where each contradicted day sits between its own season's two references")
+    print("-" * 78)
+    print(
+        f"{'day':12s}{'n':>3s}{'orbit':>7s}{'ice':>8s}{'water':>8s}{'day':>8s}"
+        f"{'pos':>7s}{'spread':>8s}  verdict"
+    )
+    for r in placed.itertuples():
+        if r.verdict == "no reference":
+            print(f"{r.day:12s}{'':40s}no reference in that season")
             continue
         print(
-            f"{role:14s}{len(block):5d}{block.water_median_db.median():11.2f}"
-            f"{block.spread_db.median():19.2f}"
+            f"{r.day:12s}{int(r.acquisitions):3d}{'yes' if r.orbit_matched else 'no':>7s}"
+            f"{r.ice_ref_db:8.1f}{r.water_ref_db:8.1f}{r.value_db:8.1f}"
+            f"{r.pos:7.2f}{r.spread_db:8.1f}  {r.verdict}"
+        )
+    print()
+    print(f"{'verdict':18s}{'total':>7s}{'early':>7s}{'late':>6s}")
+    for name in ("like fast ice", "between", "like open water"):
+        block = judged[judged.verdict == name]
+        print(
+            f"{name:18s}{len(block):7d}{int((block.season < LATE_FROM).sum()):7d}"
+            f"{int((block.season >= LATE_FROM).sum()):6d}"
         )
     print()
     print(
-        "  If the suspect spread sits with closed ice, those days were a single\n"
-        "  surface and the chain misread it. If it is far wider, they were floes\n"
-        "  and leads together and the chain was right about them."
+        f"  {len(judged)} of {len(suspects)} reachable days placed, median position "
+        f"{judged.pos.median():.2f},\n  mean {judged.pos.mean():.2f}. 1.00 is that "
+        "season's fast ice and 0.00 its open water.\n"
+        "\n"
+        "  Both extremes are refused if most days sit in the middle: the chain saw\n"
+        "  more water than was there, and a completely frozen fjord is not what was\n"
+        "  there either."
     )
+    print(f"\nwritten to {path} and {args.out / 'sar_thermal_verdicts.csv'}")
     return 0
 
 

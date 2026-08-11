@@ -1,5 +1,20 @@
 # What a second optical instrument sees on the same day
 
+This page grew in four parts, written in the order they were measured, and the
+last two matter most. If you are reading it to find the weak point, start at
+part three.
+
+| | question | answer |
+|---|---|---|
+| **Part one** | does a second optical sensor see the same fjord on the same day? | yes, to an RMSE of 0.026 on days whose answer was not in doubt, and it reads the contested April days as wetter still |
+| **Part two** | and at low winter sun, where Level 2 cannot go? | yes, and CFMask discards 83 percent of a frozen fjord, which is a statement about optical cloud detection over ice rather than about one checkpoint |
+| **Part three** | did the record begin on an unusually icy stretch? | no, but asking cost a hypothesis: the fjord is frozen on 36 days the chain calls open, twice as often after 2021 |
+| **Part four** | closed ice the chain misread, or floes it read correctly? | mostly neither, and placing the days where radar puts them halves the Landsat decline |
+
+What part four costs the number this project publishes is computed in
+[limitations.md](limitations.md#and-carried-onto-the-published-series-it-costs-three-points):
+22.6 percent becomes about 19.5.
+
 The first comparison of this series against another optical sensor, run on
 2026-08-11 against the reprocessed archive.
 
@@ -495,9 +510,10 @@ questions.
 
 **Agreement, over the bins both sensors filled: bias -0.0253, RMSE 0.0549,
 r = +0.983.** Over whichever bins each sensor happened to fill it reads bias
--0.0043, RMSE 0.0962, r = +0.908, and over the raw days each holds, bias -0.0404,
-RMSE 0.0972. Only the first compares instruments; the other two also compare the
-parts of the season each of them sampled.
+-0.0307 and RMSE 0.0687, and over the raw days each holds, bias -0.0404 and RMSE
+0.0972. Only the first compares instruments; the other two also compare the parts
+of the season each of them sampled, and the RMSE falls by a third from the
+loosest of the three to the strictest.
 
 Then the question this section was built for:
 
@@ -637,3 +653,10 @@ reading nor a bound.
   published series and should not be assumed to transfer unchanged.
 - **Two early days cannot carry a period.** Every statement here about the early
   side of the split is weak, by construction, because radar could not look.
+- **This is not yet a correction of the published figure.** Everything here is
+  measured on the Landsat series. Carrying it onto the Sentinel-2 series the
+  story publishes is done in
+  [limitations.md](limitations.md#and-carried-onto-the-published-series-it-costs-three-points),
+  where the same correction costs three points rather than half, because
+  Sentinel-2 holds three to five times as many usable days a season and its
+  published figure is smoothed and gap filled.
