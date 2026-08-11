@@ -141,23 +141,46 @@ not ignored, and it is not the legacy material described further down.
 
 ## What is still open
 
-Ten seasons are processed and committed, so the open items are no longer about
-coverage.
+Ten seasons are processed and committed, so nothing here is about coverage.
+Ordered by whether I would actually do it.
 
-1. **Carry the dark-ice correction into the pipeline rather than alongside it.**
-   It is currently measured and disclosed; the published series is uncorrected.
-   See docs/limitations.md.
-2. **Reach further back than 2013.** The archive holds 36 seasons from 1990 and
-   the blocker is calibration across sensor boundaries, not data. The one
-   untested route is a per-season adaptive brightness gate, which stops carrying
-   an absolute threshold across the boundary at the cost of a quantity that is no
-   longer identical across seasons. It would be a second series, not a
-   replacement.
-3. **MODIS from 2000.** 250 m over a 253 km² fjord is about 4000 water cells, and
-   it carries thermal bands. It would nearly double the record at a coarser
-   resolution.
-4. Put `make numbers` in CI. It exists, it catches exactly the drift this project
-   treats as a class of defect, and nothing runs it automatically.
+**1. Reach further back than 2013, with a threshold that is not absolute.** The
+archive holds 36 seasons from 1990 and the blocker is calibration across sensor
+boundaries, not data: over this AOI there are zero same-overpass pairs between TM
+and ETM+ and zero between TM and OLI, so a fixed brightness threshold cannot be
+carried across. The one untested route is a per-season adaptive gate, which
+`gate_sensitivity.py` already implements for a different purpose. It stops
+carrying an absolute threshold across the boundary, at the cost of a quantity
+that is no longer identical from season to season, so it would be a second series
+standing beside this one rather than a replacement. This is the item worth doing.
+
+**2. MODIS from 2000, at 500 m rather than 250.** Worth stating carefully because
+an earlier version of this list got it wrong. MODIS carries 250 m only in the red
+and near infrared; the 1.6 micrometre band that NDSI needs is 500 m, and on Aqua
+most of its detectors have failed, so this is Terra at 500 m. That is about a
+thousand water cells over a 253 km2 fjord, coarse but not hopeless, and MODIS
+carries thermal bands, which this project has learned to value. It would nearly
+double the record at a resolution that would have to be shown not to change the
+answer.
+
+**3. Whether the dark-ice correction belongs inside the pipeline.** It is
+currently measured, disclosed and applied alongside: the published series is
+uncorrected and `sentinel_correction.py` says what correcting it would do. That
+is deliberate rather than pending. Baking it in would make a chain of four
+instruments into production data, and the correction depends on a matching window
+that spans 17.9 to 20.9 percent, so the pipeline would carry a choice that the
+evidence does not pin down. Reopen it when the matching window can be closed, not
+before.
+
+**4. A cast-shadow mask from a digital elevation model.** `shadow_bias.py` shows
+the mountain's shadow costs 0.216 of the fjord in mid February and 0.003 by
+April, and that it cancels between the periods because both are sampled at the
+same days of the year. A DEM plus the per-scene sun geometry, both already
+available, would let the chain treat shadow the way it treats cloud: an area it
+cannot read rather than water. Not done, and not obviously worth it: the bias
+cancels, and masking it would drop February scenes below the visibility gate
+entirely, trading a measured bias for missing days in the thinnest part of the
+record.
 
 ---
 
