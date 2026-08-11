@@ -29,6 +29,7 @@ turned into a measurement, this is what it cost:
 | The resolution the cloud mask is computed at | up to 0.209 of ice fraction on one scene, **0.2 points** on the decline | [below](#the-resolution-the-mask-is-computed-at-is-worth-more-than-the-grid-itself) |
 | The 40 m analysis grid | 0.0015 across grids from 10 to 80 m | [below](#the-resolution-the-mask-is-computed-at-is-worth-more-than-the-grid-itself) |
 | Uneven sampling | a season's sampling error is 0.054, against a between-season spread of 0.104 to 0.170 | [below](#sampling-is-uneven-and-2017-is-thin) |
+| **How break-up is defined** | direction unanimous across 30 definitions, but the shift spans **-0.7 to -53 days** against a published -10.2 | [below](#smoothing-shifts-break-up-earlier-and-the-definition-shifts-it-much-more) |
 
 **Three readings of that table, and all three belong here.** Separate the two
 kinds of entry first, because they are not the same thing. Correcting a bias
@@ -577,11 +578,59 @@ every one of those cells clears `ndsi_light` either way. It decides only what th
 two class names mean. **Until the disagreement is settled, the split should not
 be presented as thick against thin ice.**
 
-## Smoothing shifts break-up earlier
+## Smoothing shifts break-up earlier, and the definition shifts it much more
 
 With a robust definition (7 consecutive days below the threshold), smoothing
 dates break-up **6 days earlier on average**, up to 26 days in 2023, and always
-earlier, never later.
+earlier, never later. That was measured on the absolute date. The number the
+story actually leans on is the **shift between the two periods**, and that turns
+out to depend far more on the definition than on the smoothing. Reproduce with:
+
+```
+../climate-dashboard/backend/.venv/bin/python scripts/breakup_definitions.py
+```
+
+Thirty definitions: two series, four ice-fraction thresholds, three persistence
+lengths, three requirements on how many observations a persistence window must
+contain, plus Walsh et al. (2022). The published baseline is taken from the
+shipped `_freeze_and_breakup` rather than reimplemented.
+
+**First, the shipped detector cannot simply be pointed at the observed series.**
+It asks for seven CONSECUTIVE rows below the threshold, and with coverage between
+19 and 50 percent and gaps up to 17 days, that never happens. Run that way it
+returns nothing for all ten seasons. Any observed-day definition therefore has to
+use calendar persistence, because a gap is missing data and not evidence of thaw.
+
+**The direction is unanimous. The magnitude is not determined by the data.**
+
+| | shift, late minus early |
+|---|---|
+| all 30 definitions | negative, without exception |
+| the 19 that censor no season | **-0.7 to -53.0 days**, median -19.3 |
+| **published** | **-10.2 days** |
+
+The published value sits inside that range and on the conservative side of its
+median. Like for like, at the same threshold of 0.15 and with no season censored,
+switching from the smoothed series to observed days gives -19.3 days at seven
+days of persistence and -5.3 at fourteen. So the smoothing is not what governs
+the shift. The persistence length is.
+
+**Walsh et al. (2022) is in the table and should not be used here, for a reason
+worth stating.** Its threshold is the season's own winter mean minus two standard
+deviations, floored at 0.15, and it gives a shift of -0.7 days with nothing
+censored, which looks like a refutation. It is not. Measured on this record the
+threshold it produces runs 0.925, 0.946, 0.961, 0.920 for 2017 to 2020 and then
+0.315, 0.845, 0.203, 0.586, 0.150, 0.150. It collapses in exactly the seasons
+that carry the signal, because this fjord's winter mean is itself falling from
+0.98 to 0.57. A definition anchored on a stable winter baseline cannot be used
+where the winter baseline is the thing that moved: it absorbs what it is meant to
+measure.
+
+**What this means for the published break-up dates.** They are one defensible
+choice among many that all point the same way. The direction is robust across
+every definition tried. The size is not: a reader who takes "ten days earlier" as
+a measurement is taking more than the record supports, and the range belongs
+beside it.
 
 ## The seasonal window is hard-coded
 
