@@ -317,13 +317,75 @@ could see, rejects the February scenes the wider window used to admit, so the
 window start stopped carrying weight of its own. A choice that no longer changes
 the result is no longer a choice worth defending.
 
-The 2021 boundary has a substantive justification, but the range across
-defensible choices runs from 13 to 26 percent and that belongs on the page.
 Across the ten combinations tested, p runs from 0.10 to 0.41. **Not one falls
 below 0.05, and not one below 0.10.** An earlier version of this page reported
 one below 0.05 out of eleven and noted that one in eleven is what chance alone
 produces; with the denominator and the gate corrected there is no longer even
 that one.
+
+**Where the 2021 boundary comes from, since it is the widest choice here.** It
+was fixed when the record ran 2017 to 2025, nine seasons, where four against five
+is the closest thing to an even cut. The 2026 season arrived afterwards and made
+it four against six. On a ten season record the even cut would now be 2022, which
+gives 13.3 percent instead of 22.6, so the published boundary is the more
+generous of the two and it is worth saying so plainly. The reason it is kept is
+not that it is better but that it was set before the season that would benefit
+from moving it existed. Moving a boundary after seeing the data it governs is the
+choice that could not be defended; leaving it and printing the alternative can.
+
+An earlier version of this paragraph asserted that the boundary had a substantive
+justification without giving one. It has one, and it is the paragraph above.
+
+### One hundred and twenty specifications, not three
+
+The three choices above are the ones that were argued over. There are five, and
+`python3 scripts/robustness.py` computes the headline under every combination of
+them: two series, five windows, three splits, two season aggregates, two
+weightings.
+
+| | decline |
+|---|---|
+| **published** | **22.6 %** |
+| median specification | 23.3 % |
+| 5th to 95th percentile | 4.3 to 47.9 % |
+| full range | -8.9 to 51.9 % |
+
+116 of the 120 find a decline and 4 find none, and all four of those sit at the
+2022 split. The published choice lands at the 42nd percentile of the spread, so
+it is neither the flattering corner nor the cautious one, and on the two axes
+that carry most of the spread it is the conservative option: using only the days
+a satellite actually saw, without gap filling, gives a **larger** decline of 27.0
+percent at p = 0.062, and summarising a season by its median rather than its mean
+gives 48.9 percent at p = 0.029.
+
+That is worth being precise about. A specification curve is not an uncertainty
+interval. The specifications overlap heavily and are not draws from anything, so
+the spread measures analytic freedom rather than sampling error. The sampling
+error is in the per season bootstrap above, and it is larger.
+
+### Leave one season out
+
+Ten seasons means one season is ten percent of the record. Dropping each in turn,
+on the published specification:
+
+| dropped | period | its mean | decline | p |
+|---|---|---|---|---|
+| 2025 | late | 0.390 | 18.5 % | 0.190 |
+| 2021 | late | 0.431 | 19.7 % | 0.183 |
+| 2018 | early | 0.756 | 19.8 % | 0.202 |
+| 2023 | late | 0.438 | 19.9 % | 0.183 |
+| 2017 | early | 0.738 | 20.5 % | 0.202 |
+| 2026 | late | 0.484 | 21.2 % | 0.159 |
+| 2020 | early | 0.631 | 24.5 % | 0.131 |
+| 2019 | early | 0.611 | 25.2 % | 0.131 |
+| 2024 | late | 0.668 | 26.6 % | 0.087 |
+| 2022 | late | 0.766 | 29.5 % | 0.032 |
+
+No single season carries the result. The decline keeps its sign throughout and
+moves between 18.5 and 29.5 percent. The season that matters most is 2022, and it
+matters in the direction that makes the published number smaller: 2022 is an icy
+season sitting in the late period, and removing it would raise the headline to
+29.5 percent at p = 0.032. Keeping it is what a fixed window means.
 
 ### And the third choice: where the brightness gate sits
 
