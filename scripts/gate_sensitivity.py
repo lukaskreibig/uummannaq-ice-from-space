@@ -57,6 +57,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG = ROOT / "config/baseline.yaml"
 DEFAULT_ARCHIVE = ROOT / "archive/reprocessed_2026/summary.csv"
 STABILITY_RUN = ROOT / "archive/reprocessed_2026/ice_endmember_stability.csv"
+PUBLISHED_NUMBERS = ROOT / "docs/published_numbers.json"
 
 # The eleven bands that carry surface signal. B9 sits on a water vapour feature
 # and B10 is the cirrus band, both placed where the atmosphere is opaque.
@@ -289,6 +290,71 @@ def replication_check(frame: pd.DataFrame, archive: Path) -> float:
     return float((joined.ice - joined.archive_ice).abs().max())
 
 
+def decline_at(shifted: dict[int, float]) -> tuple[float, float]:
+    """Early-to-late decline and its exact permutation p, from season means."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from story_numbers import LATE_FROM, exact_permutation  # noqa: PLC0415
+
+    seasons = sorted(shifted)
+    values = np.array([shifted[s] for s in seasons])
+    n_early = sum(1 for s in seasons if s < LATE_FROM)
+    early = values[:n_early].mean()
+    late = values[n_early:].mean()
+    _, p_perm, _, _ = exact_permutation(values, n_early)
+    return 100.0 * (1.0 - late / early), float(p_perm)
+
+
+def implied_decline(per_season: pd.DataFrame) -> None:
+    """What the published decline would become if the gate moved.
+
+    This is an estimate, and the shape of the estimate matters. The sampled
+    scenes are not the series: the published means come from a gap-filled daily
+    curve over every usable scene, and eight scenes a season cannot rebuild
+    that. What the sample CAN give is the shift, because the same scenes are
+    classified at every gate, so the difference between two gates is measured on
+    identical input. That shift is then applied to the published season means.
+
+    So the levels below are the published ones and the movement is measured.
+    Rebuilding the series at each gate would mean reclassifying all 1103 scenes
+    five times, which is the honest way to get an exact answer and is a day of
+    compute rather than an afternoon.
+    """
+    if not PUBLISHED_NUMBERS.exists():
+        return
+    import json  # noqa: PLC0415
+
+    published = json.loads(PUBLISHED_NUMBERS.read_text())["spring_means"]
+    published = {int(k): float(v) for k, v in published.items()}
+    seasons = [s for s in published if s in per_season.index]
+    if len(seasons) < len(published):
+        return
+
+    print()
+    print("What that would do to the published decline, estimated")
+    print("=" * 78)
+    print(f"{'gate':>8s}{'decline':>12s}{'permutation p':>16s}{'vs published':>15s}")
+    base_decline, base_p = decline_at({s: published[s] for s in seasons})
+    for gate in NIR_GATES:
+        shift = {
+            s: published[s]
+            + (per_season.loc[s, gate] - per_season.loc[s, PUBLISHED_GATE])
+            for s in seasons
+        }
+        decline, p_perm = decline_at(shift)
+        mark = (
+            "  published"
+            if gate == PUBLISHED_GATE
+            else f"{decline - base_decline:+15.1f}"
+        )
+        print(f"{gate:8.2f}{decline:11.1f} %{p_perm:16.3f}{mark}")
+    print()
+    print(
+        "Levels are the published season means; only the movement between gates\n"
+        "is measured here, on scenes classified identically at each one. An exact\n"
+        "answer means reclassifying all 1103 scenes five times."
+    )
+
+
 def report(frame: pd.DataFrame) -> None:
     wide = frame.pivot_table(index=["season", "day"], columns="gate", values="ice")
     print()
@@ -353,6 +419,8 @@ def report(frame: pd.DataFrame) -> None:
         "A negative correlation means the darker a season's ice, the more its\n"
         "reading depends on where the cut was put."
     )
+
+    implied_decline(per_season)
 
 
 def main(argv: list[str] | None = None) -> int:
