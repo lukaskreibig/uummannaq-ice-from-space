@@ -33,6 +33,7 @@ turned into a measurement, this is what it cost:
 | Did the record start on an icy stretch | no; four Landsat seasons before 2017 move the early baseline by less than **0.04** either way | [landsat-crosscheck.md](landsat-crosscheck.md) |
 | **A thermometer on 226 days** | **36 days report a mostly open fjord while more than half of it radiates below the freezing point of seawater, and they are twice as common after 2021** | [below](#a-thermometer-and-the-largest-open-question-in-this-project) |
 | **Radar on those days** | **only 8 of 27 read like closed fast ice and only 6 like open water; a radar-informed correction halves the Landsat decline, 20.6 to 10.9 percent** | [below](#and-radar-which-settles-the-size-to-within-about-a-factor-of-two) |
+| **The same correction on the published series** | **22.6 to 19.5 percent, and 17.9 to 20.9 across matching windows** | [below](#and-carried-onto-the-published-series-it-costs-three-points) |
 
 **Three readings of that table, and all three belong here.** Separate the two
 kinds of entry first, because they are not the same thing. Correcting a bias
@@ -56,11 +57,12 @@ headline at most one point. A thermal reading of 226 Landsat days finds the same
 failure on 36 of them, twice as often after 2021 as before, and radar placed 27
 of those between their own season's fast ice and its open water. The result is a
 correction rather than a bound: **the Landsat decline falls from 20.6 percent to
-about 11 once those days are set where radar puts them.** Three instruments now
-agree that the classifier loses dark ice to the water class, that it does so more
-often in the later period, and that this accounts for roughly half of what the
-Landsat series measures. Whether it accounts for half of the published
-Sentinel-2 figure has not been computed and is the next thing to do.
+about 11 once those days are set where radar puts them, and the published
+Sentinel-2 figure falls from 22.6 percent to about 19.5.** Three instruments now
+agree that the classifier loses dark ice to the water class and does so more
+often in the later period. It costs the Landsat series half its decline and the
+published series three points, and the difference between those two is the
+estimator rather than the ice.
 
 ---
 
@@ -180,14 +182,48 @@ about 21 percent to about 11.** The direction survives everything. The size does
 not, and this is the first estimate here that is neither the raw reading nor a
 bound.
 
-Three things it is not. A radar position is an interpolation between two
-endpoints, not a measurement of area, because backscatter in decibels does not
-mix linearly. Only contradicted days are corrected, so if the same bias operates
-more weakly elsewhere the correction is incomplete and in the same direction. And
-it is measured on the Landsat series; the two sensors agree on these days to
-r = +0.986, so the failure is in both, but the size of the correction has not been
-recomputed on the published Sentinel-2 series and must not be assumed to transfer
-unchanged. **That recomputation is the next thing this project should do.**
+Two things it is not. A radar position is an interpolation between two endpoints,
+not a measurement of area, because backscatter in decibels does not mix linearly.
+And only contradicted days are corrected, so if the same bias operates more weakly
+elsewhere the correction is incomplete and in the same direction.
+
+### And carried onto the published series, it costs three points
+
+The paragraph above is measured on the Landsat series. The story publishes
+Sentinel-2, and a correction measured on one series is not a correction of the
+other until it is computed there. `scripts/sentinel_correction.py` computes it
+there, and refuses to report anything unless it first reproduces the published
+22.6 percent from the shipped daily file, which it does.
+
+Each Sentinel-2 scene is matched to the nearest Landsat thermal reading within a
+few days and flagged on the same rule, then given the radar position of that day,
+or the median position where radar could not place one. Only the pixel counts are
+rewritten; the published cleaning then runs unchanged, the same interpolation,
+the same day-of-year climatology and the same double smoothing that makes
+frac_smooth.
+
+| match window | days flagged | early | late | corrected decline | if all were frozen |
+|---|---|---|---|---|---|
+| same day | 23 | 1 | 22 | 20.9 % | 15.3 % |
+| 1 day | 38 | 1 | 37 | 19.4 % | 11.1 % |
+| **2 days** | **45** | **2** | **43** | **19.5 %** | 9.5 % |
+| 3 days | 52 | 2 | 50 | 17.9 % | 6.4 % |
+
+**The published 22.6 percent becomes about 19.5, and 17.9 to 20.9 across the
+matching windows.** Per season, 2017, 2018, 2019 and 2022 do not move at all;
+2023 gains 0.053, 2021 0.042, 2025 0.031, 2026 0.025 and 2020 0.022. The exact
+permutation p goes from 0.119 to 0.114 and Mann-Kendall does not move.
+
+Three points, not ten, and the reason is structural rather than reassuring.
+Sentinel-2 holds three to five times as many usable days a season as Landsat, so
+45 corrected days are a much smaller share of it, and the published figure is
+smoothed and gap filled, which dilutes a correction to single days. The same
+error costs the Landsat series half its decline and the published series an
+eighth of its own, because the two series are estimated differently.
+
+**So the headline survives, three points lighter.** Every defensible treatment of
+this bias now lands between 18 and 23 percent, which is inside the range the
+sensitivity table above already reported for the period boundary alone.
 
 ## The result depends on three analysis choices
 
