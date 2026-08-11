@@ -99,7 +99,9 @@ def build_parser() -> argparse.ArgumentParser:
         "--nir-bright-min", type=float, help="Optional NIR brightness floor."
     )
     thresh.add_argument(
-        "--swir-dark-max", type=float, help="Optional SWIR darkness ceiling."
+        "--swir-dark-max",
+        type=float,
+        help="Optional SWIR darkness ceiling (currently inactive).",
     )
 
     return parser

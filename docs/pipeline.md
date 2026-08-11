@@ -14,8 +14,14 @@
     about 0.94 for solid ice, thin ice and open water alike, because all three
     are nearly black at 1.6 um, so it is the floors that separate ice from
     water and not the index.
-  - The two NDSI numbers were tuned against reflectances that carried a +0.1
-    bias and have not yet been re-derived. See the reprocessing runbook.
+  - All five were re-derived on radiometrically corrected reflectance by
+    `scripts/derive_thresholds.py`, over eighteen acquisitions spanning February
+    to October and both sides of the baseline 04.00 boundary. What is still open
+    is narrower: that derivation produced `ndsi_solid` 0.83 and the shipped value
+    is 0.70, because 0.83 empties the solid class over a fjord that is frozen
+    shore to shore. The disagreement decides only what the two class names mean,
+    not the published series, which is `solid + light`. See
+    [limitations.md](limitations.md#the-solidlight-split).
 - Logging format matches the original script (`"%H:%M:%S  LEVEL message"`).
 - For a full archive reprocess, use `docs/reprocessing-runbook.md`, not this
   page.

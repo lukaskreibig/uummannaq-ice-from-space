@@ -13,8 +13,15 @@ overwrite_csv: false
 # any of these numbers; docs and the methodology note carry the reasoning.
 #
 # Every threshold the classifier reads is named here on purpose. Anything left
-# out is filled in from config.Thresholds, whose defaults were tuned on the
-# biased reflectance and are still stale.
+# out is filled in from config.Thresholds, and those defaults now carry the same
+# values as this file: a run started without --config classifies by the same
+# rule as one started with it. That was not always true, and the version where
+# it was false produced a complete, plausible archive against the wrong rule.
+# tests/test_config_loader.py asserts the two stay equal, so the guarantee is
+# checked rather than promised.
+#
+# The two thresholds NOT named here, ndvi_min and swir_dark_max, exist only in
+# the dataclass. Nothing reads them.
 thresholds:
   # The Dozier (1989) / MODIS snow cut. Its job here is only to reject bright
   # surfaces that are not cryosphere at all: sunlit rock and cloud the segmenter
