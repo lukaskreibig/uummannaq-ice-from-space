@@ -30,6 +30,8 @@ turned into a measurement, this is what it cost:
 | The 40 m analysis grid | 0.0015 across grids from 10 to 80 m | [below](#the-resolution-the-mask-is-computed-at-is-worth-more-than-the-grid-itself) |
 | Uneven sampling | a season's sampling error is 0.054, against a between-season spread of 0.104 to 0.170 | [below](#sampling-is-uneven-and-2017-is-thin) |
 | **How break-up is defined** | direction unanimous across 30 definitions, but the shift spans **-0.7 to -53 days** against a published -10.2 | [below](#smoothing-shifts-break-up-earlier-and-the-definition-shifts-it-much-more) |
+| Did the record start on an icy stretch | no; four Landsat seasons before 2017 move the early baseline by less than **0.04** either way | [landsat-crosscheck.md](landsat-crosscheck.md) |
+| **A thermometer on 226 days** | **36 days report a mostly open fjord while more than half of it radiates below the freezing point of seawater, and they are twice as common after 2021** | [below](#a-thermometer-and-the-largest-open-question-in-this-project) |
 
 **Three readings of that table, and all three belong here.** Separate the two
 kinds of entry first, because they are not the same thing. Correcting a bias
@@ -42,10 +44,19 @@ table rescues the significance, because with ten seasons the test has too little
 power to reach any conventional threshold, which is the honest ceiling on what
 this record can settle.
 
-The one bias that is not symmetric is melt water read as open water. It pushes
-the ice fraction **down** on wet spring days, it concentrates in the seasons that
-carry the decline, and it therefore points the same way as the published result.
-Its size is bounded above.
+The one bias that is not symmetric is a dark surface read as open water, whether
+the darkness is melt water or bare ice. It pushes the ice fraction **down**, it
+concentrates in the seasons that carry the decline, and it therefore points the
+same way as the published result.
+
+That entry has since grown, and it is the only line on the table whose upper
+bound is not small. Twelve wet April days cost the headline at most one point. A
+thermal reading of 226 Landsat days finds the same failure on 36 of them, twice
+as often after 2021 as before, and correcting those at the most generous extreme
+would take a 20.6 percent Landsat decline to 0.8. That extreme is not an
+estimate and no reading supports it, but the honest statement is that this bias
+is bounded above by something large rather than by 2.3 points, and closing that
+gap is the first thing this project should do next.
 
 ---
 
@@ -86,34 +97,67 @@ absence; it is what a ten-year record can and cannot settle.
 **The direction is consistent. The certainty is not there, and ten winters is
 why.**
 
-### Three seasons further back, and the baseline does not move
+### Four seasons further back, and what looking for them turned up instead
 
 A short record has a second problem beyond power: it might have started on an
 unusually icy stretch, in which case part of the decline is an accident of where
 the measuring began. Nothing inside the window can settle that. Landsat 8 and 9
 can, because they fly the same instrument design over the same fjord and reach
-back further, and running the pipeline's own thresholds on their Level 1 data
-gives 2014, 2015 and 2016 without crossing any sensor boundary. Measured in
+back to 2013, and running the pipeline's own thresholds on their Level 1 data
+crosses no sensor boundary. Measured in
 [landsat-crosscheck.md](landsat-crosscheck.md), part three:
 
 ```
-early mean over the four seasons Sentinel-2 also sees   0.7455
-early mean once the three earlier seasons join it       0.7380
+early mean over the seasons Sentinel-2 also sees    0.6694
+early mean once the four earlier seasons join it    0.6363
 ```
 
-The baseline moves by 0.0075, and the added seasons are not uniformly high, which
-is what would make the check hollow: 2016 comes in at 0.435, below every pre-2021
-season in the Sentinel-2 record. **The early period is not a lucky starting
-point.**
+Reaching back lowers the early baseline by 0.033 rather than raising it, so the
+record did not begin on a lucky stretch. But that number is carried by 2013,
+which the next paragraph shows is the season the thermal band contradicts most,
+and dropping it turns the shift into +0.032 the other way. **The direction of
+this test is not stable; its magnitude is.** Every treatment puts the shift
+inside 0.04, against a between-season spread of 0.25, so where the record began
+is not where the decline comes from.
 
-Two things that does not buy. Thirteen seasons instead of ten move Mann-Kendall
-from p = 0.108 to p = 0.076, still above 0.05, because the cause of the weak
-significance is the length of the record and three seasons is not a cure for it.
-And the two instruments disagree on the size: over the same ten seasons with the
-same estimator, Landsat gives 33.4 percent and Sentinel-2 gives 23.3, with
-bootstrap intervals of 4.5 to 56.0 and -3.5 to 43.4. The direction survives a
-change of satellite. The magnitude does not, and **a decline of roughly a quarter
-to a third is what these data actually support.**
+### A thermometer, and the largest open question in this project
+
+Looking for those seasons turned up something the reflective bands cannot see. On
+226 Landsat days the thermal band was read over the same fjord on the same day,
+and seawater at this salinity freezes near 271.35 K, below which open water
+cannot radiate. Where the chain reports 0.90 ice or more the fjord is 100 percent
+below freezing; where it reports under 0.10, none of it is. In between the two do
+not agree at all: on the days the chain calls one to five tenths frozen, the
+thermal band calls the whole fjord frozen.
+
+Counting a day as contradicted when the chain calls the fjord mostly open while
+more than half of it radiates below freezing, 36 of 226 qualify, and they are not
+spread evenly:
+
+```
+early seasons    9 of  91   0.10
+late seasons    27 of 135   0.20
+```
+
+Zero in 2015, 2017, 2018, 2019 and 2022 against 0.58 in 2021, 0.32 in 2025, 0.27
+in 2023 and 0.26 in 2026. **An error twice as common in the later period, always
+in the same direction, is part of the measured decline rather than noise around
+it.** And it is in the published series, not only in Landsat: on the 23
+contradicted days both satellites saw, Landsat reads a median 0.160 and
+Sentinel-2 0.176, correlated at r = +0.986.
+
+How much of the decline it accounts for is not settled. Handing every
+contradicted day a completely frozen fjord, which is far more than the thermal
+reading supports, takes the Landsat decline from 20.6 percent to 0.8; requiring
+a 2 K margin against the missing atmospheric correction leaves 13.2 percent, and
+4 K leaves 16.4. Nor is the interpretation closed: ice broken into floes with
+leads narrower than the thermal band resolves would read frozen to the
+thermometer and open to the classifier, and both would be right.
+
+**This is the largest unresolved item in the project.** It does not overturn the
+direction, which every treatment keeps. It does mean the size of the decline is
+less certain than a single figure suggests, and in a direction that makes the
+published number too large rather than too small.
 
 ## The result depends on three analysis choices
 

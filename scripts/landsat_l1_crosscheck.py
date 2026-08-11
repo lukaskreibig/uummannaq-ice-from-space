@@ -70,8 +70,25 @@ USGS_STAC = "https://landsatlook.usgs.gov/stac-server"
 AOI = [-52.374, 70.629, -51.905, 70.799]
 BOUNDS = (450540, 7836200, 465280, 7854320)  # the land mask's own extent
 
-# OLI band numbers behind the STAC asset names.
-BAND_NUMBER = {"green": 3, "nir08": 5, "swir16": 6}
+# The band numbers behind the STAC asset names, which are NOT the same across
+# instruments. The asset name is stable, the MTL rescaling key is not: OLI has an
+# extra coastal band at the front, so everything after it shifts by one. Reading
+# an ETM+ scene with OLI's numbers silently applies the wrong gain to every band,
+# which is the kind of error that produces a plausible number rather than a crash.
+BAND_NUMBER = {
+    "LC": {"green": 3, "nir08": 5, "swir16": 6},  # OLI, Landsat 8 and 9
+    "LE": {"green": 2, "nir08": 4, "swir16": 5},  # ETM+, Landsat 7
+    "LT": {"green": 2, "nir08": 4, "swir16": 5},  # TM, Landsat 4 and 5
+}
+
+
+def band_numbers(scene_id: str) -> dict[str, int]:
+    """Which MTL band number each asset name means, for this instrument."""
+    try:
+        return BAND_NUMBER[scene_id[:2]]
+    except KeyError:
+        raise ValueError(f"no band map for {scene_id[:2]} ({scene_id})") from None
+
 
 # The pipeline's own cuts, unchanged, so only the instrument differs.
 NDSI_SOLID, NDSI_LIGHT, NDWI_MIN = 0.70, 0.40, 0.20
@@ -141,13 +158,14 @@ def read_scene(item, land_source):
     with cf.ThreadPoolExecutor(max_workers=4) as pool:
         got = list(pool.map(read_one, ("green", "nir08", "swir16", "qa_pixel")))
 
+    numbers = band_numbers(item.id)
     out: dict[str, np.ndarray] = {}
     land = None
     for name, arr, transform, crs in got:
         if name == "qa_pixel":
             out[name] = arr.astype("uint16")
         else:
-            n = BAND_NUMBER[name]
+            n = numbers[name]
             mult = float(rescale[f"REFLECTANCE_MULT_BAND_{n}"])
             add = float(rescale[f"REFLECTANCE_ADD_BAND_{n}"])
             out[name] = (mult * arr.astype("float64") + add) / cos_sza

@@ -4,65 +4,73 @@
 The record is ten seasons and that is the binding limit on everything this
 project can conclude. Going further back with Landsat looked blocked, and the
 plan behind this repository said so, but its numbers came from the wrong
-catalogue. Measured over the USGS archive there is far more data than it claimed:
-from 1990 there would be 36 seasons with a median of 25 usable scenes each.
+catalogue. Measured over the USGS archive by `landsat_l1_inventory.py --reach`
+there is far more data than it claimed: 36 seasons from 1990, at a median of 31
+scenes inside the window.
 
-What is genuinely blocked is the calibration, and measuring it made the case
-worse rather than better. Same-overpass pairs over this AOI, which is what a
-fixed threshold needs in order to survive a sensor change, counted by
-`landsat_l1_inventory.py --reach` over the whole archive:
-
-    TM   against ETM+   0
-    TM   against OLI    0
-    ETM+ against OLI    2
-
-Zero is not a small number of pairs, it is none, and the sensor boundaries fall
-exactly where an early-late split would sit. The two that exist do not help
-either. 2013-03-30 is a near-perfect pair, same hour, same sun, both under one
-percent cloud, and it lands inside Landsat 8's commissioning phase, where this
-pipeline reads 0.098 ice over a frozen fjord. 2019-06-06 is midnight sun at 10
-degrees on 6 June over ice already breaking up. Steiro et al. (2021) did reach
-back to 1985 on this fjord, but by setting thresholds per image from histogram
-analysis, which sidesteps calibration by putting an analyst inside every
-measurement. That is a study; this is a pipeline.
+What is genuinely blocked is the calibration. A fixed threshold needs
+same-overpass pairs to be carried across a sensor change, and over this AOI, in
+the whole archive, there are zero between TM and ETM+ and zero between TM and
+OLI. The boundaries fall in 1999 and 2013, exactly where an early-late split
+would sit, so an uncalibrated join would be indistinguishable from the trend it
+is meant to measure. ETM+ against OLI has two pairs and neither is a calibration:
+2019-06-06 is midnight sun at 10 degrees over ice already breaking up, and
+2013-03-30, which is otherwise perfect, fixes the relationship at exactly ONE
+surface state. That state turns out to be dark ice near the bottom of the range,
+and a gain and an offset across the dynamic range cannot be fitted from one
+point. Steiro et al. (2021) did reach back to 1985 here, by setting thresholds
+per image from histogram analysis, which sidesteps calibration by putting an
+analyst inside every measurement. That is a study; this is a pipeline.
 
 So this takes the one extension that crosses no boundary at all: **Landsat 8 and
-9 alone, 2014 to 2026**, one instrument family throughout. Three seasons before
-Sentinel-2 begins, ten that overlap it.
+9 alone**, one instrument family throughout.
 
     python3 scripts/landsat_season_series.py --seasons 2013-2026
-
-Two things the overlap buys that a longer record alone would not. The new seasons
-extend the series, and the ten shared ones are a standing comparison between two
-instruments measuring the same thing on the same days, which is a stronger check
-than any single-scene agreement table.
 
 The sun-angle correction of landsat_l1_crosscheck.py applies here unchanged and
 for the same reason: Sentinel-2 L1C carries it and Landsat Level 1 does not.
 
-Two things this run has to get right or the comparison is worthless.
+WHAT A SEASON MEAN IS HERE, because two versions of this were wrong before the
+third. Landsat contributes 9 to 30 usable days a season against Sentinel-2's 25
+to 68, and they are not spread the same way through the window, so a plain mean
+over whatever days each sensor holds compares two different estimators and calls
+the gap an instrument difference. Fifteen-day bins fix that much. They do not fix
+the part that mattered more: averaging over the bins a sensor HAPPENED to fill
+still compares different parts of the season, and ice falls steeply through the
+window. Landsat 2017 samples February to mid May and nothing after, reads 0.993
+that way, and sitting next to Sentinel-2's whole-window 0.864 it manufactured a
+difference of +0.129 that has nothing to do with instruments. On the six bins
+both sensors filled, 2017 reads 0.993 against 0.981.
 
-**The commissioning phase.** Searching from 2013 returns scenes, and four of them
-were nearly cloud free over a fjord that any other year says is frozen solid, yet
-they read 5, 10, 15 and 15 percent ice. 22 March 2013 measures green 0.206 and
-NIR 0.090 across the whole fjord where fast ice sits between 0.44 and 0.74, so
-every cell fails the brightness gate and falls through to water. It is not the
-catalogue quality flag, they are all Tier 1. The dates decide it: USGS records
-Landsat 8 as launched 11 February 2013 and reaching its operational WRS-2 orbit
-on 11 April 2013, with everything before that acquired on the way there. All four
-dark scenes are earlier; the first scene after that boundary, 23 April, reads
-0.83. So the cut is that published mission date rather than a judgement about
-which numbers look wrong. 2013 then drops out on coverage rather than by hand:
-what survives the cut and the share gate is three days, on 23 April, 29 May and
-12 June, filling three of the nine bins where five are required.
+So: nine bins, gaps inside the sampled range interpolated, and a season that
+never sampled the break-up dropped rather than reported. The two-sensor
+comparison is taken only over bins both sensors filled, which is a different
+question from a season mean and is allowed to keep seasons the series drops.
 
-**Uneven sampling.** Landsat contributes 9 to 30 usable days a season and
-Sentinel-2 contributes 25 to 68, and they are not spread the same way through the
-window. A plain mean over the days each sensor happens to have compares two
-different estimators and calls the gap an instrument difference. Season means are
-therefore taken as the mean over fifteen-day bins, so a season crowded with April
-scenes cannot outvote one weighted towards February. Measured, that is not
-cosmetic: it moves the two sensors from 0.040 apart to 0.004.
+A CUT THAT USED TO BE HERE, and why it is gone. Four scenes in March and early
+April 2013 are nearly cloud free over a fjord every other year calls frozen and
+still read 5, 10, 15 and 15 percent ice. On 22 March the whole fjord measures
+green 0.206 and near infrared 0.090, where fast ice sits between 0.44 and 0.74,
+so every cell fails the brightness gate and falls through to water. They are all
+Tier 1, so it is not a catalogue flag. The obvious suspect was the satellite:
+Landsat 8 launched on 11 February 2013 and reached its operational WRS-2 orbit on
+11 April, and all four scenes are earlier, so this file used to drop everything
+before that published date.
+
+That was wrong, and commissioning_check.py is what proved it. On 30 March 2013
+ETM+ crossed the same fjord in the same hour at the same sun elevation, fourteen
+years into normal operations, and it reads the same surface: green 0.223 against
+0.226, near infrared 0.120 against 0.115, ice 0.112 against 0.098. The radiometry
+was never the problem.
+
+The thermal band then said what reflectance could not. All four days radiate
+between 263.7 and 267.7 K over a fjord where seawater freezes near 271.35 K and
+open water cannot go colder. The fjord was frozen, and the chain read it as water
+because the surface was too dark for the brightness gate. That is the same
+failure limitations.md documents on twelve wet April days, here across a whole
+early season, and it is a property of the classifier rather than of 2013. So the
+date cut is gone, 2013 is treated like every other season, and the error is
+measured uniformly across the record by thermal_audit.py instead.
 """
 
 from __future__ import annotations
@@ -95,13 +103,26 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_ARCHIVE = ROOT / "archive/reprocessed_2026/summary.csv"
 LATE_FROM = 2021
 
-# The day Landsat 8 reached its operational WRS-2 orbit, per USGS. Anything
-# earlier was acquired on the way there and is not a measurement of this fjord.
-OPERATIONAL_FROM = "2013-04-11"
 # Season means are the mean over these bins, not over scenes, so that a season
 # rich in April days is not compared against one rich in February days.
-BIN_EDGES = np.arange(45, 181, 15)
+#
+# The upper limit is 180 and not 181, and the difference is not cosmetic. With an
+# edge sitting exactly on day 180, which SEASON_WINDOW admits, np.digitize opens a
+# tenth bin one calendar day wide that still casts a full vote. Four scenes in
+# this record land on day 180, all after break-up at 0.000 to 0.003 ice, and the
+# one in Landsat 2024 moved that season's mean by 0.084, which is ten times the
+# effect this file was built to measure. Nine bins, the last spanning day 165 to
+# 180 inclusive.
+BIN_EDGES = np.arange(45, 180, 15)
+N_BINS = len(BIN_EDGES)
 MIN_BINS = 5  # a season below this is coverage, not a season
+# The last two bins are the break-up. A season that never sampled them is not a
+# season mean at all, it is a winter mean, and ice falls through the window: the
+# per-bin means across this record run 0.65, 0.63, 0.93, 0.97, 0.84, 0.75, 0.49,
+# 0.18, 0.00. Landsat 2017 fills bins 0 to 5 only and reads 0.993 that way, next
+# to Sentinel-2's 0.864 over the whole window, and reporting that gap as an
+# instrument difference is what this rule exists to stop.
+BREAKUP_BINS = (N_BINS - 2, N_BINS - 1)
 
 
 def candidates(seasons: range):
@@ -129,8 +150,6 @@ def candidates(seasons: range):
                         continue
                     if not item.id.startswith("LC0"):  # OLI only, no TM, no ETM+
                         continue
-                    if day < OPERATIONAL_FROM:
-                        continue
                     if not (SEASON_WINDOW[0] <= doy <= SEASON_WINDOW[1]):
                         continue
                     found.append(
@@ -154,19 +173,74 @@ def candidates(seasons: range):
     return sorted(by_day.values(), key=lambda c: c["day"])
 
 
+def per_season_bins(
+    frame: pd.DataFrame, doy: str, value: str, season: str
+) -> dict[int, pd.Series]:
+    """Every season's mean in every bin, NaN where the sensor never looked."""
+    work = frame.dropna(subset=[value]).copy()
+    work["bin"] = np.clip(np.digitize(work[doy], BIN_EDGES) - 1, 0, N_BINS - 1)
+    per_bin = work.groupby([season, "bin"])[value].mean()
+    return {
+        int(year): per_bin.loc[year].reindex(range(N_BINS))
+        for year in sorted(work[season].unique())
+    }
+
+
 def binned_means(
     frame: pd.DataFrame, doy: str, value: str, season: str
 ) -> dict[int, tuple[float, int]]:
-    """Season mean as the mean over fifteen-day bins, with the bins it filled."""
-    work = frame.dropna(subset=[value]).copy()
-    work["bin"] = np.digitize(work[doy], BIN_EDGES) - 1
-    per_bin = work.groupby([season, "bin"])[value].mean()
+    """Season mean over fifteen-day bins, with the number of bins observed.
+
+    Two rules beyond the averaging, and both throw seasons away rather than
+    quietly filling them in.
+
+    A season that never sampled the break-up is dropped, because a mean over
+    February to mid May is a different quantity from a mean over the whole window
+    and the two must not share a column.
+
+    Gaps INSIDE the sampled range are filled by linear interpolation between the
+    bins on either side. That is the smallest assumption available and it is the
+    one the story's own daily series already makes; the alternative, averaging
+    over whichever bins each season happened to fill, is what produced the error
+    this rule replaces. The count returned is bins actually OBSERVED, so a reader
+    can see how much of a season was interpolated.
+    """
     out: dict[int, tuple[float, int]] = {}
-    for year in sorted(work[season].unique()):
-        block = per_bin.loc[year]
-        if len(block) >= MIN_BINS:
-            out[int(year)] = (float(block.mean()), len(block))
+    for year, block in per_season_bins(frame, doy, value, season).items():
+        if all(pd.isna(block[b]) for b in BREAKUP_BINS):
+            continue
+        observed = int(block.notna().sum())
+        filled = block.interpolate(limit_area="inside").dropna()
+        if len(filled) >= MIN_BINS:
+            out[year] = (float(filled.mean()), observed)
     return out
+
+
+def common_bin_comparison(
+    left: dict[int, pd.Series], right: dict[int, pd.Series]
+) -> list[tuple[int, int, float, float]]:
+    """Compare two sensors only where both actually looked.
+
+    A season mean is a statement about a season; this is a statement about two
+    instruments, and for that the parts of the window only one of them sampled
+    are not evidence about the other. A season can appear here and still be
+    absent from the series above, which is not an inconsistency: 2017 has six
+    bins both sensors filled, enough to compare them, and no break-up coverage on
+    the Landsat side, so it cannot carry a season mean.
+    """
+    rows: list[tuple[int, int, float, float]] = []
+    for year in sorted(set(left) & set(right)):
+        both = left[year].notna() & right[year].notna()
+        if int(both.sum()) >= MIN_BINS:
+            rows.append(
+                (
+                    year,
+                    int(both.sum()),
+                    float(left[year][both].mean()),
+                    float(right[year][both].mean()),
+                )
+            )
+    return rows
 
 
 def decline(table: dict[int, tuple[float, int]], seasons: list[int]) -> float:
@@ -291,25 +365,51 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{season:<8d}{n:6d}{na:6d}{a:10.3f}{'.':>6s}{'.':>13s}")
 
     shared = sorted(set(landsat) & set(sentinel))
-    if len(shared) >= 3:
-        diff = np.array([landsat[s][0] - sentinel[s][0] for s in shared])
+
+    # Three ways of asking the same question, printed together because the spread
+    # between them IS the result. Only the first is a like-for-like comparison.
+    bins_l = per_season_bins(kept, "doy", "landsat_ice", "season")
+    bins_s = per_season_bins(s2[s2.s2_share >= 0.30], "doy", "s2_ice", "season")
+    common = common_bin_comparison(bins_l, bins_s)
+    if common:
+        d = np.array([a - b for _, _, a, b in common])
         r = float(
-            np.corrcoef(
-                [landsat[s][0] for s in shared], [sentinel[s][0] for s in shared]
-            )[0, 1]
+            np.corrcoef([a for *_, a, _ in common], [b for *_, b in common])[0, 1]
         )
+        print()
+        print(f"{'agreement over':44s}{'n':>4s}{'bias':>9s}{'RMSE':>8s}{'r':>8s}")
+        print(
+            f"{'bins BOTH sensors filled':44s}{len(common):4d}{d.mean():+9.4f}"
+            f"{np.sqrt((d**2).mean()):8.4f}{r:8.3f}"
+        )
+        if len(shared) >= 3:
+            e = np.array([landsat[s][0] - sentinel[s][0] for s in shared])
+            print(
+                f"{'each sensor over its own filled bins':44s}{len(shared):4d}"
+                f"{e.mean():+9.4f}{np.sqrt((e**2).mean()):8.4f}"
+                f"{np.corrcoef([landsat[s][0] for s in shared], [sentinel[s][0] for s in shared])[0, 1]:8.3f}"
+            )
         raw_l = kept.groupby("season").landsat_ice.mean()
         raw_s = s2[s2.s2_share >= 0.30].groupby("season").s2_ice.mean()
-        raw = np.array([raw_l[s] - raw_s[s] for s in shared])
+        both_raw = sorted(set(raw_l.index) & set(raw_s.index))
+        raw = np.array([raw_l[s] - raw_s[s] for s in both_raw])
+        print(
+            f"{'the days each sensor happens to have':44s}{len(both_raw):4d}"
+            f"{raw.mean():+9.4f}{np.sqrt((raw**2).mean()):8.4f}"
+            f"{np.corrcoef([raw_l[s] for s in both_raw], [raw_s[s] for s in both_raw])[0, 1]:8.3f}"
+        )
         print()
         print(
-            f"over the {len(shared)} shared seasons, day balanced: bias {diff.mean():+.4f}, "
-            f"RMSE {np.sqrt((diff**2).mean()):.4f}, correlation r = {r:+.3f}"
+            "  Only the first row compares the two instruments. The other two also\n"
+            "  compare the parts of the season each of them happened to sample, and\n"
+            "  most of the disagreement they report is that, not the sensors."
         )
+        print()
         print(
-            f"{'':22s}over the days each sensor happens to have: bias {raw.mean():+.4f}, "
-            f"RMSE {np.sqrt((raw**2).mean()):.4f}"
+            f"  {'season':8s}{'shared bins':>13s}{'Landsat':>10s}{'Sentinel-2':>13s}{'diff':>9s}"
         )
+        for year, n, a, b in common:
+            print(f"  {year:<8d}{n:13d}{a:10.3f}{b:13.3f}{a - b:+9.3f}")
 
     # The question the extension exists to answer. If the three seasons before
     # Sentinel-2 lift the early baseline, the ten-season window began on an
