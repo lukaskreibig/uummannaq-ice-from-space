@@ -56,6 +56,23 @@ LOGGER = logging.getLogger("gate_sensitivity")
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG = ROOT / "config/baseline.yaml"
 DEFAULT_ARCHIVE = ROOT / "archive/reprocessed_2026/summary.csv"
+STABILITY_RUN = ROOT / "archive/reprocessed_2026/ice_endmember_stability.csv"
+
+# The eleven bands that carry surface signal. B9 sits on a water vapour feature
+# and B10 is the cirrus band, both placed where the atmosphere is opaque.
+SURFACE_BANDS = (
+    "coastal",
+    "blue",
+    "green",
+    "red",
+    "rededge1",
+    "rededge2",
+    "rededge3",
+    "nir",
+    "nir08",
+    "swir16",
+    "swir22",
+)
 
 # The published gate sits at 0.17. The sweep brackets it far enough either side
 # to see the shape, not just the local slope.
@@ -224,6 +241,25 @@ def measure(days: list[str], config_path: Path) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def season_brightness() -> dict[int, float] | None:
+    """Per-season ice brightness, read from the run that measured it.
+
+    Copying those ten numbers in here would have been shorter and it is exactly
+    the defect story_numbers.py exists to catch: a figure transcribed once, then
+    quietly outliving the run behind it. Read from the committed artefact
+    instead, so a rerun of ice_endmember_stability.py moves this table too.
+    """
+    if not STABILITY_RUN.exists():
+        return None
+    frame = pd.read_csv(STABILITY_RUN)
+    surface = [b for b in frame.columns if b in SURFACE_BANDS]
+    frame["brightness"] = frame[surface].mean(axis=1)
+    frame["season"] = frame.day.astype(str).str[:4].astype(int)
+    typical = float(frame.brightness.median())
+    per_season = frame.groupby("season").brightness.mean() / typical
+    return {int(s): float(v) for s, v in per_season.items()}
+
+
 def replication_check(frame: pd.DataFrame, archive: Path) -> float:
     """At the published gate this must reproduce the archive, or nothing holds.
 
@@ -293,36 +329,30 @@ def report(frame: pd.DataFrame) -> None:
     print()
     print("Is the gate more expensive in the seasons whose ice is darker?")
     print("-" * 78)
-    # From ice_endmember_stability.py, brightness relative to the ten-season
-    # median. Repeated here rather than recomputed, so the two pages cannot
-    # drift apart silently: if that run changes, this table has to be updated.
-    darkness = {
-        2017: 1.02,
-        2018: 1.00,
-        2019: 1.06,
-        2020: 0.98,
-        2021: 0.96,
-        2022: 1.06,
-        2023: 0.66,
-        2024: 1.02,
-        2025: 0.90,
-        2026: 0.89,
-    }
-    pairs = [(darkness[s], spans[s]) for s in spans if s in darkness]
-    if len(pairs) >= 3:
-        x = np.array([p[0] for p in pairs])
-        y = np.array([p[1] for p in pairs])
-        r = float(np.corrcoef(x, y)[0, 1])
-        print(f"{'season':8s}{'brightness':>12s}{'gate span':>12s}")
-        for season in sorted(spans):
-            if season in darkness:
-                print(f"{season:<8d}{darkness[season]:12.2f}{spans[season]:12.3f}")
-        print()
-        print(f"correlation of gate span with season brightness   r = {r:+.3f}")
+    darkness = season_brightness()
+    if darkness is None:
         print(
-            "A negative correlation means the darker a season's ice, the more its\n"
-            "reading depends on where the cut was put."
+            f"no {STABILITY_RUN.name} to read, so there is nothing to compare\n"
+            "against. Run scripts/ice_endmember_stability.py first."
         )
+        return
+    pairs = [(darkness[s], spans[s]) for s in spans if s in darkness]
+    if len(pairs) < 3:
+        print("too few seasons in both runs to compare")
+        return
+    x = np.array([p[0] for p in pairs])
+    y = np.array([p[1] for p in pairs])
+    r = float(np.corrcoef(x, y)[0, 1])
+    print(f"{'season':8s}{'brightness':>12s}{'gate span':>12s}")
+    for season in sorted(spans):
+        if season in darkness:
+            print(f"{season:<8d}{darkness[season]:12.2f}{spans[season]:12.3f}")
+    print()
+    print(f"correlation of gate span with season brightness   r = {r:+.3f}")
+    print(
+        "A negative correlation means the darker a season's ice, the more its\n"
+        "reading depends on where the cut was put."
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
