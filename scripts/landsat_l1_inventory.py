@@ -15,9 +15,18 @@ comparison changes the sensor and nothing else, where Level 2 changes the sensor
 and the atmospheric correction together.
 
     python3 scripts/landsat_l1_inventory.py
+    python3 scripts/landsat_l1_inventory.py --reach
 
-This counts what is there and then stops at the wall, because the wall is real
-and is not something a script can climb.
+The default mode counts what is there for the cross-check and then stops at the
+access wall. That wall has since been climbed with a requester-pays AWS profile,
+so the section about it below records what it cost to get in rather than a dead
+end, and landsat_l1_crosscheck.py runs through it.
+
+`--reach` asks the separate question of how far back the archive itself goes and
+whether a longer series could be built from it. It is catalogue metadata only,
+no pixels, so it is cheap and free. It exists because the answer decides what
+landsat_season_series.py is allowed to do, and the answer is not the obvious one:
+there is plenty of data and almost no way to join it.
 """
 
 from __future__ import annotations
@@ -77,11 +86,176 @@ def inventory() -> pd.DataFrame:
     return frame
 
 
+# The instrument behind each Landsat id prefix. MSS has no shortwave infrared at
+# all, so NDSI cannot even be formed on it, which rules out four of the sensors
+# before any calibration argument starts.
+INSTRUMENTS = {
+    "LM": ("MSS", False),
+    "LT": ("TM", True),
+    "LE": ("ETM+", True),
+    "LC": ("OLI", True),
+}
+ARCHIVE_FROM = 1972
+# Degrees of sun elevation within which two scenes count as the same overpass.
+SAME_PASS_SUN = 5.0
+
+
+def reach(out: Path) -> int:
+    """How far back does the catalogue go, and can the sensors be joined?"""
+    from pystac_client import Client
+
+    client = Client.open(USGS_STAC)
+    rows: list[dict] = []
+    for year in range(ARCHIVE_FROM, 2027):
+        for attempt in range(4):
+            try:
+                for item in client.search(
+                    collections=["landsat-c2l1"],
+                    bbox=AOI,
+                    datetime=f"{year}-01-01/{year}-12-31",
+                    limit=100,
+                ).items():
+                    p = item.properties
+                    when = item.datetime
+                    sun = p.get("view:sun_elevation")
+                    if when is None or sun is None or sun <= 0:
+                        continue
+                    doy = when.timetuple().tm_yday
+                    if not (SEASON_WINDOW[0] <= doy <= SEASON_WINDOW[1]):
+                        continue
+                    name, swir = INSTRUMENTS.get(item.id[:2], ("?", False))
+                    rows.append(
+                        {
+                            "id": item.id,
+                            "day": when.date().isoformat(),
+                            "season": year,
+                            "doy": doy,
+                            "hour": when.hour,
+                            "instrument": name,
+                            "has_swir": swir,
+                            "sun_elevation": sun,
+                            "cloud": p.get("eo:cloud_cover"),
+                            "tier": item.id[-2:],
+                        }
+                    )
+                break
+            except Exception:  # pragma: no cover - network-driven
+                time.sleep(3 * (attempt + 1))
+
+    frame = pd.DataFrame(rows)
+    out.mkdir(parents=True, exist_ok=True)
+    path = out / "landsat_reach.csv"
+    frame.to_csv(path, index=False)
+
+    print("How far back the archive reaches over this fjord, day 45 to 180")
+    print("=" * 74)
+    print(
+        f"{'instrument':12s}{'SWIR':>6s}{'seasons':>9s}{'first':>7s}{'last':>6s}{'scenes':>8s}{'median/season':>15s}"
+    )
+    for name in ("MSS", "TM", "ETM+", "OLI"):
+        block = frame[frame.instrument == name]
+        if block.empty:
+            continue
+        per = block.groupby("season").size()
+        print(
+            f"{name:12s}{'yes' if block.has_swir.iloc[0] else 'NO':>6s}"
+            f"{block.season.nunique():9d}{block.season.min():7d}{block.season.max():6d}"
+            f"{len(block):8d}{per.median():15.0f}"
+        )
+    print()
+    modern = frame[frame.season >= 1990]
+    per_season = modern.groupby("season").size()
+    print(
+        f"So the data is there. From 1990 the archive holds "
+        f"{modern.season.nunique()} seasons over this AOI, at a median of "
+        f"{per_season.median():.0f} scenes\ninside the window and a range of "
+        f"{per_season.min()} to {per_season.max()}. What is missing is any way to "
+        "join one\nsensor to the next."
+    )
+    print()
+    print("Same-day scenes from two different instruments, which is what a fixed")
+    print("threshold would need in order to survive a sensor change:")
+    print()
+    by_day = frame.groupby("day").instrument.apply(set)
+    order = ["MSS", "TM", "ETM+", "OLI"]
+    for i, a in enumerate(order):
+        for b in order[i + 1 :]:
+            days = [d for d, s in by_day.items() if a in s and b in s]
+            same_pass, clear = 0, 0
+            for d in days:
+                block = frame[frame.day == d]
+                left = block[block.instrument == a]
+                right = block[block.instrument == b]
+                # A bbox search returns scenes whose footprint merely clips this
+                # AOI, including neighbouring WRS-2 paths acquired at a wholly
+                # different local time. Over a fixed point the sun elevation is
+                # fixed by the date and the hour, so a pair that disagrees about
+                # it by more than a few degrees did not see this fjord together.
+                pairs = [
+                    (x, y)
+                    for x in left.itertuples()
+                    for y in right.itertuples()
+                    if abs(x.sun_elevation - y.sun_elevation) <= SAME_PASS_SUN
+                ]
+                if not pairs:
+                    continue
+                same_pass += 1
+                if any(x.cloud < 20 and y.cloud < 20 for x, y in pairs):
+                    clear += 1
+            print(
+                f"  {a:5s} against {b:5s}{len(days):5d} days share a date, "
+                f"{same_pass} are the same overpass, {clear} of those under 20 percent cloud"
+            )
+    print()
+    print("And the two ETM+ against OLI overpasses, in full, because they are the")
+    print("only bridge the whole archive offers between two SWIR sensors here:")
+    print()
+    for day in ("2013-03-30", "2019-06-06"):
+        for row in frame[frame.day == day].sort_values("sun_elevation").itertuples():
+            if row.instrument in ("ETM+", "OLI"):
+                print(
+                    f"  {day}  {row.instrument:5s} {row.hour:02d}h UTC  "
+                    f"sun {row.sun_elevation:5.1f}  cloud {row.cloud:5.1f}"
+                )
+        print()
+    print(
+        "Neither can carry a threshold across the boundary.\n"
+        "\n"
+        "  2013-03-30 is as clean a pair as could be asked for, same hour, same sun,\n"
+        "  both under one percent cloud. It also falls inside Landsat 8's\n"
+        "  commissioning phase, which ended when the satellite reached its\n"
+        "  operational orbit on 11 April 2013. Run through this pipeline that scene\n"
+        "  reports 0.098 ice over a fjord that is frozen shore to shore. The one\n"
+        "  usable calibration day in the archive is disqualified by the same\n"
+        "  mission date that disqualifies the 2013 season.\n"
+        "\n"
+        "  2019-06-06 is real but useless for this purpose: 6 June, midnight sun at\n"
+        "  10 degrees elevation, an hour apart, over ice already breaking up. A\n"
+        "  threshold anchored there says nothing about February fast ice.\n"
+        "\n"
+        "The sensor boundaries fall in 1999 and 2013, which is exactly where an\n"
+        "early-late split of a long record would sit, so an uncalibrated join would\n"
+        "be indistinguishable from the trend it is meant to measure. Steiro et al.\n"
+        "(2021) reached back to 1985 on this fjord by setting thresholds per image\n"
+        "from histogram analysis, which sidesteps calibration by putting an analyst\n"
+        "inside every measurement. That is a study. This is a pipeline, and it takes\n"
+        "the one extension that crosses no boundary at all: OLI alone, 2014 to 2026,\n"
+        "in landsat_season_series.py."
+    )
+    print(f"\nwritten to {path}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--archive", type=Path, default=DEFAULT_ARCHIVE)
     parser.add_argument("--out", type=Path, default=Path("out/archive"))
+    parser.add_argument(
+        "--reach", action="store_true", help="how far back the catalogue goes"
+    )
     args = parser.parse_args(argv)
+    if args.reach:
+        return reach(args.out)
 
     frame = inventory()
     lo, hi = SEASON_WINDOW

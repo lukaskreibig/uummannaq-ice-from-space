@@ -34,11 +34,22 @@ February scene below the 0.10 brightness floor, so Landsat would have reported n
 ice all winter, and that would have looked like a triumphant confirmation of the
 very anomalies this script is meant to test. A wrong answer that agrees with the
 hypothesis is the worst kind, and this one was one line away.
+
+RELATION TO landsat_season_series.py. That script imports read_scene, classify
+and sentinel_series from here, so there is one Level 1 reading path and one set
+of decision rules, not two. What differs is the question and therefore the scene
+selection: this file pairs Landsat against Sentinel-2 on days both saw, while the
+season series takes the least cloudy Landsat scene of every day in the window,
+paired or not. On the 55 days both runs touch they pick the same scene 52 times,
+and on those 52 the ice fraction and the classified share agree to twelve decimal
+places. The three that differ are days where the two rules choose different rows
+of the same path. Anything that changes the reading has to change it here.
 """
 
 from __future__ import annotations
 
 import argparse
+import concurrent.futures as cf
 import json
 import logging
 import math
@@ -97,31 +108,61 @@ def read_scene(item, land_source):
     if cos_sza <= 0:
         raise ValueError("sun below the horizon")
 
-    out: dict[str, np.ndarray] = {}
-    land = None
-    for name in ("green", "nir08", "swir16", "qa_pixel"):
+    # The four assets are read concurrently, and the reason is measured rather
+    # than assumed. A windowed read here is almost entirely round-trip latency:
+    # 197 ms to us-west-2, twenty to thirty round trips per scene, and 1.6
+    # percent CPU while it happens. pipeline.py found the same on the
+    # Sentinel-2 side and this was re-measured on 2026-08-11: one scene's 13
+    # bands take 62.9 s at 18 percent CPU serially and 7.2 s at 143 percent with
+    # one thread per band, a factor of 8.7.
+    #
+    # Parallelising whole scenes and leaving this loop serial gets only 2.8x,
+    # because the pool hides the waiting BETWEEN scenes and not the serial chain
+    # inside one. Both levels have to give.
+    #
+    # And one environment variable matters more than either level. With
+    # GDAL_DISABLE_READDIR_ON_OPEN unset, GDAL lists the S3 prefix every time it
+    # opens an asset, which is an extra request per band against a bucket
+    # holding the whole Landsat archive. Setting it to EMPTY_DIR took 5.30 s per
+    # scene to 1.80 on an otherwise identical run. HTTP/2, multiplexing and a
+    # larger connection pool were measured alongside it and did nothing here.
+    #
+    # A warning about measuring any of this, learned the hard way: repeated
+    # benchmarks against the same bucket are not independent. One combination
+    # timed at 0.4 s per scene early on and 16.6 s twenty minutes later, which is
+    # throttling rather than a finding. Numbers here are the ones that survived
+    # being taken twice.
+    def read_one(name: str):
         with rasterio.open(s3href(name)) as src:
             window = from_bounds(*BOUNDS, src.transform)
             arr = src.read(1, window=window)
-            if name == "qa_pixel":
-                out[name] = arr.astype("uint16")
-            else:
-                n = BAND_NUMBER[name]
-                mult = float(rescale[f"REFLECTANCE_MULT_BAND_{n}"])
-                add = float(rescale[f"REFLECTANCE_ADD_BAND_{n}"])
-                out[name] = (mult * arr.astype("float64") + add) / cos_sza
-                out[name][arr == 0] = np.nan
-            if land is None:
-                land = np.zeros(arr.shape, dtype="uint8")
-                reproject(
-                    source=land_source["array"],
-                    destination=land,
-                    src_transform=land_source["transform"],
-                    src_crs=land_source["crs"],
-                    dst_transform=src.window_transform(window),
-                    dst_crs=src.crs,
-                    resampling=Resampling.nearest,
-                )
+            return name, arr, src.window_transform(window), src.crs
+
+    with cf.ThreadPoolExecutor(max_workers=4) as pool:
+        got = list(pool.map(read_one, ("green", "nir08", "swir16", "qa_pixel")))
+
+    out: dict[str, np.ndarray] = {}
+    land = None
+    for name, arr, transform, crs in got:
+        if name == "qa_pixel":
+            out[name] = arr.astype("uint16")
+        else:
+            n = BAND_NUMBER[name]
+            mult = float(rescale[f"REFLECTANCE_MULT_BAND_{n}"])
+            add = float(rescale[f"REFLECTANCE_ADD_BAND_{n}"])
+            out[name] = (mult * arr.astype("float64") + add) / cos_sza
+            out[name][arr == 0] = np.nan
+        if land is None:
+            land = np.zeros(arr.shape, dtype="uint8")
+            reproject(
+                source=land_source["array"],
+                destination=land,
+                src_transform=land_source["transform"],
+                src_crs=land_source["crs"],
+                dst_transform=transform,
+                dst_crs=crs,
+                resampling=Resampling.nearest,
+            )
     return out, land > 127, sun
 
 
@@ -212,13 +253,16 @@ def main(argv: list[str] | None = None) -> int:
                         continue
                     if p.get("platform") not in ("LANDSAT_8", "LANDSAT_9"):
                         continue
-                    day = item.datetime.date().isoformat()
-                    doy = item.datetime.timetuple().tm_yday
+                    when = item.datetime
+                    if when is None:
+                        continue
+                    day = when.date().isoformat()
+                    doy = when.timetuple().tm_yday
                     if not (SEASON_WINDOW[0] <= doy <= SEASON_WINDOW[1]):
                         continue
                     if day not in s2_days:
                         continue
-                    month, hour = item.datetime.month, item.datetime.hour
+                    month, hour = when.month, when.hour
                     candidates.append(
                         {
                             "item": item,

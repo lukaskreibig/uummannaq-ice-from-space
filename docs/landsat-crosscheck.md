@@ -286,3 +286,193 @@ one checkpoint.
   [sar-validation.md](sar-validation.md) runs into from the other side.
 - **40 of 55 pairs were dropped**, 19 of them because CFMask left nothing. A
   comparison that discards three quarters of its sample is a bound, not a survey.
+
+# Part three: the seasons before Sentinel-2
+
+Both parts above compare two instruments on the same day. This part asks the one
+question a ten-season record cannot ask about itself: **did the record happen to
+begin on an unusually icy stretch?**
+
+If it did, some of the published decline is an accident of where the measuring
+started, and no amount of care inside the window can settle that, because the
+window is the thing in question. Only earlier data can. Landsat 8 has been flying
+since 2013.
+
+```
+python3 scripts/landsat_season_series.py --seasons 2013-2026
+```
+
+Committed as `archive/reprocessed_2026/landsat_season_series.csv`.
+
+## Why this crosses no calibration boundary
+
+The data to go back thirty years is there. Measured over the USGS catalogue and
+committed as `archive/reprocessed_2026/landsat_reach.csv`:
+
+```
+python3 scripts/landsat_l1_inventory.py --reach
+```
+
+| instrument | SWIR | seasons | first | last | scenes | median per season |
+|---|---|---|---|---|---|---|
+| MSS | **no** | 19 | 1973 | 1993 | 343 | 24 |
+| TM | yes | 17 | 1985 | 2013 | 291 | 18 |
+| ETM+ | yes | 16 | 2000 | 2019 | 216 | 15 |
+| OLI | yes | 14 | 2013 | 2026 | 1028 | 60 |
+
+From 1990 the archive holds 36 seasons over this fjord, at a median of 31 scenes
+inside the window. MSS carries no shortwave infrared at all, so NDSI cannot even
+be formed on it, but TM, ETM+ and OLI could all in principle run this pipeline.
+
+What is missing is any way to join one to the next. A fixed threshold crossing a
+sensor boundary needs same-overpass pairs to be calibrated against, and over this
+AOI, in the whole archive, there are **zero** between TM and ETM+ and **zero**
+between TM and OLI. The boundaries fall in 1999 and 2013, which is exactly where
+an early-late split of a long record would sit, so an uncalibrated join would be
+indistinguishable from the trend it is meant to measure.
+
+ETM+ against OLI has two, and both are worth naming because they are the only
+bridge the archive offers between two SWIR sensors here.
+
+```
+2013-03-30   ETM+  15h UTC  sun 23.0  cloud 1.0
+2013-03-30   OLI   15h UTC  sun 23.0  cloud 0.8
+
+2019-06-06   OLI   00h UTC  sun 10.0  cloud 1.2
+2019-06-06   ETM+  23h UTC  sun 10.7  cloud 0.0
+```
+
+The first is as clean a pair as could be asked for: same hour, same sun, both
+under one percent cloud over a fjord that should be frozen shore to shore. It
+also falls inside Landsat 8's commissioning phase, and run through this pipeline
+that scene reports 0.098 ice. **The one usable calibration day in the archive is
+disqualified by the same mission date that disqualifies the 2013 season**, which
+the next section explains. The second is real but sits on 6 June under midnight
+sun at 10 degrees, an hour apart, over ice already breaking up; a threshold
+anchored there says nothing about February fast ice.
+
+Steiro et al. (2021) did reach back to 1985 on this fjord, by setting thresholds
+per image from histogram analysis. That sidesteps calibration by putting an
+analyst inside every measurement. That is a study; this is a pipeline.
+
+So this extension refuses the boundary instead of crossing it. Landsat 8 and 9
+carry the same instrument design and OLI is the only sensor in the series. That
+buys three seasons before Sentinel-2 rather than thirty, which is the price of
+not having to assume anything.
+
+## Two corrections the run required, both before any result
+
+**The commissioning phase.** A search from 2013 returns scenes, and four of them
+are nearly cloud free over a fjord that every other year says is frozen shore to
+shore, yet they read 5, 10, 15 and 15 percent ice. On 22 March 2013 the whole
+fjord measures 0.206 in green and 0.090 in the near infrared, where fast ice sits
+between 0.44 and 0.74. Every cell fails the brightness gate and falls through to
+water. It is not the catalogue quality flag; all four are Tier 1.
+
+The dates settle it. USGS records Landsat 8 as launched on 11 February 2013 and
+reaching its operational WRS-2 orbit on 11 April 2013, with nearly 10,000 scenes
+acquired on the way there. All four dark scenes are earlier. The first scene past
+that boundary, 23 April, reads 0.83. The cut written into the script is therefore
+that published mission date and not a judgement about which numbers look wrong.
+
+2013 then falls out on coverage rather than by hand. What survives both the cut
+and the 0.90 share gate is three days, 23 April, 29 May and 12 June, filling
+three of the nine bins where five are required.
+
+Worth stating plainly, because it is the difference between a cut and a cleanup:
+the other low readings in the record survive the same scrutiny. In 2023, three
+consecutive days from three different WRS-2 paths read 0.278, 0.270 and 0.271. In
+2025, 19 and 20 February read 0.013 and 0.014 from different paths. Agreement
+between independent overpasses is signal. 2013 has no such corroboration; it has
+a break in the middle of its own season.
+
+**Uneven sampling.** Landsat contributes 9 to 30 usable days a season where
+Sentinel-2 contributes 25 to 68, and the two are not spread through the window
+the same way. A mean over whatever days each sensor happens to hold compares two
+different estimators and then blames the gap on the instruments. Season means
+here are the mean over fifteen-day bins instead, so a season crowded with April
+scenes cannot outvote one weighted towards February.
+
+That is not cosmetic. Balanced this way the two sensors move from 0.040 apart to
+0.004, and what is left is scatter rather than offset.
+
+## The series
+
+Season means over day 45 to 180, ice as a share of the fjord area that could be
+read that day, balanced over fifteen-day bins. 222 of the 697 Landsat days in the
+window cleared the 0.90 classified-share gate; `days` counts those.
+
+| season | Landsat days | Landsat | Sentinel-2 | difference |
+|---|---|---|---|---|
+| 2014 | 14 | 0.824 | . | . |
+| 2015 | 9 | 0.925 | . | . |
+| 2016 | 9 | 0.435 | . | . |
+| 2017 | 11 | 0.993 | 0.864 | +0.129 |
+| 2018 | 16 | 0.745 | 0.774 | -0.029 |
+| 2019 | 12 | 0.527 | 0.551 | -0.024 |
+| 2020 | 13 | 0.717 | 0.601 | +0.116 |
+| 2021 | 12 | 0.213 | 0.434 | -0.220 |
+| 2022 | 26 | 0.765 | 0.797 | -0.033 |
+| 2023 | 22 | 0.541 | 0.454 | +0.088 |
+| 2024 | 30 | 0.671 | 0.714 | -0.043 |
+| 2025 | 22 | 0.330 | 0.371 | -0.040 |
+| 2026 | 23 | 0.457 | 0.443 | +0.013 |
+
+Over the ten shared seasons: bias -0.0043, RMSE 0.0962, correlation r = +0.908.
+Over the days each sensor happens to hold, without the bins: bias -0.0404,
+RMSE 0.0972.
+
+## What it answers
+
+**The record did not begin on an unusually icy stretch.** That was the question,
+and it is the one thing here with a clean answer.
+
+```
+early mean over the four seasons Sentinel-2 also sees   0.7455
+early mean once the three earlier seasons join it       0.7380
+the shift reaching further back buys                   -0.0075
+```
+
+Three seasons of independent data, from a different satellite, move the baseline
+by less than a hundredth. And they are not uniformly high, which is what would
+make the test hollow: 2016 comes in at 0.435, below every pre-2021 season
+Sentinel-2 ever saw. The early period is not a lucky starting point.
+
+## What it does not answer
+
+**Not significance.** Thirteen seasons instead of ten moves Mann-Kendall from
+p = 0.108 to p = 0.076. That is a real improvement and it is still above 0.05.
+Three seasons cannot fix a problem whose cause is the length of the record.
+
+**Not the size of the decline.** On the same ten seasons, with the same estimator
+and the same day balancing, the two instruments disagree:
+
+| | early to late | 95 percent bootstrap |
+|---|---|---|
+| Landsat 8/9, 13 seasons | 32.8 % | 4.9 to 55.1 |
+| Landsat, the 10 shared only | 33.4 % | 4.5 to 56.0 |
+| Sentinel-2, 10 seasons | 23.3 % | -3.5 to 43.4 |
+
+Ten points apart on a quantity both are measuring over the same fjord in the same
+window. The intervals overlap across almost their whole length, so this is not a
+contradiction between the sensors; it is what a sample of ten or thirteen seasons
+can resolve, which is not much. The per-season scatter of 0.096 is the whole
+story: with four to seven seasons on each side of the split, that scatter alone
+puts several points of slack on any early-to-late ratio.
+
+The honest reading is that the direction survives a change of satellite and the
+magnitude does not. **A decline of "roughly a quarter to a third" is what these
+data support. Any single figure quoted to the decimal is quoting the estimator.**
+
+## What this part does not establish
+
+- **It is the same physics twice.** OLI and MSI are both optical, both read melt
+  water on ice as water, and both were told the same thresholds. Agreement here
+  bounds instrument-specific error, not the shared blind spot that
+  [sar-validation.md](sar-validation.md) attacks from the radar side.
+- **The three added seasons are Landsat only.** Nothing cross-checks them, so
+  they inherit whatever OLI does on this fjord without a second opinion. That is
+  acceptable for the baseline question, which only asks where the early level
+  sits, and not for anything that needs the seasons themselves.
+- **9 to 30 days a season is thin.** The bins fix the weighting, they do not
+  create coverage. A season carried by nine days is a sketch of a season.

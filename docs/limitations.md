@@ -86,6 +86,35 @@ absence; it is what a ten-year record can and cannot settle.
 **The direction is consistent. The certainty is not there, and ten winters is
 why.**
 
+### Three seasons further back, and the baseline does not move
+
+A short record has a second problem beyond power: it might have started on an
+unusually icy stretch, in which case part of the decline is an accident of where
+the measuring began. Nothing inside the window can settle that. Landsat 8 and 9
+can, because they fly the same instrument design over the same fjord and reach
+back further, and running the pipeline's own thresholds on their Level 1 data
+gives 2014, 2015 and 2016 without crossing any sensor boundary. Measured in
+[landsat-crosscheck.md](landsat-crosscheck.md), part three:
+
+```
+early mean over the four seasons Sentinel-2 also sees   0.7455
+early mean once the three earlier seasons join it       0.7380
+```
+
+The baseline moves by 0.0075, and the added seasons are not uniformly high, which
+is what would make the check hollow: 2016 comes in at 0.435, below every pre-2021
+season in the Sentinel-2 record. **The early period is not a lucky starting
+point.**
+
+Two things that does not buy. Thirteen seasons instead of ten move Mann-Kendall
+from p = 0.108 to p = 0.076, still above 0.05, because the cause of the weak
+significance is the length of the record and three seasons is not a cure for it.
+And the two instruments disagree on the size: over the same ten seasons with the
+same estimator, Landsat gives 33.4 percent and Sentinel-2 gives 23.3, with
+bootstrap intervals of 4.5 to 56.0 and -3.5 to 43.4. The direction survives a
+change of satellite. The magnitude does not, and **a decline of roughly a quarter
+to a third is what these data actually support.**
+
 ## The result depends on three analysis choices
 
 None is wrong, but all three are choices, and all three belong on the page.
