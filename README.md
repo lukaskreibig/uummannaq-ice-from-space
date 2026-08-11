@@ -2,48 +2,124 @@
 
 A Sentinel-2 pipeline that turns one Greenland fjord into one ice-fraction number
 per day, ten seasons, 2017 to 2026, and then spends most of its effort trying to
-break that number.
+break that number with three other instruments.
 
 What it measures: the later seasons hold about **23 percent** less spring ice
-than the earlier ones. What it can defend after correcting a bias found with a
-thermal band and resolved with radar: about **19.5 percent**. What it cannot
+than the earlier ones. What it can defend once a bias found with a thermal band
+and resolved with radar is corrected: about **19.5 percent**. What it cannot
 claim: significance. The exact permutation test gives **p = 0.119** over ten
-seasons, and no monotone trend is detectable at all. The direction is consistent
-under every treatment. The certainty is not there, and ten winters is why.
+seasons, and no monotone trend is detectable at all. The direction survives every
+treatment in this repository. The certainty is not there, and ten winters is why.
 
 ![The 30 March 2013 fjord in the near infrared and in brightness temperature, beside the same fjord on 23 April](docs/images/dark-ice-2013-03-30.jpg)
 
 *Both days are frozen shore to shore. The classifier only says so about one of
 them, because on 30 March the surface is too dark for the brightness gate and
 falls through to the water class. A second satellite reads the same reflectance
-that day to within a hundredth, so it is not the instrument. Found in the course
-of asking whether the record began on an unusually icy stretch, and it turned out
-to matter more than the question. `scripts/figure_dark_ice.py`.*
+that day to within a hundredth, so it is not the instrument. Found while asking
+whether the record began on an unusually icy stretch, and it turned out to matter
+more than the question. `scripts/figure_dark_ice.py`.*
+
+## What the published number is
+
+The share of **ice in the area that could actually be judged that day**. Not the
+whole fjord: land, cloud, data gaps and cells that reached no class at all are
+out of the denominator, because a cell that cannot be ice should not be counted
+as though it could have been. A frozen fjord under a clear sky comes out at 1.00.
+
+That choice is the single most consequential one in the chain and it is measured
+rather than asserted. Over day 53 to 180, on the committed archive:
+
+| Denominator | Early | Late | Decline |
+|---|---|---|---|
+| the whole grid | 0.4324 | 0.2795 | 35.4 % |
+| clear cells, not cloud and not land and not void | 0.6298 | 0.4611 | 26.8 % |
+| classified cells, no visibility gate | 0.7664 | 0.6645 | 13.3 % |
+| **classified cells, after the gate** | **0.7749** | **0.5793** | **25.2 %** |
+
+`scripts/denominator_comparison.py`, and [docs/methods.md](docs/methods.md)
+section 6 for why each step removes cells that could sit in a denominator while
+never being able to reach a numerator.
+
+## How one scene becomes one number
+
+[docs/pipeline.md](docs/pipeline.md) has every stage in detail and
+[docs/methods.md](docs/methods.md) has the reason for every parameter. At a high
+level, and with the two steps that matter most in bold:
+
+1. **Scene selection.** Search the Element84 STAC (`sentinel-2-l1c`) over the
+   AOI and date range, keep one scene per observation day, and repair the L1C
+   asset hrefs, because some catalogue entries point into the L2A bucket.
+2. **Reflectance.** Stream all thirteen bands through `odc-stac.load` onto a
+   common 10 m grid, then average-pool 4 by 4. Everything after this is decided
+   on that 40 m grid.
+3. **Masks.** A georeferenced land mask, derived from the imagery rather than
+   drawn, reprojected onto the pooled grid per scene. A MobilenetV2 UNet trained
+   on CloudSEN12 gives four classes by argmax; everything the argmax does not
+   call clear is masked, then closed with a 3 by 3 element. Cells with no signal
+   are flagged separately.
+4. **Classification.** NDSI = (green - swir16)/(green + swir16) and
+   NDWI = (green - nir)/(green + nir), each ignored where the band sum falls
+   below 0.02 and the ratio stops meaning anything. Solid ice above NDSI 0.70,
+   light ice 0.40 to 0.70, open water above NDWI 0.20. **Both ice classes must
+   also clear a brightness gate, green above 0.10 and near infrared above 0.17,
+   and that gate is what actually separates ice from water here**: open water is
+   nearly black at 1.6 micrometres and therefore scores a HIGHER NDSI than April
+   fast ice. The gate is also the source of this project's largest known error,
+   because a dark surface fails it whether the darkness is shadow, melt water or
+   bare ice.
+5. **Scene to number.** Count the classes, and **drop any scene that classified
+   less than 30 percent of the fjord**, because such a scene measured the weather
+   rather than the ice. That gate costs 41.9 percent of the scenes in the window
+   and is worth about twelve points on the headline, as the table above shows.
+6. **Scene to day to season.** Days without a scene are filled from neighbours
+   or the day-of-year climatology and marked as filled, and the published curve
+   is smoothed. That step lives in the story repo and is written out in
+   [docs/handoff-to-story.md](docs/handoff-to-story.md).
+
+## What checks it, and with what
+
+The pipeline above is one instrument reading one thing. Everything below exists
+because that is not enough, and each one can see something the others cannot.
+
+| | What it can see that the chain cannot | Where |
+|---|---|---|
+| **Sentinel-2, against itself** | days whose answer is not in doubt: a closed fjord in early April, an open one in July. The median scene is accurate to two parts in a thousand in both directions | [limitations.md](docs/limitations.md) |
+| **Landsat 8 and 9, Level 2, same day** | a different optic, a different atmospheric correction and a different cloud mask. 82 pairs, and RMSE **0.026** on the control days | [landsat-crosscheck.md](docs/landsat-crosscheck.md) part one |
+| **Landsat Level 1, at low winter sun** | the regime Level 2 cannot reach at all, because surface reflectance is not produced above a solar zenith of 76 degrees. Also that CFMask discards **83 percent** of a frozen fjord | part two |
+| **Landsat, back to 2013** | whether the record began on an unusually icy stretch. It did not: four earlier seasons move the baseline by under 0.04 either way | part three |
+| **The thermal band** | whether a surface is frozen, regardless of how dark it is. Seawater cannot radiate below 271.35 K. **36 of 226 days** call the fjord open while more than half of it is colder than that | part three |
+| **Sentinel-1 radar** | through cloud and darkness, and the difference between a closed sheet and a floe field that a thermometer cannot tell apart | [sar-validation.md](docs/sar-validation.md), part four |
+
+Four instruments, and they do not agree about everything. Where two of this
+project's own cross-checks contradict each other, on 15 March 2025, that is
+written down rather than resolved in favour of the convenient one.
 
 ## One scene, and a defect you can see
 
 ![One scene through the pipeline: RGB, cloud mask, land mask, solid ice, light ice, and the overlay](docs/images/pipeline-panel-2017-02-19.jpg)
 
-*One scene, 19 February 2017, at every stage, from a run of the current code.
-**Look at the long blue wedge north of the island in the overlay.** That is the
-mountain's shadow on sea ice, and the chain calls it open water, because a
-shadowed surface is dark and a dark surface fails the brightness gate. On this
-day it costs 9.9 percent of the readable fjord on ice that is frozen shore to
-shore. `scripts/shadow_bias.py` measures it across the record: 0.216 in the first
-fortnight of the window and 0.003 by April, because the shadow shortens as the
-sun climbs. It very nearly cancels between the two periods only because both are
-sampled at the same days of the year, median day 78 against 80. Panels like this
-are written for every scene, and looking at them is how both this and the land
-mask defect in docs/investigation-log.md were found.*
+*19 February 2017 at every stage, from a run of the current code. **Look at the
+long blue wedge north of the island in the overlay.** That is the mountain's
+shadow on sea ice, and the chain calls it open water, because a shadowed surface
+is dark and a dark surface fails the brightness gate of step 4. On this day it
+costs 9.9 percent of the readable fjord on ice that is frozen shore to shore.
+`scripts/shadow_bias.py` measures it across the record: 0.216 in the first
+fortnight of the season window, 0.003 by April, because the shadow shortens as
+the sun climbs. It very nearly cancels between the two periods, but only because
+both are sampled at the same days of the year, median day 78 against 80. Panels
+like this are written for every scene, and looking at them is how both this and
+the land mask defect in [investigation-log.md](docs/investigation-log.md) were
+found.*
 
-## What was asked, and what it cost
+## What was asked, and what came of it
 
-Every row is a question this project put to its own result, a script that
-answers it, and a committed artefact under `archive/reprocessed_2026/`. Six of
-them moved the headline and the right-hand column says by how much. The other
-eleven settled something no percentage could carry: an approach abandoned with
-its reason, a threshold shown not to be overfitted, a bias shown to cancel. Both
-kinds belong here, and only one kind can be a number.
+Every row is a question this project put to its own result, a script that answers
+it, and a committed artefact under `archive/reprocessed_2026/`. Six of them moved
+the headline and the right-hand column says by how much. The other eleven settled
+something no percentage could carry: an approach abandoned with its reason, a
+threshold shown not to be overfitted, a bias shown to cancel. Both kinds belong
+here, and only one kind can be a number.
 
 | The question | Answer | What came of it |
 |---|---|---|
@@ -65,10 +141,10 @@ kinds belong here, and only one kind can be a number.
 | The mountain's shadow on the sea ice? `shadow_bias.py` | **0.216** of the fjord called water in mid February, 0.003 by April | cancels, because both periods sit on the same days |
 | Do the published numbers still reproduce? `story_numbers.py` | recomputed from the archive and diffed against a committed set | **runs in CI** |
 
-Five systematic errors were found this way and none of them raised an exception.
-[docs/investigation-log.md](docs/investigation-log.md) is the route rather than
-the destination, including four of my own and one hypothesis that did not survive
-its own test.
+Five systematic errors were found along the way and none of them raised an
+exception. [docs/investigation-log.md](docs/investigation-log.md) is the route
+rather than the destination, including four mistakes of my own and one hypothesis
+that did not survive its own test.
 
 ## The scale of it
 
@@ -88,7 +164,8 @@ against `archive/reprocessed_2026/`, with no credentials and no network:
 
 ```bash
 python scripts/story_numbers.py                       # the headline, and every number the story shows
-python scripts/denominator_comparison.py              # why the denominator changed, and what it cost
+python scripts/denominator_comparison.py              # the denominator table above
+python scripts/shadow_bias.py                         # the shadow in the panel above
 python scripts/gate_sensitivity.py  --reuse --out archive/reprocessed_2026
 python scripts/grid_resolution.py   --reuse --out archive/reprocessed_2026
 python scripts/validate_sar.py --analyse-only --output archive/reprocessed_2026/sar_validation.csv
@@ -99,13 +176,13 @@ The first and the last are the CI gate: `.github/workflows/ci.yml` runs them on
 every push, so a page that has drifted from the data fails the build instead of
 waiting to be noticed. `docs/published_numbers.json` holds the figures the
 documentation quotes and is what `story_numbers.py` diffs against. The daily
-series it reads is committed as
-`archive/reprocessed_2026/daily_series.csv`; `story_numbers.py --live` reads the
-story repo's working copy instead and fails if the snapshot has drifted from it.
+series it reads is committed as `archive/reprocessed_2026/daily_series.csv`;
+`story_numbers.py --live` reads the story repo's working copy instead and fails
+if the snapshot has drifted from it.
 
-**One dependency is outside this repository.** The scene-to-day conversion, the
-gap filling and the smoothing live in the story repo next door, at
-`../climate-dashboard/data-pipeline/refresh_fjord_season.py`, and
+**One dependency is outside this repository.** Step 6 above, the scene-to-day
+conversion with its gap filling and smoothing, lives in the story repo next door
+at `../climate-dashboard/data-pipeline/refresh_fjord_season.py`, and
 `story_numbers.py`, `wet_day_sensitivity.py` and `sentinel_correction.py` all
 import it. The recipe is written out in
 [docs/handoff-to-story.md](docs/handoff-to-story.md), but without that checkout
@@ -114,13 +191,10 @@ self-contained.
 
 ## Read this first
 
-The pipeline produces one number per day. These say what that number is, what it
-is not, and how it was arrived at.
-
 | | |
 |---|---|
-| [docs/limitations.md](docs/limitations.md) | What the method cannot do, quantified, ordered by how much it could change a conclusion. Start with the table at the top. |
-| [docs/investigation-log.md](docs/investigation-log.md) | How five systematic errors were found. None of them raised an exception, and the fifth is still moving the headline. |
+| [docs/limitations.md](docs/limitations.md) | 851 lines of what the method cannot do, quantified, ordered by how much each weakness could change a conclusion. Start with the table at the top. |
+| [docs/investigation-log.md](docs/investigation-log.md) | How five systematic errors were found. None of them raised an exception, and the fifth is the one still moving the headline. |
 | [docs/methods.md](docs/methods.md) | Every processing step and the reason for each parameter, with the measurement behind it. |
 | [docs/generalisation.md](docs/generalisation.md) | What it would take to run this at any Arctic coastal site, and what already does. |
 
@@ -135,8 +209,6 @@ part of this project worth reading if you only read one thing:
 
 `archive/reprocessed_2026/` is where all of that evidence sits. It is tracked
 rather than ignored, and it is not the legacy material described further down.
-
----
 
 ## What is still open
 
@@ -180,7 +252,6 @@ cannot read rather than water. Not done, and not obviously worth it: the bias
 cancels, and masking it would drop February scenes below the visibility gate
 entirely, trading a measured bias for missing days in the thinnest part of the
 record.
-
 ---
 
 # Running it yourself
@@ -239,15 +310,23 @@ The packaged assets are:
   not be reintroduced.
 - `config/*.yaml`: Versioned run presets (supports `extends` for layered configs).
 
-## Pipeline overview
+## What the code writes per run
 
-`docs/pipeline.md` describes every stage in detail; at a high level:
+`docs/pipeline.md` has the stages in detail; the numbered walk-through is at the
+top of this file under "How one scene becomes one number", which is the same
+chain described once rather than twice.
 
-1. Search the Element84 STAC (`sentinel-2-l1c`) within the configured AOI and date range, deduplicated by observation date.
-2. Stream tiles through `odc-stac.load`, average-pool to 40 m, align with the landmask, and derive NDSI/NDWI.
-3. Run the MobilenetV2 UNet cloud classifier: four CloudSEN12 classes by argmax, everything not clear is masked, then morphologically closed.
-4. Classify pixels into solid ice / light ice / water masks using the thresholds (default NDSI=0.70/0.40, NDWI=0.20) and the brightness gate that does the actual separating (green 0.10, near infrared 0.17).
-5. Persist quicklook overlays + panels, aggregate CSV statistics (includes EO cloud cover and sun geometry), and log ETA estimates.
+Each run writes, under `--output-dir`:
+
+- `summary.csv`, one row per scene: the six pixel counts, the three denominators,
+  the visibility flag, mean index values per class, EO cloud cover and sun
+  geometry. `scripts/check_summary.py` validates its shape and its arithmetic.
+- `quicklooks/panels/` and `quicklooks/overlays/`, one image per scene. The panel
+  above is one of them. Looking at these is how two of the five errors in
+  [docs/investigation-log.md](docs/investigation-log.md) were found, so they are
+  a working step and not a decoration.
+- `run_metadata/run_<timestamp>.json`, the resolved configuration, the environment,
+  the git commit and the summary statistics, so a run can be traced afterwards.
 
 ## Documentation
 
