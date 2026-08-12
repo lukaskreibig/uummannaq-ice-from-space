@@ -145,9 +145,12 @@ would build, the seventeen days that are all 1.00 ice read between **0.63 and
 1.08**. Only 59 percent of them land within 5 points of the truth. The worst,
 2023-04-02, reads 0.63.
 
-The effect this project measures is a decline of 0.32 between the early and late
-periods. An endmember error of 0.37 on a day whose answer is certain is larger
-than the entire signal. A fixed library cannot be used here, and that closes the
+The effect this project measures is a decline of **0.154** in ice fraction
+between the early and late period means, 0.6839 against 0.5296, which is the 22.6
+percent the story publishes. An endmember error of 0.37 on a day whose answer is
+certain is more than twice the entire signal. An earlier version of this
+paragraph compared against 0.32, a decline this project has since retracted; the
+correction widens the margin rather than narrowing it. A fixed library cannot be used here, and that closes the
 direction as it was posed.
 
 ## 5. The finding that outlives the method

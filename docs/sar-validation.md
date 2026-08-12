@@ -49,9 +49,12 @@ The left column falls by a factor of five, the right one by a third. So most of
 the apparent cloud artefact was the denominator, and a SAR check aimed at cloudy
 days would have spent itself on a problem a division already solves.
 
-**What it tests instead.** February and March days that pass the 30 percent
-visibility gate and still report under 0.15 ice on the clear-sky denominator. On
-the reprocessed archive there are 28 of them, several under a sky the pipeline
+**What it tests instead.** February and March days that pass a 30 percent gate on
+what the scene could SEE, `clear_pct`, and still report under 0.15 ice on the
+clear-sky denominator. That is not the gate the published series uses, which asks
+what share was CLASSIFIED; the two carried the same constant name until this was
+noticed. On the reprocessed archive there are 28 such days under the could-see
+gate and 11 under the published one, several under a sky the pipeline
 itself calls clear: 2025-02-18 at 0.000 detected cloud, 2025-03-01 at 0.000,
 2026-03-06 at 0.026. No denominator explains those, and this fjord is frozen in
 February and March with near certainty. Those are the days worth putting a
@@ -171,7 +174,7 @@ archive can be asked directly, because it writes `sun_elev` to every one of its
 and quoted the legacy archive's 1552 rows; that was true of the run this one
 replaced.
 
-Asked, it answers in the expected direction. Over the 219 February and March
+Asked, it answers in the expected direction. Over the 219 could-see February and March
 scenes that clear the visibility gate, the 28 suspects sit at a median sun
 elevation of **12.60 degrees against 16.34** for the rest, a difference of 3.74
 degrees at a one-sided permutation p of 0.009. Sun elevation climbs steadily

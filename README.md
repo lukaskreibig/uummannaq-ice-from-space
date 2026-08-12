@@ -116,7 +116,7 @@ found.*
 
 Every row is a question this project put to its own result, a script that answers
 it, and a committed artefact under `archive/reprocessed_2026/`. Six of them moved
-the headline and the right-hand column says by how much. The other eleven settled
+the headline and the right-hand column says by how much. The other sixteen settled
 something no percentage could carry: an approach abandoned with its reason, a
 threshold shown not to be overfitted, a bias shown to cancel. Both kinds belong
 here, and only one kind can be a number.
@@ -148,7 +148,7 @@ here, and only one kind can be a number.
 
 Five systematic errors were found along the way and none of them raised an
 exception. [docs/investigation-log.md](docs/investigation-log.md) is the route
-rather than the destination, including four mistakes of my own and one hypothesis
+rather than the destination, including five mistakes of my own and one hypothesis
 that did not survive its own test.
 
 ## The scale of it
@@ -156,27 +156,30 @@ that did not survive its own test.
 ```
    1103 scenes        10 seasons, 2017 to 2026, Sentinel-2 L1C
      33 scripts       one question each, all committed with their artefacts
-     28 artefacts     archive/reprocessed_2026, every published figure traceable to one
+     29 artefacts     archive/reprocessed_2026, every published figure traceable to one
       4 instruments   Sentinel-2 optical, Landsat optical, Landsat thermal, Sentinel-1 radar
-   4187 lines         documentation, ordered by how much each weakness could change a conclusion
+  over 4000 lines     documentation, ordered by how much each weakness could change a conclusion
     124 tests         plus three gates that run on every push, one of them `make audit`
 ```
 
 ## Check a number yourself
 
-Every published figure has a committed artefact and a script. After a clone, one
-command runs every analysis that needs nothing but the committed archive: no
-credentials, no network, no AWS bill.
+Every published figure has a committed artefact and a script. After a clone and
+nothing else, one command runs every analysis that needs only the committed
+archive: no credentials, no network, no second checkout, no AWS bill.
 
 ```bash
 make audit
 ```
 
-That is eight scripts in order, and it exits non-zero on the first one that
-fails. Two of them refuse to print anything unless the published headline still
-reproduces to a tenth of a point, so the target gates the estimator and not only
-the numbers it produced. Individually, if you want one answer rather than all of
-them:
+That is six scripts in order, and it exits non-zero on the first one that fails,
+which is what makes it a gate rather than a report. One of them refuses to print
+anything unless the published headline still reproduces to a tenth of a point, so
+the target checks the estimator and not only the numbers it produced.
+
+Two further analyses are just as offline but carry the series through the story
+repo's own cleaning step rather than a copy of it, so they need that checkout
+beside this one. `make audit-full` runs those as well.
 
 ```bash
 python scripts/story_numbers.py                       # the headline, and every number the story shows
@@ -218,7 +221,7 @@ self-contained.
 
 | | |
 |---|---|
-| [docs/limitations.md](docs/limitations.md) | 851 lines of what the method cannot do, quantified, ordered by how much each weakness could change a conclusion. Start with the table at the top. |
+| [docs/limitations.md](docs/limitations.md) | over 1000 lines of what the method cannot do, quantified, ordered by how much each weakness could change a conclusion. Start with the table at the top. |
 | [docs/investigation-log.md](docs/investigation-log.md) | How five systematic errors were found. None of them raised an exception, and the fifth is the one still moving the headline. |
 | [docs/methods.md](docs/methods.md) | Every processing step and the reason for each parameter, with the measurement behind it. |
 | [docs/generalisation.md](docs/generalisation.md) | What it would take to run this at any Arctic coastal site, and what already does. |
@@ -335,7 +338,7 @@ data/                   # Raw/interim/processed datasets (ignored by git by defa
 docs/                   # limitations, investigation log, three cross-checks, methods, runbooks
 docker/                 # Container definitions (CPU + CUDA)
 notebooks/              # Exploratory notebooks, superseded by scripts/
-scripts/                # THE ANALYSIS: 28 scripts, one question each, listed at the top of this file
+scripts/                # THE ANALYSIS: 33 scripts, one question each; the 22 with a published answer are tabled above
 src/uummannaq_ice/      # Production Python package and CLI
 tests/                  # Pytest suite (unit + mocked integration)
 out/                    # Default runtime outputs (Git-ignored)

@@ -203,12 +203,23 @@ ice   requires  NDSI > threshold  AND  green > 0.10  AND  nir > 0.17
 water requires  NDWI > 0.20  and not already ice
 ```
 
-**The brightness floors are not decoration, they are what separates ice from
-water.** At top of atmosphere, open water is nearly black in the SWIR, so its
-NDSI runs about 0.82, which is *higher* than April fast ice at 0.72. NDSI alone
-therefore classifies the open fjord as ice. The floors are the classic Dozier
-construction that the MODIS lineage still uses: snow and ice are bright in the
-visible and the near infrared, water is dark in both.
+**The brightness floors are not decoration, they are the only thing separating
+ice from water.** At top of atmosphere, NDSI does not separate these two surfaces
+at all. Both are nearly black at 1.6 micrometres, so the ratio saturates for
+each: on the committed endmembers open water reads **0.866** and April fast ice
+**0.871**, a gap of 0.005. Open water also clears the 0.70 solid-ice threshold
+outright, so NDSI alone classifies an open fjord as ice.
+
+The floors are the classic Dozier construction that the MODIS lineage still uses:
+snow and ice are bright in the visible and the near infrared, water is dark in
+both. Green above 0.10 and near infrared above 0.17 reject open water at 0.074
+and 0.024 while passing fast ice at 0.735 and 0.757.
+
+An earlier version of this section put open water at 0.82 against fast ice at
+0.72 and argued that water *outscores* ice. The ordering was right and the
+magnitude of the gap was not: the two are indistinguishable rather than reversed,
+which makes the case for the gate stronger. `scripts/shadow_discriminant.py`
+prints both numbers from `archive/reprocessed_2026/endmember_spectra.csv`.
 
 Measured on the real 2023-08-18 scene, an open summer fjord: with the brightness
 gate the ice fraction is 0.002, without it 0.584.

@@ -101,7 +101,12 @@ FROZEN_MONTHS = (2, 3)
 OPEN_MONTHS = (6, 7)
 
 # The optical pipeline's own usability gate.
-MIN_CLEAR_SHARE = 0.30
+# NOT the gate the published series uses. processing.py's MIN_CLEAR_SHARE is a
+# floor on the CLASSIFIED share; this is a floor on what the scene could SEE.
+# They select different sets of scenes (219 against 195 over February and March)
+# and they carried the same name until docs/limitations.md quoted one under the
+# other's description.
+MIN_COULD_SEE_SHARE = 0.30
 # Anchors have to be beyond argument, so they are held to more than the gate.
 ANCHOR_MIN_CLEAR = 0.70
 SUSPECT_MAX_ICE = 0.15
@@ -221,7 +226,8 @@ def build_candidates(frame: pd.DataFrame) -> list[Candidate]:
     frozen = greenland[greenland["month"].isin(FROZEN_MONTHS)]
 
     suspects = frozen[
-        (frozen["clear"] > MIN_CLEAR_SHARE) & (frozen["ice_clear"] < SUSPECT_MAX_ICE)
+        (frozen["clear"] > MIN_COULD_SEE_SHARE)
+        & (frozen["ice_clear"] < SUSPECT_MAX_ICE)
     ]
     ice_anchors = frozen[
         (frozen["clear"] > ANCHOR_MIN_CLEAR)

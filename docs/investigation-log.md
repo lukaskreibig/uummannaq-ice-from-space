@@ -279,10 +279,12 @@ should be tested hardest.
 
 ---
 
-## Two errors of my own, worth recording
+## Five errors of my own, worth recording
 
-Neither of these was in the original pipeline. Both were introduced while fixing
-something else, and both are the same shape as the errors they were fixing.
+None of these was in the original pipeline. All five were introduced while fixing
+something else, and all five are the same shape as the errors they were fixing.
+The heading said two for as long as the list said five, which is its own small
+instance of the point.
 
 **A tolerance too tight.** The first version of the corrupted-read guard used a
 one percentage point spread rule across the 13 bands. It would have discarded an

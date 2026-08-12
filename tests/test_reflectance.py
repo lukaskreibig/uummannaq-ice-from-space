@@ -5,9 +5,11 @@ published number:
 
 1. The processing-baseline 04.00 offset was applied with the wrong sign, so both
    eras came out 0.1 above true reflectance.
-2. NDSI on its own does not separate ice from water at top of atmosphere. Open
-   water is nearly black in the SWIR, so its NDSI runs about 0.82, HIGHER than
-   April fast ice at about 0.72. The offset error happened to compress dark
+2. NDSI on its own does not separate ice from water at top of atmosphere. Both
+   are nearly black in the SWIR, so the ratio saturates for each: on the
+   committed endmembers open water reads 0.866 and April fast ice 0.871, a gap
+   of 0.005, and water clears the 0.70 solid threshold outright. The offset
+   error happened to compress dark
    pixels far more than bright ones and was therefore doing the separating. Fix
    the sign without adding a brightness floor and the classifier calls the open
    summer fjord ice: measured on the real 2023-08-18 scene, the ice fraction

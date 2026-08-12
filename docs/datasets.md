@@ -19,7 +19,7 @@ Legacy training sets (clustered by `train`, `train_new_kmeans`, etc.) were reloc
 | Path                                         | Purpose                                           |
 |----------------------------------------------|---------------------------------------------------|
 | `src/uummannaq_ice/models/unet_mobv2_v2.pt`  | MobilenetV2 UNet checkpoint (cloud segmentation)  |
-| `src/uummannaq_ice/assets/landmask_template.png` | Landmask raster aligned to the AOI grid       |
+| `src/uummannaq_ice/assets/landmask.tif`      | Land mask, EPSG:32622, 10 m, derived from imagery |
 
 Both files are shipped with the package to keep the CLI usable immediately. The same files are left in `archive/legacy_pipeline/ice-final/` for parity with historical notebooks.
 
@@ -27,7 +27,7 @@ Both files are shipped with the package to keep the CLI usable immediately. The 
 
 - **Sentinel-2 L1C**: Retrieved via Element84 STAC (`sentinel-2-l1c`). The STAC client defaults to unsigned requests (`AWS_NO_SIGN_REQUEST=YES`).
 - **MODIS daily JPGs**: `scripts/scrape_satellite_images.py` downloads DMI “Uummannaq” glamour shots (AQUA/TERRA). These end up in `data/raw/satellite/aqua` by default.
-- **Landmask**: Derived from manual digitisation (see `archive/legacy_pipeline/ice-final/landmask_template.png`). Treat as a reference artefact; update via `gdalwarp` + manual QA if AOI changes.
+- **Land mask**: `assets/landmask.tif`, derived from imagery by `scripts/derive_landmask.py` and carrying its own CRS and transform. The hand-digitised `landmask_template.png` beside it is the superseded predecessor, kept only so the legacy notebooks still run. Do not reintroduce it: reprojecting a PNG without scaling its transform is one of the five errors in [investigation-log.md](investigation-log.md), and it put a band of false land over open water.
 
 ## Outputs
 

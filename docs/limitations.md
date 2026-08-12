@@ -25,7 +25,7 @@ turned into a measurement, this is what it cost:
 | A second optical instrument, same day | Landsat agrees to an RMSE of **0.026** over 23 days whose answer was not in doubt | [landsat-crosscheck.md](landsat-crosscheck.md) |
 | Radar on the contested days | Sentinel-1 puts them within about **2 dB** of their own winter fast ice | [sar-validation.md](sar-validation.md) |
 | Can a sub-pixel fraction replace the class | no, the pure ice spectrum moves by a factor of **1.7** across days that are all unambiguously frozen | [unmixing-feasibility.md](unmixing-feasibility.md) |
-| Cloud detection | 28 of 219 winter scenes still read anomalously low under a sky the pipeline calls clear, and Landsat Level 1 confirms five of them to an RMSE of **0.0076** | [below](#cloud-detection-is-unreliable-and-the-denominator-mattered-more) |
+| Cloud detection | 28 of 219 winter scenes still read anomalously low under a sky the pipeline calls clear, on the could-see gate; 11 of 195 on the published gate. Landsat Level 1 confirms five of them to an RMSE of **0.0076** | [below](#cloud-detection-is-unreliable-and-the-denominator-mattered-more) |
 | The resolution the cloud mask is computed at | up to 0.209 of ice fraction on one scene, **0.2 points** on the decline | [below](#the-resolution-the-mask-is-computed-at-is-worth-more-than-the-grid-itself) |
 | The 40 m analysis grid | 0.0015 across grids from 10 to 80 m | [below](#the-resolution-the-mask-is-computed-at-is-worth-more-than-the-grid-itself) |
 | Uneven sampling | a season's sampling error is 0.054, against a between-season spread of 0.104 to 0.170 | [below](#sampling-is-uneven-and-2017-is-thin) |
@@ -37,10 +37,15 @@ turned into a measurement, this is what it cost:
 | **The same correction on the published series** | **22.6 to 19.5 percent, and 17.9 to 20.9 across matching windows** | [below](#and-carried-onto-the-published-series-it-costs-three-points) |
 
 **Three readings of that table, and all three belong here.** Separate the two
-kinds of entry first, because they are not the same thing. Correcting a bias
-that was measured costs the headline at most **2.3 points**, the largest being
-the gate that tracks each season's ice, and the significance does not move under
-any of them. Redefining the analysis rather than correcting a bias moves it much
+kinds of entry first, because they are not the same thing. Every bias in the
+upper part of the table costs the headline at most **2.3 points**, the largest
+being the gate that tracks each season's ice, and the significance does not move
+under any of them. The dark-ice correction in the last row is the exception and
+is larger than all of them together, at **3.1 points**, 22.6 to 19.5; it gets its
+own treatment below because it is the one entry built from four instruments
+rather than one. An earlier version of this paragraph gave the 2.3 as an
+unqualified maximum, which the row two lines above it already contradicted.
+Redefining the analysis rather than correcting a bias moves it much
 further: the period boundary alone spans 13 to 26 percent, and that range is a
 choice about what question to ask, not an error to be fixed. And nothing on the
 table rescues the significance, because with ten seasons the test has too little
@@ -797,9 +802,19 @@ The whole-grid column falls by a factor of five across those bands, the clear-sk
 column by a third. So most of the apparent cloud artefact is **the denominator**,
 and switching denominators is the fix rather than a mitigation.
 
+**Two gates carry the same name, and this paragraph used the other one.** The
+published gate asks what share of the grid a scene actually CLASSIFIED, at 0.30,
+and it is the `usable` column. `validate_sar.py` gates on `clear_pct` instead,
+which is what the scene could SEE, and until now it called the same constant
+`MIN_CLEAR_SHARE`. The two are not the same set of scenes and the figures below
+came from the second.
+
 **What survives is smaller, sharper and not a cloud problem.** Of the 219
-February and March scenes that pass the visibility gate, **28 report under 0.15
-ice on the clear-sky denominator**, and several of those sit under a sky the
+February and March scenes that clear the could-see gate, **28 report under 0.15
+ice on the clear-sky denominator**. Under the gate this project actually
+publishes on, the same window holds 195 scenes and **11** of them, or 10 on the
+classified denominator. Both counts are real; only the second is the one the rest
+of these pages are built on, and several of those sit under a sky the
 pipeline itself calls clear: 2025-02-18 and 2025-03-01 at 0.000 detected cloud,
 2026-03-06 at 0.026. Cloud does not explain those. The most plausible cause is
 the brightness gate at low winter sun, and the reprocessed archive can finally
