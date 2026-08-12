@@ -155,7 +155,7 @@ that did not survive its own test.
 
 ```
    1103 scenes        10 seasons, 2017 to 2026, Sentinel-2 L1C
-     33 scripts       one question each, all committed with their artefacts
+     34 scripts       one question each, all committed with their artefacts
      29 artefacts     archive/reprocessed_2026, every published figure traceable to one
       4 instruments   Sentinel-2 optical, Landsat optical, Landsat thermal, Sentinel-1 radar
   over 4000 lines     documentation, ordered by how much each weakness could change a conclusion
@@ -338,7 +338,7 @@ data/                   # Raw/interim/processed datasets (ignored by git by defa
 docs/                   # limitations, investigation log, three cross-checks, methods, runbooks
 docker/                 # Container definitions (CPU + CUDA)
 notebooks/              # Exploratory notebooks, superseded by scripts/
-scripts/                # THE ANALYSIS: 33 scripts, one question each; the 22 with a published answer are tabled above
+scripts/                # THE ANALYSIS: 34 scripts, one question each; the 22 with a published answer are tabled above
 src/uummannaq_ice/      # Production Python package and CLI
 tests/                  # Pytest suite (unit + mocked integration)
 out/                    # Default runtime outputs (Git-ignored)

@@ -235,7 +235,14 @@ sensitivity table above already reported for the period boundary alone.
 
 Found by eye in a quicklook, by someone who had not read any of the code, and it
 is the clearest single instance of the failure the rest of this page measures
-statistically. The island carries a 1170 m mountain. In February the sun sits
+statistically. The island carries a mountain whose highest point Copernicus DEM
+GLO-30 puts at **792 m**, with the summit cell well inside the sampled window
+rather than clipped at its edge. The figure usually quoted for this peak is 1170
+to 1175 m, and this page carried that until the DEM was read for
+`scripts/build_terrain_tiles.py`. Nothing here depends on which is right: the
+shadow was measured from the imagery and never computed from the height, and at a
+sun elevation of 9.8 degrees the two heights throw 4.6 km and 6.8 km, both of
+which are the "kilometres" this section claims. In February the sun sits
 under ten degrees and the shadow reaches kilometres north across the fjord. Ice
 in that shadow is dark, a dark surface fails the brightness gate, and the gate is
 what separates ice from water. So the shadow is classified as open water.

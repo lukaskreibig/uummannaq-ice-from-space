@@ -2,8 +2,11 @@
 """The mountain casts a shadow on the sea ice, and the classifier calls it water.
 
 Found by eye, in a quicklook, by someone who had not read any of the code. The
-island carries a 1170 m mountain, the sun in February sits under ten degrees, and
-the shadow reaches kilometres north across the fjord. Ice in that shadow is dark,
+island carries a mountain that Copernicus DEM GLO-30 puts at 792 m, the sun in
+February sits under ten degrees, and the shadow reaches kilometres north across
+the fjord: 4.6 km at a sun elevation of 9.8 degrees. An earlier version of this
+docstring said 1170 m, which is the figure usually quoted for this peak and is
+not what the DEM measures; scripts/build_terrain_tiles.py reads the same source. Ice in that shadow is dark,
 a dark surface fails the brightness gate, and the gate is what separates ice from
 water here. So the shadow is classified as open water on ice that is certainly
 frozen.
