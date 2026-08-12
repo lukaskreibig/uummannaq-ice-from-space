@@ -1,5 +1,5 @@
 .PHONY: install dev lint lint-fix format test typecheck precommit docs \
-        preflight archive verify publish numbers audit
+        preflight archive verify publish numbers audit audit-full
 
 # The scripts that matter for a run. scripts/scrape_satellite_images.py is
 # deliberately not here: it is an ad-hoc DMI scraper that starts a fifteen-year
@@ -8,19 +8,34 @@ RUN_SCRIPTS := scripts/check_summary.py scripts/preflight.py scripts/watch_archi
 	scripts/validate_sar.py \
                scripts/derive_thresholds.py
 
-# Every analysis that runs from the committed archive alone: no network, no
-# credentials, no AWS bill. This is the list a reader can run after a clone.
-# gate_sensitivity.py and grid_resolution.py are deliberately absent because
-# they re-read scenes, and breakup_definitions.py because it imports the
+# Every analysis that runs from a FRESH CLONE and nothing else: no network, no
+# credentials, no sibling checkout, no AWS bill.
+#
+# The first version of this list had eight entries and three of them could not
+# survive a clone. shadow_discriminant.py read its inputs from out/, which is
+# gitignored, so it passed on the machine that produced them and died with
+# FileNotFoundError anywhere else; its inputs are now committed under
+# archive/reprocessed_2026/. wet_day_sensitivity.py and sentinel_correction.py
+# import refresh_fjord_season from ../climate-dashboard/data-pipeline, which no
+# clone of this repo has, and they are in AUDIT_STORY_SCRIPTS below instead.
+# That mattered because CI runs `make audit` as a gate: the target passed here
+# and would have failed on every runner.
+#
+# gate_sensitivity.py and grid_resolution.py are absent because they re-read
+# scenes over the network, and breakup_definitions.py because it imports the
 # detector that ships with the story repo rather than a copy of it.
 AUDIT_SCRIPTS := scripts/robustness.py \
                  scripts/noise_floor.py \
                  scripts/clear_sky_conditioning.py \
                  scripts/shadow_bias.py \
                  scripts/shadow_discriminant.py \
-                 scripts/denominator_comparison.py \
-                 scripts/wet_day_sensitivity.py \
-                 scripts/sentinel_correction.py
+                 scripts/denominator_comparison.py
+
+# These two are just as offline, but they carry the published series through the
+# story repo's own cleaning step rather than a copy of it, so they need that
+# checkout beside this one. See docs/handoff-to-story.md.
+AUDIT_STORY_SCRIPTS := scripts/wet_day_sensitivity.py \
+                       scripts/sentinel_correction.py
 
 # ---------------------------------------------------------------- development
 
@@ -83,10 +98,20 @@ numbers:
 	python3 scripts/story_numbers.py --expect docs/published_numbers.json
 
 # Every offline analysis, in order, from the committed archive. Nothing here
-# touches the network. Exits non-zero on the first one that fails, which is what
-# makes it usable as a gate rather than only as a report.
+# touches the network and nothing needs a second checkout. Exits non-zero on the
+# first one that fails, which is what makes it usable as a gate rather than only
+# as a report. This is what CI runs.
 audit:
 	@set -e; for script in $(AUDIT_SCRIPTS); do \
+		echo "=== $$script"; \
+		python3 $$script; \
+		echo; \
+	done
+
+# The same, plus the two that carry the series through the story repo's cleaning
+# step. Needs ../climate-dashboard checked out beside this repo.
+audit-full: audit
+	@set -e; for script in $(AUDIT_STORY_SCRIPTS); do \
 		echo "=== $$script"; \
 		python3 $$script; \
 		echo; \

@@ -1,0 +1,70 @@
+{
+  "scene_id": "S2A_22WDD_20170219_0_L1C",
+  "timestamp": "20170219T153251",
+  "class_grid": {
+    "width": 368,
+    "height": 453
+  },
+  "scene_image": {
+    "width": 1302,
+    "height": 1600
+  },
+  "classes": {
+    "unclassified": 7,
+    "land": 8869,
+    "cloud": 137,
+    "ice_solid": 142044,
+    "ice_light": 46,
+    "water": 15601
+  },
+  "palette": {
+    "unclassified": [
+      40,
+      40,
+      40
+    ],
+    "nodata": [
+      0,
+      0,
+      0
+    ],
+    "land": [
+      150,
+      105,
+      80
+    ],
+    "cloud": [
+      215,
+      215,
+      225
+    ],
+    "ice_solid": [
+      235,
+      235,
+      60
+    ],
+    "ice_light": [
+      120,
+      200,
+      255
+    ],
+    "water": [
+      30,
+      40,
+      200
+    ]
+  },
+  "bounds": [
+    450540.0,
+    7836200.0,
+    465280.0,
+    7854320.0
+  ],
+  "crs": "EPSG:32622",
+  "sun_elev": 8.223486069715904,
+  "eo_cloud_cover": 20.2431,
+  "indices": [
+    "ndsi",
+    "ndwi"
+  ]
+}

@@ -40,12 +40,15 @@ import pandas as pd
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
-SPECTRA = ROOT / "out/archive/endmember_spectra.csv"
+ARCHIVE = ROOT / "archive/reprocessed_2026"
+SPECTRA = ARCHIVE / "endmember_spectra.csv"
 # The one scene whose per cell classes and indices are committed. 19 February
-# 2017, a day on which this fjord has never in the record been open.
-SCENE = ROOT / (
-    "out/panel_rerun/quicklooks/classes/S2A_22WDD_20170219_0_L1C_20170219T153251"
-)
+# 2017, a day on which this fjord has never in the record been open. These three
+# files were produced under out/, which is gitignored, and the first version of
+# this script read them from there. That made the script pass on the machine that
+# wrote them and fail on every clone, which is the whole reason the archive is
+# tracked rather than ignored.
+SCENE = ARCHIVE / "scene_2017-02-19"
 # Where a cut would have to sit to be above every sunlit surface measured here.
 CANDIDATE_CUT = 0.94
 
@@ -97,10 +100,10 @@ def scene_cells(
     base: Path,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, list[str]]:
     """The class codes, the two indices, and the names the codes stand for."""
-    meta = json.loads(base.with_name(base.name + "_classes.json").read_text())
+    meta = json.loads((base / "classes.json").read_text())
     names = list(meta["palette"])
-    classes = np.array(Image.open(base.with_name(base.name + "_classes.png")))
-    arrays = np.load(base.with_name(base.name + "_indices.npz"))
+    classes = np.array(Image.open(base / "classes.png"))
+    arrays = np.load(base / "indices.npz")
     return (
         classes,
         arrays["ndsi"].astype("float32"),
