@@ -59,6 +59,28 @@ uummannaq-ice = "uummannaq_ice.cli:main"
 requires = ["setuptools>=65", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[tool.mypy]
+# This lived in mypy.ini until an August 2026 CI failure, which took a while to
+# find precisely because there were two config files and the .ini silently won.
+# One file now.
+#
+# python_version was 3.10, matching the lower bound of requires-python. numpy
+# 2.5's own stubs use PEP 695 `type` statements, which a checker targeting 3.10
+# refuses to parse, so the 3.12 job failed inside numpy/__init__.pyi while the
+# 3.10 and 3.11 jobs passed on an older numpy that does not use it. Reproduced
+# against the exact CI versions, mypy 2.3.0 and numpy 2.5.2: --python-version
+# 3.10 fails, 3.12 passes.
+#
+# The type check therefore targets 3.12 while the test matrix still RUNS 3.10,
+# 3.11 and 3.12. Syntax the oldest supported runtime cannot execute is caught by
+# ruff's target-version and by those runtime jobs, not here.
+python_version = "3.12"
+warn_unused_configs = true
+ignore_missing_imports = true
+disallow_untyped_defs = false
+no_namespace_packages = true
+files = ["src/uummannaq_ice"]
+
 [tool.ruff]
 # archive/ holds the superseded first pipeline, kept verbatim as the record of
 # what this project used to be. It predates the hook and does not pass it, so
