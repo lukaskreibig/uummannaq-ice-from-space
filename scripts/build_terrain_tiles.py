@@ -77,7 +77,11 @@ BBOX = (-52.9, 70.4, -51.5, 71.0)
 #
 # Zoom 6 is where the ground image also starts fading in, so relief and imagery
 # now arrive together, and the two extra levels are four tiles.
-ZOOMS = range(6, 12)
+# Up to 10 and no further. Zoom 11 was built for a long time and never once
+# fetched: logging every /terrain request through the whole flight, at retina and
+# at phone pixel ratios, the deepest level mapbox-gl asks for is 10. Ninety-nine
+# tiles and 6.8 MB shipped for nothing.
+ZOOMS = range(6, 11)
 # More pixels in the tiles over the island, rather than more levels.
 #
 # WHAT mapbox ACTUALLY ASKS FOR. Measured, because the obvious guess is wrong:
@@ -93,16 +97,32 @@ ZOOMS = range(6, 12)
 # and differencing the render: 2.5 percent of pixels change, and the change is
 # the silhouette.
 #
-# So the fine detail goes into the tiles the camera will actually use, at the
-# levels it will actually ask for, and only where it will actually look: over the
-# island and the water in front of it. Everywhere else the tiles stay 512.
+# WHY EVERY TILE AT A LEVEL, AND NOT JUST THE ONES OVER THE ISLAND. This used to
+# oversample a small window and leave the rest at 512, which put tiles of two
+# different pixel sizes on the same zoom level. mapbox-gl stitches each DEM tile
+# to its neighbours so slopes do not break at the seam, and that stitch is
+# strict:
 #
-# THE RISK, stated plainly. Serving a tile larger than the declared tileSize is
-# not something the style spec promises. It works today across mapbox-gl v3, and
-# if a future version normalises the image to the declared size the story simply
-# gets the coarser relief back. A degradation, not a break.
+#     backfillBorder(borderTile, dx, dy) {
+#         if (this.dim !== borderTile.dim) throw new Error('dem dimension mismatch');
+#
+# dim is read off the image, so every fine tile meeting a coarse neighbour threw,
+# and the border was left unfilled. It reached production and showed up as a
+# console error in the map scene. An earlier note in this file called serving an
+# oversampled tile "a degradation, not a break"; the throw is the part that was
+# missed, and it is a break.
+#
+# So the rule is now simple enough to test: every tile at a given zoom has the
+# same pixel count. The fine window is the whole box, which also means the fjord
+# in front of the island gets the finer posting rather than only the island.
+# frontend/lib/__tests__/terrainTiles.test.ts enforces it.
+#
+# THE REMAINING RISK, unchanged. Serving a tile larger than the declared tileSize
+# is not something the style spec promises. It works across mapbox-gl v3, and if
+# a future version normalises the image to the declared size the story gets the
+# coarser relief back. THAT is a degradation, not a break.
 FINE_FROM = 10
-FINE_BBOX = (-52.24, 70.65, -52.06, 70.76)
+FINE_BBOX = BBOX
 OVERSAMPLE = 2
 
 # Web Mercator, the constants mapbox-gl and every XYZ scheme agree on.
