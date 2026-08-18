@@ -49,6 +49,7 @@ import numpy as np
 import rasterio
 from PIL import Image
 from rasterio.enums import Resampling
+from rasterio.errors import WindowError
 from rasterio.warp import reproject, transform_bounds
 from rasterio.windows import Window, from_bounds
 
@@ -57,13 +58,52 @@ DEFAULT_OUT = ROOT.parent / "climate-dashboard/frontend/public/terrain"
 
 STAC = "https://stac.pgc.umn.edu/api/v1/search"
 COLLECTION = "arcticdem-mosaics-v4.1-2m"
+BUCKET = (
+    "https://pgc-opendata-dems.s3.us-west-2.amazonaws.com/arcticdem/mosaics/v4.1/2m"
+)
 
 # Every camera waypoint in scenesConfig.tsx sits within 0.3 degrees of the fjord,
 # so this covers all of them with room for a 70 degree pitch to see past them.
 # The same box as scripts/build_basemap_image.py, so ground and relief end
 # together rather than one of them running out first.
 BBOX = (-52.9, 70.4, -51.5, 71.0)
-ZOOMS = range(8, 12)
+# From zoom 6, not 8, and the two levels matter more than their size suggests.
+#
+# A raster-dem source has no terrain at all below its minzoom, so the camera
+# crossing that zoom is a visible edge: the mountain appears on the way down and
+# vanishes again on the way up. With minzoom 8 that edge sat right where the
+# reader arrives at the fjord, and it read as the relief loading late. It was not
+# loading late, it did not exist yet.
+#
+# Zoom 6 is where the ground image also starts fading in, so relief and imagery
+# now arrive together, and the two extra levels are four tiles.
+ZOOMS = range(6, 12)
+# More pixels in the tiles over the island, rather than more levels.
+#
+# WHAT mapbox ACTUALLY ASKS FOR. Measured, because the obvious guess is wrong:
+# with the camera at zoom 12.65 where the story lands, mapbox-gl requests DEM
+# tiles at zoom 10, and it does that at every pitch from 0 to 85. It reads its
+# terrain about two and a half levels below the camera. So a zoom 12 or 13 level
+# is never fetched at all on this flight; building one is dead weight.
+#
+# WHAT DOES REACH THE SCREEN. mapbox builds its elevation grid from the tile
+# image it actually receives, not from the tile size declared on the source. Give
+# the zoom 10 tile 1024 pixels instead of 512 and the posting under the camera
+# halves, from 25 m to 12.6 m, and the ridges come back. Measured by serving both
+# and differencing the render: 2.5 percent of pixels change, and the change is
+# the silhouette.
+#
+# So the fine detail goes into the tiles the camera will actually use, at the
+# levels it will actually ask for, and only where it will actually look: over the
+# island and the water in front of it. Everywhere else the tiles stay 512.
+#
+# THE RISK, stated plainly. Serving a tile larger than the declared tileSize is
+# not something the style spec promises. It works today across mapbox-gl v3, and
+# if a future version normalises the image to the declared size the story simply
+# gets the coarser relief back. A degradation, not a break.
+FINE_FROM = 10
+FINE_BBOX = (-52.24, 70.65, -52.06, 70.76)
+OVERSAMPLE = 2
 
 # Web Mercator, the constants mapbox-gl and every XYZ scheme agree on.
 EARTH_CIRCUMFERENCE = 2 * math.pi * 6378137.0
@@ -82,8 +122,30 @@ def tile_xy(lat: float, lng: float, zoom: int) -> tuple[int, int]:
     return x, y
 
 
-def dem_hrefs(bbox: tuple[float, float, float, float]) -> list[str]:
-    """Every ArcticDEM mosaic tile touching the box. Open data, no signing."""
+def snap_to_tiles(
+    bbox: tuple[float, float, float, float], zoom: int
+) -> tuple[float, float, float, float]:
+    """Grow a box outward to whole tiles at `zoom`.
+
+    The oversampled window has to line up with the tile grid, or a tile that is
+    only half inside it cannot be filled and silently keeps the coarse version.
+    That is exactly what happened first time round: of the tiles over the island
+    only three were written fine, and the one holding the summit was not among
+    them. Snapping at the coarsest oversampled level lines the finer ones up too,
+    since each of their tiles nests inside one of these.
+    """
+    n = 2**zoom
+    x0, y0 = tile_xy(bbox[3], bbox[0], zoom)
+    x1, y1 = tile_xy(bbox[1], bbox[2], zoom)
+
+    def lat_of(y: int) -> float:
+        return math.degrees(math.atan(math.sinh(math.pi * (1 - 2 * y / n))))
+
+    return (x0 / n * 360 - 180, lat_of(y1 + 1), (x1 + 1) / n * 360 - 180, lat_of(y0))
+
+
+def dem_hrefs_stac(bbox: tuple[float, float, float, float]) -> list[str]:
+    """Every ArcticDEM mosaic tile touching the box, via the PGC search API."""
     body = json.dumps(
         {"collections": [COLLECTION], "bbox": list(bbox), "limit": 50}
     ).encode()
@@ -92,6 +154,58 @@ def dem_hrefs(bbox: tuple[float, float, float, float]) -> list[str]:
     )
     items = json.load(urllib.request.urlopen(request, timeout=180))["features"]
     return [item["assets"]["dem"]["href"] for item in items]
+
+
+def dem_hrefs_bucket(bbox: tuple[float, float, float, float]) -> list[str]:
+    """The same tiles, worked out from the grid instead of asked for.
+
+    PGC lays its mosaics out on a 100 km grid in EPSG:3413 whose tile at column
+    c and row r covers x from -4e6 + (c-1)*1e5 and y from -4e6 + (r-1)*1e5, and
+    splits each of those into four 50 km quarters, i for south then north and j
+    for west then east. So the tiles a box needs can be named rather than
+    searched for, and the static catalogue on the open data bucket confirms each
+    one and hands over the COG.
+    """
+    west, south, east, north = transform_bounds("EPSG:4326", "EPSG:3413", *bbox)
+    cols = range(int((west + 4e6) // 1e5) + 1, int((east + 4e6) // 1e5) + 2)
+    rows = range(int((south + 4e6) // 1e5) + 1, int((north + 4e6) // 1e5) + 2)
+    hrefs: list[str] = []
+    for row in rows:
+        for col in cols:
+            for i in (1, 2):
+                for j in (1, 2):
+                    name = f"{row:02d}_{col:02d}_{i}_{j}_2m_v4.1"
+                    url = f"{BUCKET}/{row:02d}_{col:02d}/{name}.json"
+                    try:
+                        item = json.load(urllib.request.urlopen(url, timeout=60))
+                    except Exception:
+                        continue  # that quarter of the grid has no land in it
+                    box = item.get("bbox")
+                    if not box:
+                        continue
+                    if (
+                        box[0] < bbox[2]
+                        and bbox[0] < box[2]
+                        and box[1] < bbox[3]
+                        and bbox[1] < box[3]
+                    ):
+                        hrefs.append(item["assets"]["dem"]["href"])
+    return hrefs
+
+
+def dem_hrefs(bbox: tuple[float, float, float, float]) -> list[str]:
+    """Every ArcticDEM mosaic tile touching the box. Open data, no signing.
+
+    The search API in front of these files went down while this window was being
+    rebuilt, answering every query with its own ConnectionRefusedError. The files
+    were fine the whole time, so the fallback below reaches them directly and a
+    rebuild no longer depends on that service being up.
+    """
+    try:
+        return dem_hrefs_stac(bbox)
+    except Exception as err:  # noqa: BLE001 - any failure means fall back
+        print(f"  search API unavailable ({err}), naming the tiles instead")
+        return dem_hrefs_bucket(bbox)
 
 
 def mercator_grid(
@@ -109,6 +223,14 @@ def mercator_grid(
     west, south, east, north = bbox
     x0, y0 = tile_xy(north, west, zoom)
     x1, y1 = tile_xy(south, east, zoom)
+
+    # No snapping to a coarser tile grid, because every level is now read from
+    # the source at its own resolution rather than halved out of the level below
+    # it. When it WAS halved, a grid starting on an odd tile put its left edge in
+    # the middle of the coarser tile and shifted every level below the deepest by
+    # a fraction of a tile: the summit read 1203 m at zoom 11 and 27 m, sea level,
+    # at zoom 10, because its relief had moved off the island.
+
     cols, rows = (x1 - x0 + 1) * TILE, (y1 - y0 + 1) * TILE
 
     span = EARTH_CIRCUMFERENCE / 2**zoom
@@ -121,9 +243,16 @@ def mercator_grid(
     for index, href in enumerate(hrefs, 1):
         with rasterio.open(href) as src:
             bounds = transform_bounds("EPSG:4326", src.crs, *bbox)
-            window = from_bounds(*bounds, src.transform).intersection(
-                Window(0, 0, src.width, src.height)
-            )
+            try:
+                window = from_bounds(*bounds, src.transform).intersection(
+                    Window(0, 0, src.width, src.height)
+                )
+            except WindowError:
+                # No overlap at all. rasterio raises here rather than handing
+                # back an empty window, and it started mattering the moment the
+                # fine levels asked for a box smaller than the one the source
+                # list was gathered for.
+                continue
             if window.width < 2 or window.height < 2:
                 continue
             # Read at roughly the target resolution so an overview is used.
@@ -185,34 +314,92 @@ def main(argv: list[str] | None = None) -> int:
     hrefs = dem_hrefs(BBOX)
     print(f"  {len(hrefs)} mosaic tile(s) from the Polar Geospatial Center")
 
-    grid, x0, y0 = mercator_grid(hrefs, BBOX, args.max_zoom)
-    print(f"  on the zoom {args.max_zoom} tile grid at {TILE} px: {grid.shape}")
+    fine_box = snap_to_tiles(FINE_BBOX, FINE_FROM)
+    print(
+        f"  fine window snapped to whole zoom {FINE_FROM} tiles: "
+        f"{tuple(round(v, 4) for v in fine_box)}"
+    )
+    grid, x0, y0 = mercator_grid(hrefs, BBOX, max(ZOOMS))
+    print(f"  on the zoom {max(ZOOMS)} tile grid at {TILE} px: {grid.shape}")
     print(f"  highest point in the box: {grid.max():.0f} m")
 
     written = total_bytes = 0
+    levels: dict[str, dict[str, int]] = {}
     for zoom in range(min(ZOOMS), args.max_zoom + 1):
-        step = 2 ** (args.max_zoom - zoom)
-        rows, cols = grid.shape[0] // step, grid.shape[1] // step
-        level = (
-            grid[: rows * step, : cols * step]
-            .reshape(rows, step, cols, step)
-            .mean(axis=(1, 3))
-            if step > 1
-            else grid
+        # Each level is read from ArcticDEM again at its own resolution, not
+        # decimated out of the level above it. Two earlier attempts got this
+        # wrong in opposite directions and both were visible.
+        #
+        # Averaging my own grid down compounded: by zoom 8 every output pixel was
+        # a mean of 8 by 8, and since the sea around this island is 0 m, the
+        # 1206 m summit averaged away to 218. Taking the maximum instead saved
+        # the peak and terraced the slopes, because a max over a moving window is
+        # a staircase, and a photograph draped over a staircase smears.
+        #
+        # Reading the source per level avoids both. rasterio pulls the matching
+        # overview, which the Polar Geospatial Center built properly, so a slope
+        # stays a slope and a summit stays a summit.
+        level, zx0, zy0 = (
+            (grid, x0, y0) if zoom == max(ZOOMS) else mercator_grid(hrefs, BBOX, zoom)
         )
-        zx0, zy0 = x0 // step, y0 // step
+        # The same tiles again, but read at OVERSAMPLE times the resolution, over
+        # the island only. Reading the finer grid once per level and slicing it
+        # keeps neighbouring oversampled tiles agreeing on their shared edge.
+        fine: np.ndarray | None = None
+        fx0 = fy0 = 0
+        if zoom >= FINE_FROM and OVERSAMPLE > 1:
+            step = int(math.log2(OVERSAMPLE))
+            fine, fx0, fy0 = mercator_grid(hrefs, fine_box, zoom + step)
         for ty in range(level.shape[0] // TILE):
             for tx in range(level.shape[1] // TILE):
+                x, y = zx0 + tx, zy0 + ty
                 block = level[ty * TILE : (ty + 1) * TILE, tx * TILE : (tx + 1) * TILE]
-                path = args.out / str(zoom) / str(zx0 + tx) / f"{zy0 + ty}.png"
+                if fine is not None:
+                    # This tile's footprint in the finer grid's own tile numbers.
+                    a, b = x * OVERSAMPLE - fx0, y * OVERSAMPLE - fy0
+                    span = TILE * OVERSAMPLE
+                    if (
+                        a >= 0
+                        and b >= 0
+                        and (b + OVERSAMPLE) * TILE <= fine.shape[0]
+                        and (a + OVERSAMPLE) * TILE <= fine.shape[1]
+                    ):
+                        block = fine[
+                            b * TILE : b * TILE + span, a * TILE : a * TILE + span
+                        ]
+                path = args.out / str(zoom) / str(x) / f"{y}.png"
                 path.parent.mkdir(parents=True, exist_ok=True)
                 Image.fromarray(encode(block), "RGB").save(path, optimize=True)
                 written += 1
                 total_bytes += path.stat().st_size
+        levels[str(zoom)] = {
+            "x0": zx0,
+            "x1": zx0 + level.shape[1] // TILE - 1,
+            "y0": zy0,
+            "y1": zy0 + level.shape[0] // TILE - 1,
+        }
         print(f"  z{zoom}: {level.shape[1] // TILE} by {level.shape[0] // TILE} tiles")
+
+    # A manifest, so the story does not have to guess. Without it mapbox-gl and
+    # the prefetch both ask for tiles outside the box: measured at 202 requests
+    # out of 237, all 404, for one camera path.
+    manifest = {
+        "bbox": list(BBOX),
+        "minzoom": min(ZOOMS),
+        "maxzoom": args.max_zoom,
+        "fineBbox": list(fine_box),
+        "fineFrom": FINE_FROM,
+        "oversample": OVERSAMPLE,
+        "tileSize": TILE,
+        "encoding": "mapbox",
+        "levels": levels,
+        "source": "ArcticDEM v4.1, Polar Geospatial Center, University of Minnesota",
+    }
+    (args.out / "meta.json").write_text(json.dumps(manifest, indent=2) + "\n")
 
     print()
     print(f"  {written} tiles, {total_bytes / 1024 / 1024:.1f} MB, under {args.out}")
+    print(f"  manifest at {args.out / 'meta.json'}")
     print()
     print(
         "  Point a mapbox-gl raster-dem source at /terrain/{z}/{x}/{y}.png with\n"
