@@ -75,11 +75,28 @@
     let pinned = null;      // the day a click fixed in place, if any
     let hovered = null;     // the cell the pointer is over
     let hoverTimer = null;
+    let frame = null;       // the pending reposition
+    let cursor = { x: 0, y: 0 };
 
     /* A hover is only worth a repaint once the pointer has settled. Without
        this, dragging across one season repaints 128 times and every one of them
        asks the browser for a different image. */
     const HOVER_SETTLE = 45;
+
+    /* How far the panel sits from the pointer. Enough that it never lands under
+       the cursor, which would put it between the pointer and the cell it is
+       describing and start a flicker the reader cannot escape. */
+    const CURSOR_GAP = 18;
+    const EDGE = 12;
+
+    /* Below this the panel stays docked under the sheet. A 340 pixel card
+       floating over a 600 pixel window is not a panel, it is a takeover, and a
+       touch screen has no hover to open it with anyway. */
+    const FLOAT_FROM = 1100;
+
+    const floats = () =>
+      window.matchMedia(`(min-width: ${FLOAT_FROM}px)`).matches &&
+      window.matchMedia("(hover: hover)").matches;
 
     const layerRow = (colour, role, value, detail, absent) => {
       const row = document.createElement("div");
@@ -93,7 +110,13 @@
       return row;
     };
 
-    function show(day) {
+    /* `compact` is the hovered popup, which is a glance; the full form is the
+       pinned panel and the docked one, which are a read. This is done in the
+       rendering rather than with a CSS line clamp, because the clamp needs
+       `display: -webkit-box` and Material forces `display: flow-root` on
+       content elements, so the clamp applied and did nothing. Choosing what to
+       draw is also testable, which a truncation is not. */
+    function show(day, compact) {
       panel.innerHTML = "";
       if (!day) {
         panel.innerHTML =
@@ -127,9 +150,14 @@
         // A scene the renderer could not reach leaves no gap and no broken icon.
         img.addEventListener("error", () => figure.remove());
         const caption = document.createElement("figcaption");
-        caption.textContent =
-          "Sentinel-2 L1C, true colour from B04, B03 and B02. Contrast and white balance " +
-          "are fixed for the whole record, so a dark season looks dark.";
+        // Three lines of provenance is right in the panel a reader has pinned
+        // and wrong in a card that opened under their cursor half a second ago.
+        // The popup names the scene, which is what identifies the picture; the
+        // page above it carries the rest.
+        caption.textContent = compact
+          ? day.scene.id
+          : "Sentinel-2 L1C, true colour from B04, B03 and B02. Contrast and white balance " +
+            "are fixed for the whole record, so a dark season looks dark.";
         figure.appendChild(img);
         figure.appendChild(caption);
         panel.appendChild(figure);
@@ -144,7 +172,10 @@
             "var(--layer-s2)",
             "Sentinel-2 · the series",
             `ice fraction ${fmt(s2.measured)}, measured`,
-            scene
+            scene && compact
+              ? `${(scene.solid * 100).toFixed(0)} % solid · ${(scene.light * 100).toFixed(0)} % light · ` +
+                `${(scene.water * 100).toFixed(0)} % water`
+              : scene
               ? `${(scene.solid * 100).toFixed(0)} percent solid ice, ${(scene.light * 100).toFixed(0)} ` +
                 `percent light ice, ${(scene.water * 100).toFixed(0)} percent open water, each of the ` +
                 `classified cells. The fraction above is solid and light together.<br>` +
@@ -176,8 +207,10 @@
               "var(--layer-landsat)",
               "Landsat · a second opinion",
               `ice fraction ${fmt(ls.ice)}`,
-              `${ls.scene} · classified share ${(ls.share * 100).toFixed(1)} percent · ` +
-                `sun ${ls.sunElev}° · same mask, same indices, same thresholds. Never part of the series.`
+              compact
+                ? `classified share ${(ls.share * 100).toFixed(1)} %`
+                : `${ls.scene} · classified share ${(ls.share * 100).toFixed(1)} percent · ` +
+                  `sun ${ls.sunElev}° · same mask, same indices, same thresholds. Never part of the series.`
             )
           : layerRow("var(--layer-landsat)", "Landsat · a second opinion", "no acquisition", null, true)
       );
@@ -191,7 +224,9 @@
               "Landsat thermal · the physics",
               `${(th.frozenShare * 100).toFixed(0)} percent of the fjord below freezing` +
                 (th.celsius != null ? `, ${fmt(th.celsius, 1)} °C on average` : ""),
-              th.contradicted
+              compact
+                ? (th.contradicted ? "<strong>Contradicted.</strong>" : "")
+                : th.contradicted
                 ? "<strong>Contradicted.</strong> The optical chain calls the fjord mostly open while more " +
                   "than half of it radiates below 271.35 K. Open water cannot be colder than that."
                 : th.chainSaysOpen
@@ -215,7 +250,9 @@
               // 0 is its open water, 1 is its fast ice. It runs past both ends,
               // and often does, so the text must not claim the day sits between
               // them when it does not.
-              `${fmt(sar.valueDb, 1)} dB. On a scale where 0 is this season's own open water ` +
+              compact
+                ? `${fmt(sar.valueDb, 1)} dB, at ${fmt(sar.position, 2)} on this season's own scale`
+                : `${fmt(sar.valueDb, 1)} dB. On a scale where 0 is this season's own open water ` +
                 `(${fmt(sar.waterRefDb, 1)} dB) and 1 its own fast ice (${fmt(sar.iceRefDb, 1)} dB), ` +
                 `the day sits at ${fmt(sar.position, 2)}` +
                 (sar.position != null && (sar.position < 0 || sar.position > 1)
@@ -227,6 +264,14 @@
             )
           : layerRow("var(--layer-sar)", "Sentinel-1 · the verdict", "no acquisition", null, true)
       );
+
+      const hint = document.createElement("p");
+      hint.className = "pin-hint";
+      hint.textContent =
+        panel.dataset.pinned === "true"
+          ? "Pinned. Click again or press Escape to release."
+          : "Click to pin this day and read every line.";
+      panel.appendChild(hint);
     }
 
     function mark(cell) {
@@ -235,22 +280,72 @@
       if (cell) cell.dataset.selected = "true";
     }
 
-    function preview(day, cell) {
+    /* Place the panel beside the pointer: right of it when there is room, left
+       of it when there is not, and never off the top or bottom of the window.
+       Measured against the panel's real box rather than a guessed size, because
+       a day with four instruments is a good deal taller than a day with one and
+       a guess would clip the tall ones. */
+    function place(anchor) {
+      if (!panel.classList.contains("floating")) return;
+      const box = panel.getBoundingClientRect();
+      const room = { w: document.documentElement.clientWidth, h: window.innerHeight };
+
+      let left = anchor.x + CURSOR_GAP;
+      if (left + box.width > room.w - EDGE) {
+        const flipped = anchor.x - CURSOR_GAP - box.width;
+        // Only flip if the other side is genuinely roomier; on a narrow window
+        // both sides overflow and shifting beats flipping into a worse corner.
+        left = flipped >= EDGE ? flipped : Math.max(EDGE, room.w - EDGE - box.width);
+      }
+
+      let top = anchor.y - box.height / 2;
+      top = Math.min(Math.max(EDGE, top), room.h - EDGE - box.height);
+
+      panel.style.left = `${Math.round(left)}px`;
+      panel.style.top = `${Math.round(top)}px`;
+    }
+
+    function reposition(anchor) {
+      cursor = anchor;
+      if (frame) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = null;
+        place(cursor);
+      });
+    }
+
+    function setFloating(on) {
+      panel.classList.toggle("floating", on);
+      if (!on) {
+        panel.style.left = "";
+        panel.style.top = "";
+      }
+    }
+
+    function preview(day, cell, anchor) {
       if (pinned) return; // a pinned day owns the panel until it is unpinned
       window.clearTimeout(hoverTimer);
+      if (!day) return;
       hoverTimer = window.setTimeout(() => {
         mark(cell);
-        show(day);
+        const floating = floats();
+        setFloating(floating);
+        show(day, floating);
+        // After show(), because the panel has only just gained its content and
+        // therefore its height, and the placement depends on it.
+        place(anchor || cursor);
       }, HOVER_SETTLE);
     }
 
-    function pin(day, cell) {
+    function pin(day, cell, anchor) {
       window.clearTimeout(hoverTimer);
       if (pinned === cell) {
         pinned.dataset.pinned = "false";
         pinned = null;
+        panel.dataset.pinned = "false";
         mark(cell);
-        show(day);
+        show(day, panel.classList.contains("floating"));
+        place(anchor || cursor);
         return;
       }
       if (pinned) pinned.dataset.pinned = "false";
@@ -259,7 +354,18 @@
       hovered = cell;
       cell.dataset.pinned = "true";
       cell.dataset.selected = "true";
-      show(day);
+      panel.dataset.pinned = "true";
+      setFloating(floats());
+      show(day, false);   // pinned is the reading form, never compact
+      place(anchor || cursor);
+    }
+
+    /* Keyboard reaches the sheet through the cells themselves, and a focused
+       cell has a box rather than a pointer. Anchoring to its right edge puts
+       the panel where a mouse user would have found it. */
+    function anchorOf(cell) {
+      const r = cell.getBoundingClientRect();
+      return { x: r.right, y: r.top + r.height / 2 };
     }
 
     data.seasons.forEach((season) => {
@@ -321,12 +427,19 @@
           // Hovering shows, clicking pins. Sweeping across a season should read
           // like scrubbing a timeline, and the click is there for anyone who
           // wants a day to stay put while they read it.
-          cell.addEventListener("pointerenter", () => preview(day, cell));
-          cell.addEventListener("focus", () => preview(day, cell));
-          cell.addEventListener("click", () => pin(day, cell));
+          cell.addEventListener("pointerenter", (event) =>
+            preview(day, cell, { x: event.clientX, y: event.clientY })
+          );
+          cell.addEventListener("pointermove", (event) => {
+            if (pinned || hovered !== cell) return;
+            reposition({ x: event.clientX, y: event.clientY });
+          });
+          cell.addEventListener("focus", () => preview(day, cell, anchorOf(cell)));
+          cell.addEventListener("click", (event) =>
+            pin(day, cell, { x: event.clientX, y: event.clientY })
+          );
         } else {
           cell.disabled = true;
-          cell.addEventListener("pointerenter", () => preview(null, null));
         }
         strip.appendChild(cell);
       }
@@ -354,9 +467,35 @@
     root.appendChild(legend);
     root.appendChild(panel);
 
-    // Leaving the sheet keeps the last day on screen. Clearing it would make
-    // the panel flash empty every time the pointer crosses a row boundary.
-    root.addEventListener("pointerleave", () => window.clearTimeout(hoverTimer));
+    // Leaving the sheet puts the floating panel away and hands the space back.
+    // A pinned day survives, since pinning is the way to keep one.
+    root.addEventListener("pointerleave", () => {
+      window.clearTimeout(hoverTimer);
+      if (pinned) return;
+      if (hovered) hovered.dataset.selected = "false";
+      hovered = null;
+      setFloating(false);
+      show(null);
+    });
+
+    // Escape releases a pin, which is the one thing a reader cannot discover by
+    // pointing at something.
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape" || !pinned) return;
+      pinned.dataset.pinned = "false";
+      pinned.dataset.selected = "false";
+      pinned = null;
+      hovered = null;
+      panel.dataset.pinned = "false";
+      setFloating(false);
+      show(null);
+    });
+
+    // The window can change under a pinned panel. Re-placing costs nothing and
+    // stops it hanging off an edge after a resize or a scroll.
+    ["resize", "scroll"].forEach((name) =>
+      window.addEventListener(name, () => place(cursor), { passive: true })
+    );
 
     const c = data.counts;
     const note = document.createElement("p");
