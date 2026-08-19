@@ -72,7 +72,89 @@
     panel.className = "day-panel";
     panel.setAttribute("aria-live", "polite");
 
-    let pinned = null;      // the day a click fixed in place, if any
+    /* A native dialog rather than a div, and the reasons are all things that
+       would otherwise have to be written by hand and got wrong: Escape closes
+       it, the page behind it goes inert so Tab cannot wander out of it, focus
+       is trapped and returned to the cell that opened it, and ::backdrop is a
+       real backdrop instead of a fixed overlay guessing at a z-index. */
+    const viewer = document.createElement("dialog");
+    viewer.className = "day-viewer";
+    viewer.setAttribute("aria-label", "One day, and what each instrument made of it");
+
+    const viewerHead = document.createElement("div");
+    viewerHead.className = "viewer-head";
+    const viewerTitle = document.createElement("h3");
+    const viewerClose = document.createElement("button");
+    viewerClose.type = "button";
+    viewerClose.className = "viewer-close";
+    viewerClose.setAttribute("aria-label", "Close");
+    viewerClose.textContent = "\u00d7";
+    viewerHead.appendChild(viewerTitle);
+    viewerHead.appendChild(viewerClose);
+
+    const viewerBody = document.createElement("div");
+    viewerBody.className = "viewer-body";
+    viewer.appendChild(viewerHead);
+    viewer.appendChild(viewerBody);
+    root.appendChild(viewer);
+
+    /* One function, called by every way out, rather than cleanup hung on the
+       `close` event. Measured here: `viewer.close()` runs, `viewer.open` goes
+       false, and no `close` event is raised, so a listener on it left the cell
+       still marked as open with the dialog already gone. Whether that is a
+       browser quirk or something on the page swallowing it does not matter.
+       Three exits and one place that tidies up beats three exits and a promise
+       that the browser will tell us. Idempotent, so the belt-and-braces
+       listener below cannot undo anything twice. */
+    function closeViewer() {
+      const cell = opened;
+      opened = null;
+      if (cell) cell.dataset.opened = "false";
+      if (viewer.open) viewer.close();
+      // The focus call comes AFTER the close, and the order is the whole point.
+      // A modal dialog traps focus, so focusing a cell behind it while it is
+      // still open silently does nothing and the reader is left at the top of
+      // the document. Closing first releases the trap.
+      if (cell) cell.focus();
+    }
+
+    viewerClose.addEventListener("click", closeViewer);
+    // Clicking the backdrop closes it. The dialog's own box is the only child
+    // that receives the click, so anything landing on the dialog element itself
+    // came from outside that box.
+    viewer.addEventListener("click", (event) => {
+      if (event.target === viewer) closeViewer();
+    });
+    /* Escape, handled rather than inherited. A modal dialog is supposed to close
+       itself on Escape and this one did not: the keydown reached window and
+       document with defaultPrevented false, and no `cancel` event was raised at
+       all. Whatever swallows it, the reader should not have to care, and one
+       listener costs less than finding out. `keydown` on the dialog, so it only
+       ever fires while the dialog has focus. */
+    /* Escape, on the document and in the capture phase, rather than on the
+       dialog. Two things forced that. A modal dialog is supposed to close
+       itself on Escape and this one does not: the keydown arrives at window and
+       at document with defaultPrevented false, and no `cancel` is ever raised.
+       And a listener on the dialog only fires while focus is inside it, which
+       is true right after opening and stops being true as soon as the reader
+       clicks a picture. Capture on the document catches it wherever focus sits,
+       and only while the viewer is actually open, so Material keeps Escape for
+       its own search box the rest of the time. */
+    document.addEventListener(
+      "keydown",
+      (event) => {
+        if (event.key !== "Escape" || !viewer.open) return;
+        event.preventDefault();
+        event.stopPropagation();
+        closeViewer();
+      },
+      true
+    );
+
+    // For any close the browser starts by itself, where one is raised.
+    viewer.addEventListener("close", closeViewer);
+
+    let opened = null;      // the cell whose day the viewer is showing
     let hovered = null;     // the cell the pointer is over
     let hoverTimer = null;
     let frame = null;       // the pending reposition
@@ -118,7 +200,7 @@
         // NOT lazy, and that is a correction rather than an oversight. The panel
         // holds one day at a time, so at most five pictures of a few kilobytes
         // each are ever in the document, and there is nothing to defer. Worse,
-        // the pinned card is `position: fixed` with its own scrollbar, and
+        // the old pinned card was `position: fixed` with its own scrollbar, and
         // inside that combination the browser never decided the lower pictures
         // had come near the viewport: they answered 200 to a fetch and stayed
         // at 0 by 0 pixels forever. Four of the five rows were blank.
@@ -158,20 +240,24 @@
     };
 
     /* `compact` is the hovered popup, which is a glance; the full form is the
-       pinned panel and the docked one, which are a read. This is done in the
+       viewer, which is a read. This is done in the
        rendering rather than with a CSS line clamp, because the clamp needs
        `display: -webkit-box` and Material forces `display: flow-root` on
        content elements, so the clamp applied and did nothing. Choosing what to
        draw is also testable, which a truncation is not. */
-    function show(day, compact) {
-      panel.innerHTML = "";
-      /* The pictures turned upright when the thumbnails were corrected to the
-         AOI's real 0.814 aspect, and three upright pictures stacked in a 340 px
-         card come to over 900 pixels, which is the whole window. So the hovered
-         card carries ONE picture, belonging to the first layer that has one,
-         and it stays inside that layer's row where its label is. The pinned
-         card carries all of them. That is the same bargain the text already
-         makes: a glance shows less, and clicking shows everything. */
+    /* TWO CONTAINERS, BECAUSE THERE ARE TWO TASKS, and conflating them was the
+       mistake this replaced. Hovering a cell is a GLANCE: the reader is moving
+       across a season and wants to know roughly what a day was. A narrow card
+       that follows the cursor is exactly right for that. Opening a day is a
+       STUDY: comparing a photograph with the classifier's decision on the same
+       scene, or one instrument against another. That needs width and stillness,
+       and a 340 px card that moves with the pointer can give neither.
+       Five upright quicklooks in it came to 1917 px of scrolling inside a 340 px
+       column, each picture 134 px wide, and "pin it first" was a workaround for
+       having chosen the wrong container rather than a feature. */
+    function show(day, compact, into) {
+      const target = into || panel;
+      target.innerHTML = "";
       let picturesSpent = false;
       const budget = (list) => {
         if (!list || !list.length) return null;
@@ -181,7 +267,7 @@
         return list.slice(0, 1);
       };
       if (!day) {
-        panel.innerHTML =
+        target.innerHTML =
           '<p class="figure-note">Hover a day. Every cell is one day of the analysed ' +
           "window, day 53 to 180, which is 22 February to 29 June.</p>";
         return;
@@ -190,18 +276,26 @@
       // The picture first, then what each instrument made of it. Only days with
       // a Sentinel-2 scene have one; the file is named after the scene id so a
       // reader can trace it back to the row in summary.csv.
-      const heading = document.createElement("h4");
-      const when = new Date(Date.UTC(day.season, 0, day.doy));
-      heading.textContent =
-        when.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }) +
-        `  ·  day ${day.doy}`;
-      panel.appendChild(heading);
+      // The viewer states the date in its own title bar, so repeating it here
+      // would spend a whole grid column on saying it twice.
+      if (target === panel) {
+        const heading = document.createElement("h4");
+        const when = new Date(Date.UTC(day.season, 0, day.doy));
+        heading.textContent =
+          when.toLocaleDateString("en-GB", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+            timeZone: "UTC",
+          }) + `  ·  day ${day.doy}`;
+        target.appendChild(heading);
+      }
 
       // layer one, the record
       const s2 = day.s2 || {};
       if (s2.measured != null) {
         const scene = day.scene;
-        /* The photograph and the decision, side by side in the pinned form.
+        /* The photograph and the decision, side by side in the viewer.
            The class raster is the classifier's own output on the 40 m grid the
            decision was made on, 368 by 453 cells under a 1302 by 1600 image,
            and it is drawn without smoothing so that coarseness stays visible.
@@ -232,7 +326,7 @@
             height: 453,
           });
         }
-        panel.appendChild(
+        target.appendChild(
           layerRow(
             "var(--layer-s2)",
             "Sentinel-2 · the series",
@@ -253,7 +347,7 @@
           )
         );
       } else {
-        panel.appendChild(
+        target.appendChild(
           layerRow(
             "var(--layer-s2)",
             "Sentinel-2 · the series",
@@ -268,7 +362,7 @@
 
       // layer two, a second optical instrument
       const ls = day.landsat;
-      panel.appendChild(
+      target.appendChild(
         ls
           ? layerRow(
               "var(--layer-landsat)",
@@ -297,7 +391,7 @@
 
       // layer three, the physics
       const th = day.thermal;
-      panel.appendChild(
+      target.appendChild(
         th
           ? layerRow(
               "var(--layer-thermal)",
@@ -334,7 +428,7 @@
 
       // layer four, the adjudicator
       const sar = day.sar;
-      panel.appendChild(
+      target.appendChild(
         sar
           ? layerRow(
               "var(--layer-sar)",
@@ -377,17 +471,16 @@
           : layerRow("var(--layer-sar)", "Sentinel-1 · the verdict", "no acquisition", null, true)
       );
 
-      const hint = document.createElement("p");
-      hint.className = "pin-hint";
-      hint.textContent =
-        panel.dataset.pinned === "true"
-          ? "Pinned. Click again or press Escape to release."
-          : "Click to pin this day and read every line.";
-      panel.appendChild(hint);
+      if (compact) {
+        const hint = document.createElement("p");
+        hint.className = "open-hint";
+        hint.textContent = "Click to open this day at full size.";
+        target.appendChild(hint);
+      }
     }
 
     function mark(cell) {
-      if (hovered && hovered !== pinned) hovered.dataset.selected = "false";
+      if (hovered) hovered.dataset.selected = "false";
       hovered = cell;
       if (cell) cell.dataset.selected = "true";
     }
@@ -435,7 +528,7 @@
     }
 
     function preview(day, cell, anchor) {
-      if (pinned) return; // a pinned day owns the panel until it is unpinned
+      if (viewer.open) return; // the viewer owns the reader's attention
       window.clearTimeout(hoverTimer);
       if (!day) return;
       hoverTimer = window.setTimeout(() => {
@@ -449,27 +542,29 @@
       }, HOVER_SETTLE);
     }
 
-    function pin(day, cell, anchor) {
+    function open(day, cell) {
+      if (!day) return;
       window.clearTimeout(hoverTimer);
-      if (pinned === cell) {
-        pinned.dataset.pinned = "false";
-        pinned = null;
-        panel.dataset.pinned = "false";
-        mark(cell);
-        show(day, panel.classList.contains("floating"));
-        place(anchor || cursor);
-        return;
-      }
-      if (pinned) pinned.dataset.pinned = "false";
-      if (hovered && hovered !== cell) hovered.dataset.selected = "false";
-      pinned = cell;
-      hovered = cell;
-      cell.dataset.pinned = "true";
-      cell.dataset.selected = "true";
-      panel.dataset.pinned = "true";
-      setFloating(floats());
-      show(day, false);   // pinned is the reading form, never compact
-      place(anchor || cursor);
+      // The glance card gets out of the way rather than sitting under the
+      // backdrop, half visible, competing with the thing it just opened.
+      setFloating(false);
+      show(null);
+      if (opened) opened.dataset.opened = "false";
+      opened = cell;
+      cell.dataset.opened = "true";
+
+      const when = new Date(Date.UTC(day.season, 0, day.doy));
+      viewerTitle.textContent =
+        when.toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+          timeZone: "UTC",
+        }) + `  \u00b7  day ${day.doy}`;
+      show(day, false, viewerBody);
+      viewerBody.scrollTop = 0;
+      if (typeof viewer.showModal === "function") viewer.showModal();
+      else viewer.setAttribute("open", "");
     }
 
     /* Keyboard reaches the sheet through the cells themselves, and a focused
@@ -543,13 +638,11 @@
             preview(day, cell, { x: event.clientX, y: event.clientY })
           );
           cell.addEventListener("pointermove", (event) => {
-            if (pinned || hovered !== cell) return;
+            if (viewer.open || hovered !== cell) return;
             reposition({ x: event.clientX, y: event.clientY });
           });
           cell.addEventListener("focus", () => preview(day, cell, anchorOf(cell)));
-          cell.addEventListener("click", (event) =>
-            pin(day, cell, { x: event.clientX, y: event.clientY })
-          );
+          cell.addEventListener("click", () => open(day, cell));
         } else {
           cell.disabled = true;
         }
@@ -579,31 +672,17 @@
     root.appendChild(legend);
     root.appendChild(panel);
 
-    // Leaving the sheet puts the floating panel away and hands the space back.
-    // A pinned day survives, since pinning is the way to keep one.
+    // Leaving the sheet puts the glance card away and hands the space back.
     root.addEventListener("pointerleave", () => {
       window.clearTimeout(hoverTimer);
-      if (pinned) return;
+      if (viewer.open) return;
       if (hovered) hovered.dataset.selected = "false";
       hovered = null;
       setFloating(false);
       show(null);
     });
 
-    // Escape releases a pin, which is the one thing a reader cannot discover by
-    // pointing at something.
-    document.addEventListener("keydown", (event) => {
-      if (event.key !== "Escape" || !pinned) return;
-      pinned.dataset.pinned = "false";
-      pinned.dataset.selected = "false";
-      pinned = null;
-      hovered = null;
-      panel.dataset.pinned = "false";
-      setFloating(false);
-      show(null);
-    });
-
-    // The window can change under a pinned panel. Re-placing costs nothing and
+    // The window can change under the glance card. Re-placing costs nothing and
     // stops it hanging off an edge after a resize or a scroll.
     ["resize", "scroll"].forEach((name) =>
       window.addEventListener(name, () => place(cursor), { passive: true })
