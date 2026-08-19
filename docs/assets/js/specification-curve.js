@@ -13,20 +13,22 @@
   "use strict";
 
   const MOUNT = "spec-curve";
+  // Group labels sit in a 70 pixel column, so they are the short form. The
+  // readout under the figure spells each choice out in full.
   const GROUPS = [
-    ["series", "Reihe"],
-    ["window", "Fenster"],
-    ["split", "Teilung ab"],
-    ["aggregate", "Mittelung"],
-    ["weighting", "Gewichtung"],
+    ["series", "Series"],
+    ["window", "Window"],
+    ["split", "Split from"],
+    ["aggregate", "Aggregate"],
+    ["weighting", "Weighting"],
   ];
   const LABELS = {
-    frac: "nur gemessene Tage",
-    frac_filled: "lückengefüllt",
-    mean: "Mittelwert",
-    median: "Median",
-    equal: "gleich",
-    by_days: "nach Tagen",
+    frac: "measured days only",
+    frac_filled: "gap filled",
+    mean: "mean",
+    median: "median",
+    equal: "equal",
+    by_days: "by days",
   };
   const label = (value) => LABELS[value] || String(value);
 
@@ -81,9 +83,9 @@
     svg.setAttribute("role", "img");
     svg.setAttribute(
       "aria-label",
-      `Spezifikationskurve: ${n} Auswertungsvarianten, Rückgang von ${data.summary.min} bis ` +
-        `${data.summary.max} Prozent, Median ${data.summary.median}. Die veröffentlichte Variante ` +
-        `liegt bei ${data.published ? data.published.decline : "unbekannt"} Prozent.`
+      `Specification curve: ${n} analysis variants, decline from ${data.summary.min} to ` +
+        `${data.summary.max} percent, median ${data.summary.median}. The published variant sits at ` +
+        `${data.published ? data.published.decline : "unknown"} percent.`
     );
 
     const make = (name, attrs, text) => {
@@ -118,7 +120,7 @@
       make(
         "text",
         { x: PAD.l - 10, y: PAD.t - 12, "text-anchor": "end", class: "spec-group-label" },
-        "Rückgang je Auswertungsvariante"
+        "Decline, one point per analysis variant"
       )
     );
 
@@ -148,7 +150,7 @@
             class: "spec-row-label",
             "font-weight": "600",
           },
-          `veröffentlicht ${data.published.decline.toFixed(1)} %`
+          `published, ${data.published.decline.toFixed(1)} %`
         )
       );
     }
@@ -191,12 +193,12 @@
 
     const describe = (p) =>
       [
-        `${p.decline > 0 ? "+" : ""}${p.decline.toFixed(1)} % Rückgang     p = ${p.p.toFixed(3)}` +
-          (p.published ? "     ← die veröffentlichte Wahl" : ""),
-        `Reihe        ${label(p.series)}`,
-        `Fenster      Tag ${p.window}`,
-        `Teilung      ab ${p.split}   (${p.early} frühe gegen ${p.late} späte Saisons)`,
-        `Mittelung    ${label(p.aggregate)}, ${label(p.weighting)} gewichtet`,
+        `${p.decline > 0 ? "+" : ""}${p.decline.toFixed(1)} % decline     p = ${p.p.toFixed(3)}` +
+          (p.published ? "     the published choice" : ""),
+        `Series       ${label(p.series)}`,
+        `Window       day ${p.window}`,
+        `Split        from ${p.split}   (${p.early} early against ${p.late} late seasons)`,
+        `Aggregate    ${label(p.aggregate)}, weighted ${label(p.weighting)}`,
       ].join("\n");
 
     const focus = (i) => {
@@ -244,9 +246,9 @@
     const legend = document.createElement("ul");
     legend.className = "legend";
     legend.innerHTML =
-      '<li><span class="chip" style="background:var(--layer-thermal)"></span>die veröffentlichte Wahl</li>' +
+      '<li><span class="chip" style="background:var(--layer-thermal)"></span>the published choice</li>' +
       '<li><span class="chip" style="background:var(--md-accent-fg-color)"></span>p &lt; 0,05</li>' +
-      '<li><span class="chip" style="background:var(--md-default-fg-color--light)"></span>alle übrigen</li>';
+      '<li><span class="chip" style="background:var(--md-default-fg-color--light)"></span>all the rest</li>';
     root.appendChild(legend);
     root.appendChild(readout);
 
@@ -254,10 +256,10 @@
     const note = document.createElement("p");
     note.className = "figure-note";
     note.textContent =
-      `${s.n} Kombinationen aus fünf Wahlmöglichkeiten, vollständig durchgerechnet. ` +
-      `Rückgang von ${s.min.toFixed(1)} bis ${s.max.toFixed(1)} Prozent, Median ${s.median.toFixed(1)}. ` +
-      `${s.declining} zeigen einen Rückgang, ${s.n - s.declining} nicht. ` +
-      `Die veröffentlichte Wahl steht auf Rang ${s.publishedRank} von ${s.n}.`;
+      `${s.n} combinations of five choices, computed in full. ` +
+      `Decline from ${s.min.toFixed(1)} to ${s.max.toFixed(1)} percent, median ${s.median.toFixed(1)}. ` +
+      `${s.declining} show a decline, ${s.n - s.declining} do not. ` +
+      `The published choice ranks ${s.publishedRank} of ${s.n}.`;
     root.appendChild(note);
 
     focus(null);
@@ -271,8 +273,8 @@
       .then((data) => render(root, data))
       .catch(() => {
         root.innerHTML =
-          '<p class="figure-note">Die Daten der Spezifikationskurve konnten nicht geladen werden. ' +
-          "Lokal hilft <code>python3 scripts/build_site_data.py</code>.</p>";
+          '<p class="figure-note">The specification curve data could not be loaded. ' +
+          "Locally, <code>python3 scripts/build_site_data.py</code> writes what it needs.</p>";
       });
   }
 
