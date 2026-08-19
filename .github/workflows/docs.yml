@@ -1,0 +1,73 @@
+# Publishes the documentation, including the two results pages.
+#
+# The site has existed and been buildable for a while without ever being served
+# anywhere, so the repository had no front door. This gives it one.
+#
+# The build runs scripts/build_site_data.py first. That script derives the JSON
+# the figures read from the committed tables in archive/reprocessed_2026, and
+# its output is deliberately NOT in the repository: a second copy of numbers
+# that already exist is a second thing that can go stale.
+name: Docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - docs/**
+      - mkdocs.yml
+      - scripts/build_site_data.py
+      - archive/reprocessed_2026/**
+      - .github/workflows/docs.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time, and a run in progress is allowed to finish rather
+# than being cancelled halfway through publishing.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install documentation dependencies
+        run: pip install mkdocs-material mkdocs-section-index
+
+      - name: Build the figure data
+        run: python3 scripts/build_site_data.py
+
+      # --strict, so a broken internal link fails the build rather than
+      # shipping. Both results pages link into limitations.md and
+      # landsat-crosscheck.md by anchor.
+      - name: Build the site
+        run: mkdocs build --strict
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

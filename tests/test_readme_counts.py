@@ -18,6 +18,7 @@ nobody can keep true is worse than a bound anyone can.
 from __future__ import annotations
 
 import re
+import sys
 from pathlib import Path
 
 import pytest
@@ -91,3 +92,33 @@ def test_the_error_count_agrees_between_readme_and_the_log() -> None:
     listed = len(re.findall(r"^\*\*", section, flags=re.MULTILINE))
     assert listed == 5, f"the section lists {listed} errors under a heading saying five"
     assert "five mistakes of my own" in README
+
+
+def test_the_test_count_is_right() -> None:
+    """It drifted, and it drifts silently: nothing fails when a test is added.
+
+    The count includes this test, which is why writing it moved the number by
+    one. That is the right way round: the README quotes what a reader gets from
+    running the suite, and this test is part of the suite.
+
+    Counted by collecting the suite rather than by grepping for `def test_`,
+    because parametrised cases and class methods make those two different
+    numbers and the README quotes the one a reader would get from `pytest`.
+    """
+    import subprocess
+
+    result = subprocess.run(
+        [sys.executable, "-m", "pytest", "-q", "--collect-only", str(ROOT / "tests")],
+        capture_output=True,
+        text=True,
+        cwd=ROOT,
+    )
+    match = re.search(r"(\d+) tests? collected", result.stdout)
+    assert match, (
+        f"could not read the collected count from pytest:\n{result.stdout[-400:]}"
+    )
+    actual = int(match.group(1))
+    claimed = {int(n) for n in re.findall(r"(\d+) tests", README)}
+    assert claimed == {actual}, (
+        f"README claims {sorted(claimed)} tests, the suite collects {actual}"
+    )
