@@ -7,10 +7,10 @@ hide:
 
 Ten seasons, 1280 days, and for each of them what the satellites saw. The fill of
 a cell is the value the published series carries. The four rules underneath it
-say which instruments actually looked that day. Opening a day, by tap or click,
-shows it at full size with every instrument's picture beside its own numbers,
-and the arrows there walk from one day to the next. With a mouse, hovering a
-cell previews it first.
+say which instruments actually looked that day. The panel underneath holds
+whichever day is chosen, and opening it full size brings the sheet along, so a
+day is picked the same way there: by pointing at it. The arrows walk to a
+neighbour. With a mouse, hovering a cell chooses it without a click.
 
 Everything below is read from `archive/reprocessed_2026`: `daily_series.csv`,
 `summary.csv`, `landsat_season_series.csv`, `thermal_audit.csv` and
