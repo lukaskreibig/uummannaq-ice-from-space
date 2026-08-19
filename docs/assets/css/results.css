@@ -153,9 +153,11 @@ text { font-family: var(--md-text-font-family, sans-serif); }
 }
 .sheet-months span { border-left: 1px solid var(--md-default-fg-color--lightest); padding-left: 2px; }
 
-/* A fixed floor, because the panel now follows the pointer: a day with four
-   instruments is much taller than one with a single Landsat pass, and without
-   it the page would jump under the cursor while sweeping across the sheet. */
+/* No floor any more. It was here because the docked panel followed the pointer
+   and a day with four instruments is much taller than one with a single Landsat
+   pass, so the page jumped under the cursor. The popup took that job, and
+   docked is now only used where there is no hover to jump with, so 540 pixels
+   of reserved white space bought nothing. */
 .day-panel {
   border: 1px solid var(--md-default-fg-color--lightest);
   border-radius: 2px;
@@ -164,10 +166,6 @@ text { font-family: var(--md-text-font-family, sans-serif); }
   display: grid;
   gap: 0.75rem;
   align-content: start;
-  min-height: 27rem;
-}
-@media (max-width: 50rem) {
-  .day-panel { min-height: 0; }
 }
 .day-panel h4 {
   margin: 0;
@@ -229,3 +227,91 @@ text { font-family: var(--md-text-font-family, sans-serif); }
   background: var(--md-default-fg-color--lightest);
   margin: 0 0.25rem;
 }
+
+/* ---------------------------------------------------- the floating panel */
+
+/* The panel follows the pointer instead of sitting under the sheet, because a
+   sheet is read by sweeping and a reader should not have to look 400 pixels
+   away to find out what is under the cursor. Docked is still the fallback: on a
+   narrow window, on a touch screen, and whenever nothing is hovered.
+   `.md-typeset` scoping for the same reason the legend needs it. */
+.md-typeset .day-panel.floating {
+  position: fixed;
+  z-index: 6;
+  /* Pixels, not rem. Material sets the root font size to 125 percent, so a rem
+     here is 20px and a value picked in 16px units comes out a quarter too wide.
+     This one is a physical size on screen, so it is stated as one. */
+  width: 340px;
+  margin: 0;
+  min-height: 0;
+  max-height: calc(100vh - 24px);
+  overflow: hidden;
+  background: var(--md-default-bg-color);
+  border-color: var(--md-default-fg-color--lighter);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.22), 0 1px 3px rgba(0, 0, 0, 0.18);
+  /* The one property this whole thing turns on. Without it the panel slides
+     under the cursor, the cell below it stops being hovered, the panel closes,
+     the cell is hovered again, and the reader watches it strobe. */
+  pointer-events: none;
+}
+
+/* A pinned panel is meant to be read and its scene id copied, so it takes the
+   pointer back and says it has. */
+.md-typeset .day-panel.floating[data-pinned="true"] {
+  pointer-events: auto;
+  border-color: var(--md-accent-fg-color);
+  overflow-y: auto;
+}
+
+/* Smaller inside the popup than inside the docked panel: the docked one has a
+   whole column, this one has to sit beside a cursor.
+
+   `min-width: 0` on the children is what actually holds the width. A grid track
+   sizes to its content by default, and the quicklook carries an intrinsic 320
+   pixels plus a 26 rem cap from the docked rules, so the panel came out 420
+   wide however firmly `width` was stated. */
+.md-typeset .day-panel.floating > * { min-width: 0; }
+.md-typeset .day-panel.floating .day-figure img { max-width: 100%; width: 100%; }
+.md-typeset .day-panel.floating .day-figure figcaption { max-width: none; }
+.md-typeset .day-panel.floating .day-layer .detail { font-size: 0.72rem; }
+.md-typeset .day-panel.floating h4 { font-size: 0.88rem; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .md-typeset .day-panel.floating { transition: opacity 90ms ease-out; }
+}
+
+/* A hovered panel is a glance, a pinned one is a read. The compact form is
+   chosen in the rendering rather than clamped here: `-webkit-line-clamp` needs
+   `display: -webkit-box`, and Material forces `display: flow-root` on content
+   elements, so the clamp applied and did nothing at all. */
+/* The one thing a reader cannot discover by pointing at something. */
+.md-typeset .day-panel.floating .pin-hint {
+  font-size: 0.62rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--md-default-fg-color--lighter);
+  margin: 0;
+}
+.md-typeset .day-panel:not(.floating) .pin-hint { display: none; }
+
+/* The quicklook is smaller in the popup than in the pinned panel. The fjord and
+   its island are recognisable well below the rendered 320 pixels, and every
+   pixel here is one the popup takes off the reader's screen. */
+.md-typeset .day-panel.floating:not([data-pinned="true"]) .day-figure img {
+  width: 260px;
+}
+.md-typeset .day-panel.floating:not([data-pinned="true"]) .day-figure figcaption {
+  font-family: var(--md-code-font-family, monospace);
+  font-size: 0.6rem;
+}
+
+/* Tighter rows in the popup than in the panel. A day that four instruments saw
+   carries four blocks, and at the docked spacing that came to 813 pixels of a
+   960 pixel window. The saving is all in the chrome, not in the words. */
+.md-typeset .day-panel.floating:not([data-pinned="true"]) { gap: 0.4rem; padding: 0.7rem 0.8rem; }
+.md-typeset .day-panel.floating:not([data-pinned="true"]) .day-layer {
+  padding-bottom: 0.32rem;
+  line-height: 1.42;
+}
+.md-typeset .day-panel.floating:not([data-pinned="true"]) .day-layer .role { font-size: 0.6rem; }
+.md-typeset .day-panel.floating:not([data-pinned="true"]) .day-figure { gap: 0.2rem; }
