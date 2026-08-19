@@ -17,7 +17,7 @@ turned into a measurement, this is what it cost:
 
 | What was tested | How far it moves the result | Where |
 |---|---|---|
-| Ten seasons is a short record | p never falls below 0.10, in any of ten combinations of period boundary and window | [below](#the-record-is-ten-seasons-and-that-is-short) |
+| Ten seasons is a short record | p never falls below 0.10, in any of eight combinations of period boundary and window | [below](#the-record-is-ten-seasons-and-that-is-short) |
 | Period boundary and season window | decline runs 13 to 26 percent across defensible choices | [below](#the-result-depends-on-three-analysis-choices) |
 | Where the brightness gate sits | 19.4 to 23.0 percent across a gate range wider than anyone would defend; **20.3 percent** if the gate tracks each season's own ice brightness | [below](#and-the-third-choice-where-the-brightness-gate-sits) |
 | The twelve wet April scenes | 22.6 to **21.6 percent** if every one of them is handed back a frozen fjord | [below](#melt-ponds-bias-break-up-early-and-now-there-is-a-number) |
@@ -327,7 +327,7 @@ could see, rejects the February scenes the wider window used to admit, so the
 window start stopped carrying weight of its own. A choice that no longer changes
 the result is no longer a choice worth defending.
 
-Across the ten combinations tested, p runs from 0.10 to 0.41. **Not one falls
+Across the eight combinations tested, p runs from 0.10 to 0.41. **Not one falls
 below 0.05, and not one below 0.10.** An earlier version of this page reported
 one below 0.05 out of eleven and noted that one in eleven is what chance alone
 produces; with the denominator and the gate corrected there is no longer even
