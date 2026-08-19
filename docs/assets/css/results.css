@@ -173,3 +173,20 @@ text { font-family: var(--md-text-font-family, sans-serif); }
   border-radius: 2px;
   border: 1px solid currentColor;
 }
+
+.day-figure { margin: 0; display: grid; gap: 0.35rem; }
+.day-figure img {
+  width: 100%;
+  max-width: 26rem;
+  height: auto;
+  display: block;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 2px;
+  image-rendering: auto;
+}
+.day-figure figcaption {
+  font-size: 0.68rem;
+  line-height: 1.5;
+  color: var(--md-default-fg-color--light);
+  max-width: 26rem;
+}

@@ -1,9 +1,10 @@
 # Jeder Tag, jede Entscheidung
 
 Zehn Saisons, 1280 Tage, und für jeden Tag das, was die Satelliten an ihm
-gesehen haben. Die Farbe der Zelle ist der gemessene Eisanteil aus Sentinel-2.
-Die drei Striche darunter sagen, welche weiteren Instrumente an diesem Tag über
-dem Fjord standen. Ein Klick öffnet, was jedes von ihnen gemessen hat.
+gesehen haben. Die Farbe der Zelle ist der Wert, den die veröffentlichte Kurve
+trägt. Die vier Striche darunter sagen, wer an diesem Tag tatsächlich
+hingeschaut hat. Ein Klick öffnet die Aufnahme und das, was jedes Instrument
+aus ihr gemacht hat.
 
 <div id="contact-sheet"></div>
 
@@ -48,6 +49,44 @@ Tagen beobachtet worden, als die veröffentlichte Reihe allein zeigt.
 **Wo es strittig wird.** Die Tage mit einem thermischen Widerspruch tragen alle
 vier Striche und liegen auffällig oft in den späteren Saisons. Genau diese Tage
 haben das Radar auf den Plan gerufen, und sein Urteil steht in der Tafel.
+
+## Zu den Aufnahmen
+
+Sie sind aus den Bändern B04, B03 und B02 derselben L1C-Szene gerechnet, die
+auch die Klassifikation gelesen hat. Nicht aus dem fertigen Echtfarbbild der
+Kachel und nicht aus dem Level-2A-Produkt: das eine ist über das Netz siebzehnmal
+langsamer zu lesen, das andere ist ein anderes Produkt, und ein Bild von etwas
+Benachbartem wäre hier das Falsche.
+
+**Kontrast und Weißabgleich stehen für die ganze Reihe fest.** Eine automatische
+Anpassung je Szene würde jedes Bild richtig belichtet aussehen lassen und dabei
+genau das wegrechnen, was das Archiv am deutlichsten sagt: die Oberfläche wird
+tatsächlich dunkler. 2023 liegt an sicher gefrorenen Tagen 34 Prozent unter dem
+Median der zehn Saisons. Bei einer Automatik sähe man davon nichts.
+
+Der Weißabgleich ist gemessen, nicht eingestellt. Über dem hellsten Viertel des
+Bildes liegt Grün an klaren, sicher gefrorenen Tagen etwa elf Prozent unter Rot
+und Blau, und zwar in jedem geprüften Jahr und auf beiden Seiten der
+Baseline-Grenze 04.00. Es ist also eine Eigenschaft von Atmosphäre und
+Instrument, keine der Saison, und wird für alle Szenen gleich herausgerechnet.
+
+Dass der feste Kontrast trägt, lässt sich an den fertigen Bildern nachmessen.
+Über sicher gefrorene Apriltage gemittelt, ist 2023 mit Abstand die dunkelste
+Saison, 2025 und 2021 folgen. Das ist dieselbe Reihenfolge, die
+[Limitations](limitations.md) aus den Reflexionswerten misst. Eine Automatik je
+Szene hätte alle zehn Saisons gleich hell gemacht.
+
+## Wenn das Bild und die Zahl nicht zusammenpassen
+
+Der 17. April 2021 zeigt Schollen und offene Rinnen und meldet trotzdem einen
+Eisanteil von 1,00. Das ist kein Fehler, sondern eine Klassengrenze: die Kette
+zählt festes und leichtes Eis zusammen, und die dunklen Flächen an diesem Tag
+sind als **leichtes Eis** eingestuft, nicht als Wasser. Offenes Wasser steht an
+diesem Tag bei 0,0000.
+
+Deshalb nennt die Tagestafel alle drei Klassen einzeln. Nur den zusammengefassten
+Anteil neben ein Bild voller Schollen zu stellen, liest sich als Fehler der
+Kette, und das wäre die falsche Auskunft.
 
 ## Was der Bogen bewusst nicht zeigt
 

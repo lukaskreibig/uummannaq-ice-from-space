@@ -192,8 +192,15 @@ def contact_sheet() -> dict[str, Any]:
             "clearPct": round(number(row["clear_pct"]) or 0, 3),
             "cloudPct": round(number(row["cloud_pct"]) or 0, 3),
             "sunElev": round(number(row["sun_elev"]) or 0, 1),
-            "ndsiSolid": number(row["mean_ndsi_solid"]),
-            "ndwiWater": number(row["mean_ndwi_water"]),
+            # The three classes, as shares of the area that could be read. They
+            # are here because the pictures made them necessary: a day can show
+            # floes and open leads and still report an ice fraction of 1.00,
+            # since the fraction counts solid AND light ice, and the leads in
+            # question were classified as light ice rather than as water. With
+            # only the fraction on screen that reads as an error in the chain.
+            "solid": round(number(row["solid_pct_clear"]) or 0, 4),
+            "light": round(number(row["light_pct_clear"]) or 0, 4),
+            "water": round(number(row["water_pct_clear"]) or 0, 4),
         }
 
     # --- layer two: a second optical instrument -------------------------------

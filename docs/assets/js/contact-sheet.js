@@ -95,12 +95,38 @@
         return;
       }
 
-      const title = document.createElement("h4");
-      const d = new Date(Date.UTC(day.season, 0, day.doy));
-      title.textContent =
-        d.toLocaleDateString("de-DE", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }) +
+      // The picture first, then what each instrument made of it. Only days with
+      // a Sentinel-2 scene have one; the file is named after the scene id so a
+      // reader can trace it back to the row in summary.csv.
+      const heading = document.createElement("h4");
+      const when = new Date(Date.UTC(day.season, 0, day.doy));
+      heading.textContent =
+        when.toLocaleDateString("de-DE", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }) +
         `  ·  Tag ${day.doy}`;
-      panel.appendChild(title);
+      panel.appendChild(heading);
+
+      if (day.scene) {
+        const figure = document.createElement("figure");
+        figure.className = "day-figure";
+        const img = document.createElement("img");
+        img.src = `../assets/thumbs/${day.scene.id}.webp`;
+        img.alt =
+          `Sentinel-2 Echtfarbaufnahme des Uummannaq-Fjords vom ${day.date}, ` +
+          `Szene ${day.scene.id}`;
+        img.loading = "lazy";
+        img.decoding = "async";
+        img.width = 320;
+        img.height = 256;
+        // A scene the renderer could not reach leaves no gap and no broken icon.
+        img.addEventListener("error", () => figure.remove());
+        const caption = document.createElement("figcaption");
+        caption.textContent =
+          "Sentinel-2 L1C, Echtfarbe aus B04, B03 und B02. Fester Kontrast und fester " +
+          "Weißabgleich über die ganze Reihe, damit eine dunkle Saison dunkel aussieht.";
+        figure.appendChild(img);
+        figure.appendChild(caption);
+        panel.appendChild(figure);
+      }
 
       // layer one, the record
       const s2 = day.s2 || {};
@@ -112,8 +138,12 @@
             "Sentinel-2 · die Reihe",
             `${fmt(s2.measured)} Eisanteil, gemessen`,
             scene
-              ? `${scene.id} · ${(scene.clearPct * 100).toFixed(1)} % der Fläche lesbar · ` +
-                `Sonne ${scene.sunElev}° · ${scene.usable ? "verwendet" : "vom Abdeckungstor verworfen"}`
+              ? `${(scene.solid * 100).toFixed(0)} % festes Eis, ${(scene.light * 100).toFixed(0)} % ` +
+                `leichtes Eis, ${(scene.water * 100).toFixed(0)} % offenes Wasser, jeweils von der ` +
+                `lesbaren Fläche. Der Eisanteil oben zählt festes und leichtes Eis zusammen.<br>` +
+                `${scene.id} · ${(scene.clearPct * 100).toFixed(1)} % der Fläche lesbar, ` +
+                `${(scene.cloudPct * 100).toFixed(1)} % Wolke · Sonne ${scene.sunElev}° · ` +
+                `${scene.usable ? "verwendet" : "vom Abdeckungstor verworfen"}`
               : null
           )
         );
