@@ -52,7 +52,9 @@ markdown_extensions:
 # pages that decide whether the result is trustworthy, limitations and the SAR
 # cross-check, sit high on purpose rather than at the back.
 nav:
-  - Overview: overview.md
+  # index.md, not overview.md: MkDocs serves the site root from index.html,
+  # and without one the front page of a published site is a 404. It was.
+  - Overview: index.md
   - Results:
       - Contact sheet: contact-sheet.md
       - Specification curve: specification-curve.md

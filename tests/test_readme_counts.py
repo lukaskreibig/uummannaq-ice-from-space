@@ -122,3 +122,25 @@ def test_the_test_count_is_right() -> None:
     assert claimed == {actual}, (
         f"README claims {sorted(claimed)} tests, the suite collects {actual}"
     )
+
+
+def test_the_site_has_a_front_page() -> None:
+    """MkDocs serves the site root from index.html, and nothing else will do.
+
+    The first published deploy answered 404 on the front page: the navigation
+    opened with overview.md, so the built site had every page except the one a
+    visitor lands on.
+    """
+    assert (ROOT / "docs" / "index.md").exists(), (
+        "docs/index.md is what the site root renders"
+    )
+    # Comments are stripped first: the line explaining the rename names the old
+    # file, and a check that trips over its own explanation is not a check.
+    lines = [
+        line
+        for line in (ROOT / "mkdocs.yml").read_text().splitlines()
+        if not line.lstrip().startswith("#")
+    ]
+    assert not any("overview.md" in line for line in lines), (
+        "the navigation still points at the renamed page"
+    )

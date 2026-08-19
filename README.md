@@ -159,7 +159,7 @@ that did not survive its own test.
      29 artefacts     archive/reprocessed_2026, every published figure traceable to one
       4 instruments   Sentinel-2 optical, Landsat optical, Landsat thermal, Sentinel-1 radar
   over 4000 lines     documentation, ordered by how much each weakness could change a conclusion
-    143 tests         plus four gates that run on every push, one of them `make audit`
+    144 tests         plus four gates that run on every push, one of them `make audit`
 ```
 
 ## Check a number yourself
@@ -378,7 +378,7 @@ The four above plus the three cross-checks are the ones worth your time. The
 rest, complete so that nothing in `docs/` is reachable only by listing the
 directory:
 
-- `docs/overview.md`: domain background, architecture, AOI context.
+- `docs/index.md`: domain background, architecture, AOI context.
 - `docs/architecture.md`: system diagram, components, and extensibility points.
 - `docs/pipeline.md`: processing stages, concurrency model, threshold rationale.
 - `docs/datasets.md`: data organisation, expected file formats, landmask provenance.
