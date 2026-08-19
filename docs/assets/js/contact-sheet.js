@@ -276,6 +276,9 @@
        whole screen would make a mis-aimed finger expensive. */
     const canHover = () => window.matchMedia("(hover: hover)").matches;
 
+    // Matches the viewer's own four column breakpoint in results.css.
+    const wideViewer = () => window.matchMedia("(min-width: 1000px)").matches;
+
     /* Every instrument's picture sits in that instrument's own row, under that
        instrument's own number. Nothing stands in for anything else: on the 304
        days that Landsat saw and Sentinel-2 did not, the Sentinel-2 row still
@@ -322,16 +325,32 @@
       return wrap;
     };
 
+    /* Name, picture, number, explanation, in that order, and the order is what
+       makes the columns comparable. With the picture last, four instruments
+       whose sentences differ in length put their quicklooks at four different
+       heights, and pictures that do not line up cannot be read against each
+       other, which is the only reason they are side by side. A role is always
+       exactly one line, so putting the figure straight after it lands every
+       picture on the same baseline without measuring anything. */
     const layerRow = (colour, role, value, detail, absent, pictures) => {
       const row = document.createElement("div");
       row.className = "day-layer" + (absent ? " absent" : "");
-      row.innerHTML =
-        `<div class="bar" style="background:${absent ? "var(--md-default-fg-color--lightest)" : colour}"></div>` +
-        `<div><div class="role">${role}</div>` +
+      const bar = document.createElement("div");
+      bar.className = "bar";
+      bar.style.background = absent ? "var(--md-default-fg-color--lightest)" : colour;
+
+      const body = document.createElement("div");
+      body.innerHTML = `<div class="role">${role}</div>`;
+      if (pictures && pictures.length) body.appendChild(figureFor(pictures));
+      const rest = document.createElement("div");
+      rest.className = "layer-text";
+      rest.innerHTML =
         `<div class="value">${value}</div>` +
-        (detail ? `<div class="detail">${detail}</div>` : "") +
-        "</div>";
-      if (pictures && pictures.length) row.lastChild.appendChild(figureFor(pictures));
+        (detail ? `<div class="detail">${detail}</div>` : "");
+      body.appendChild(rest);
+
+      row.appendChild(bar);
+      row.appendChild(body);
       return row;
     };
 
@@ -640,7 +659,12 @@
           year: "numeric",
           timeZone: "UTC",
         }) + `  \u00b7  day ${day.doy}`;
-      show(day, false, viewerBody);
+      /* The long wording only where four columns fit it. Below 1000 px the
+         viewer falls to two columns and two rows, and the full sentences put
+         195 pixels past the bottom of a 768 by 1024 tablet held upright. The
+         short form is the panel's own, so what the reader gets there is
+         literally the view they came from, larger, on one screen. */
+      show(day, !wideViewer(), viewerBody);
       viewerBody.scrollTop = 0;
       viewerPrev.disabled = !neighbour(-1, cell);
       viewerNext.disabled = !neighbour(1, cell);
