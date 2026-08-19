@@ -52,6 +52,63 @@ radar, and its verdict sits in the panel.
 
 ## On the imagery
 
+**Every instrument shows its own picture, in its own row.** Sentinel-2 is the
+record and the sheet's fill; Landsat is a second optical opinion; the thermal
+band is that same Landsat scene's infrared; Sentinel-1 is radar. Four
+instruments, four kinds of picture, and none of them stands in for another.
+
+That rule costs something and is worth the cost. 543 days of the 1280 carry a
+Sentinel-2 scene and 545 carry Landsat, but only 241 carry both, so on 304 days
+the Landsat picture sits in a row whose Sentinel-2 neighbour still says it has no
+scene. Filling that gap with the Landsat image would raise the sheet's apparent
+coverage from 42 to 66 percent and quietly make the record look more continuous
+than it is. The gaps are a finding.
+
+Each instrument also keeps its own fixed stretch, measured on its own data.
+Sentinel-2's white balance is `(0.890, 1.0, 0.885)` and Landsat's is
+`(0.915, 1.0, 0.877)`, close in shape because the magenta cast belongs to the
+atmosphere, different in value because OLI is not MSI. **The two pictures are
+never to be compared on brightness.** They are compared on what they show.
+
+### The classification beside the photograph
+
+The Sentinel-2 row carries two pictures: the scene, and what the classifier made
+of it. The second is the pipeline's own output, class ids on the 40 m grid the
+decision was actually taken on, 368 by 453 cells under a 1302 by 1600 image, and
+it is drawn without smoothing so that coarseness stays visible.
+
+That difference is the honest picture of this method. A sharp photograph with a
+coarse grid of judgements laid over it shows exactly how much resolution the
+classification really has, which no accuracy figure conveys.
+
+The rasters are the run's own artefacts, not a redrawing: the solid, light, water
+and cloud counts in every one of the 617 files match `summary.csv` cell for cell,
+and a test refuses any that do not.
+
+### The thermal picture is not a temperature map of the record
+
+Its colour scale is centred on 271.35 K, the freezing point of seawater, rather
+than spread across the range the archive covers. The first attempt did spread it,
+243 to 283 K, and every frame came out one flat colour. Inside a single winter
+scene the whole fjord sits between 255.0 and 263.9 K: **nine kelvin of variation
+within a scene against forty between seasons.** So the colour resolution goes
+where the question is, blue below the line and amber above it, and a day ten
+kelvin below freezing is uniformly deep blue because that is what it was. The
+exact median is in the text beside the picture, where a number says it better.
+
+### Radar, on 19 of the 27 adjudicated days
+
+A day can have up to four Sentinel-1 passes, and the verdict was reached on one
+of them. Where a single acquisition carries the verdict's `value_db`, that
+acquisition is the picture. Where the value came from more than one pass, the row
+shows its numbers and no picture, because no single image is the measurement.
+
+Backscatter is roughness and wetness, not brightness. A smooth closed sheet reads
+dark and so does calm open water, which is why the analysis separates them on
+spread rather than on level.
+
+### Sentinel-2
+
 The quicklooks are computed from bands B04, B03 and B02 of the same L1C scene the
 classification read. Not from the ready-made composite and not from the Level 2A
 product: the first is seventeen times slower to read over the network, the second

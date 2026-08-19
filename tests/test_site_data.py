@@ -196,3 +196,272 @@ class TestThePicturesMatchTheTable:
             assert {"solid", "light", "water"} <= set(scene)
             total = scene["solid"] + scene["light"] + scene["water"]
             assert total <= 1.0001, f"{scene['id']} classes sum to {total}"
+
+
+class TestAPictureIsAMeasurement:
+    """The geometry of a quicklook is part of what it claims.
+
+    Every thumbnail in the archive was once stretched sideways by a factor of
+    1.54, because the AOI is 14.73 by 18.11 km, upright, and the renderer drew
+    it into a landscape 320 by 256 box. Nothing in the picture announces that: a
+    fjord has no straight lines to go crooked and an island has no shape a
+    reader can check. It surfaced only when the classifier's own class rasters,
+    on the pipeline's upright grid, were put beside the photographs.
+
+    So the aspect ratio is asserted here rather than trusted to whoever next
+    edits a constant.
+    """
+
+    THUMBS = {
+        "sentinel-2": ROOT / "docs" / "assets" / "thumbs",
+        "landsat": ROOT / "docs" / "assets" / "thumbs-landsat",
+        "thermal": ROOT / "docs" / "assets" / "thumbs-thermal",
+    }
+    CLASSES = ROOT / "docs" / "assets" / "classes"
+
+    # The fjord sits on a UTM zone boundary, and the same square of ground has a
+    # different shape either side of it: 14.73 by 18.11 km in zone 22, aspect
+    # 0.8136, and 15.79 by 18.94 km in zone 21, aspect 0.8334. 613 of the 617
+    # scenes are 22WDD and four are 21WXU, and the pipeline's own class rasters
+    # follow each scene's own zone.
+    #
+    # The quicklooks are all rendered to zone 22, the record's own projection,
+    # so those four carry a 2.4 percent difference. That is a choice: a shape in
+    # a projection is a property of the projection, and one reference geometry
+    # across the whole sheet is worth more here than matching each scene's grid.
+    # The tolerance is set to admit exactly that and nothing larger. The error
+    # this test exists for was 54 percent.
+    TOLERANCE = 0.03
+
+    def aoi_aspect(self, epsg: int = 32622) -> float:
+        import sys as _sys
+
+        _sys.path.insert(0, str(ROOT / "src"))
+        from rasterio.warp import transform_bounds
+
+        from uummannaq_ice.config import DEFAULT_AOI
+
+        ring = DEFAULT_AOI["coordinates"][0]
+        xs = [point[0] for point in ring]
+        ys = [point[1] for point in ring]
+        left, bottom, right, top = transform_bounds(
+            "EPSG:4326",
+            f"EPSG:{epsg}",
+            min(xs),
+            min(ys),
+            max(xs),
+            max(ys),
+            densify_pts=21,
+        )
+        return (right - left) / (top - bottom)
+
+    @pytest.mark.parametrize("name", ["sentinel-2", "landsat", "thermal"])
+    def test_the_quicklooks_are_not_stretched(self, name: str) -> None:
+        from PIL import Image
+
+        folder = self.THUMBS[name]
+        pictures = sorted(folder.glob("*.webp"))
+        if not pictures:
+            pytest.skip(f"no {name} quicklooks rendered yet")
+        want = self.aoi_aspect()
+        for path in pictures[:40]:
+            with Image.open(path) as image:
+                got = image.width / image.height
+            assert abs(got - want) < self.TOLERANCE, (
+                f"{path.name} is {image.width}x{image.height}, aspect {got:.3f}, "
+                f"but the AOI is {want:.3f}"
+            )
+
+    def test_the_class_raster_keeps_the_same_geometry(self) -> None:
+        """The decision grid and the photograph have to describe one place."""
+        from PIL import Image
+
+        rasters = sorted(self.CLASSES.glob("*.png"))
+        if not rasters:
+            pytest.skip("no class rasters collected yet")
+        # A class raster follows its own scene's zone, so either is correct here
+        # and neither is a stretch.
+        wanted = [self.aoi_aspect(32622), self.aoi_aspect(32621)]
+        for path in rasters[:40]:
+            with Image.open(path) as image:
+                got = image.width / image.height
+            assert any(abs(got - want) < self.TOLERANCE for want in wanted), (
+                f"{path.name} aspect {got:.3f}, expected one of "
+                + " or ".join(f"{w:.3f}" for w in wanted)
+            )
+
+
+class TestTheDecisionTravelsWithThePicture:
+    CLASSES = ROOT / "docs" / "assets" / "classes"
+
+    def usable_ids(self) -> set[str]:
+        with (ARCHIVE / "summary.csv").open(newline="", encoding="utf-8") as handle:
+            return {
+                row["tile_id"] for row in csv.DictReader(handle) if row["usable"] == "1"
+            }
+
+    def test_every_usable_scene_carries_its_classification(self) -> None:
+        """A photograph without the decision beside it is only half the method."""
+        if not self.CLASSES.exists():
+            pytest.skip("class rasters not collected yet")
+        have = {path.stem for path in self.CLASSES.glob("*.png")}
+        missing = sorted(self.usable_ids() - have)
+        assert not missing, (
+            f"{len(missing)} scenes without a class raster, {missing[:3]}"
+        )
+
+    def test_the_raster_counts_still_match_the_table(self) -> None:
+        """The picture and the number have to come from the same run.
+
+        A raster copied from a different archive run would be a picture of a
+        different analysis shown beside numbers it did not produce. `land_px` is
+        excluded on purpose: the table carries the static land mask, constant at
+        8869 cells, while the export counts cells still labelled land after
+        cloud and nodata took precedence. Two quantities, one name.
+        """
+        import json as _json
+
+        index_path = self.CLASSES / "index.json"
+        if not index_path.exists():
+            pytest.skip("class rasters not collected yet")
+        index = _json.loads(index_path.read_text())["scenes"]
+        with (ARCHIVE / "summary.csv").open(newline="", encoding="utf-8") as handle:
+            table = {
+                r["tile_id"]: r for r in csv.DictReader(handle) if r["usable"] == "1"
+            }
+        pairs = {
+            "solid_px": "ice_solid",
+            "light_px": "ice_light",
+            "water_px": "water",
+            "cloud_px": "cloud",
+        }
+        assert set(table) == set(index), (
+            "the class index and summary.csv disagree about which scenes exist"
+        )
+        for tile_id, row in table.items():
+            counts = index[tile_id]["classes"]
+            for column, name in pairs.items():
+                assert int(row[column]) == counts.get(name, 0), (
+                    f"{tile_id} {column}: table {row[column]}, "
+                    f"raster {counts.get(name, 0)}"
+                )
+
+    def test_the_legend_is_one_palette_for_the_whole_record(self) -> None:
+        """Seven colours, stated once, and the three the sheet talks about.
+
+        The palette used to be repeated in 617 sidecar files. One copy is the
+        legend; 617 copies were 3.3 MB of the same seven colours and a way for
+        two of them to drift apart.
+        """
+        import json as _json
+
+        index_path = self.CLASSES / "index.json"
+        if not index_path.exists():
+            pytest.skip("class rasters not collected yet")
+        palette = _json.loads(index_path.read_text())["palette"]
+        assert {"ice_solid", "ice_light", "water"} <= set(palette)
+        assert palette["ice_solid"] != palette["ice_light"], (
+            "solid and light ice share a colour, which is the one distinction "
+            "the raster exists to make visible"
+        )
+
+    def test_no_instrument_borrows_another_ones_picture(self, sheet: dict) -> None:
+        """Each layer addresses its own scene, and the thermal one says so.
+
+        The thermal band is not a separate overpass. It is the infrared band of
+        the very Landsat scene the optical row names, so a day can never have
+        thermal imagery without Landsat imagery, and the page must not be able
+        to imply otherwise by pointing the two rows at different scenes.
+        """
+        for day in sheet["days"]:
+            thermal = day.get("thermal")
+            if not thermal:
+                continue
+            assert thermal.get("scene"), f"{day['date']} thermal has no scene id"
+            landsat = day.get("landsat")
+            assert landsat, f"{day['date']} has thermal without Landsat"
+            assert thermal["scene"] == landsat["scene"], (
+                f"{day['date']} thermal names {thermal['scene']} "
+                f"but Landsat names {landsat['scene']}"
+            )
+
+
+class TestEveryRowCanShowItsOwnPicture:
+    """Each layer's imagery is complete, and none of it belongs to another layer.
+
+    The gap this closes is the reason it needs guarding. 304 days carry a
+    Landsat measurement and no Sentinel-2 scene, and the tempting fix was to let
+    the Landsat picture fill the Sentinel-2 slot on those days. That is the
+    merge `test_no_day_merges_instruments` forbids in the numbers, done in
+    pictures instead, so the files are checked per layer and the page addresses
+    them per layer.
+    """
+
+    LANDSAT = ROOT / "docs" / "assets" / "thumbs-landsat"
+    THERMAL = ROOT / "docs" / "assets" / "thumbs-thermal"
+    SAR = ROOT / "docs" / "assets" / "thumbs-sar"
+
+    def test_every_landsat_day_has_its_own_quicklook(self, sheet: dict) -> None:
+        if not self.LANDSAT.exists():
+            pytest.skip("Landsat quicklooks not rendered yet")
+        have = {path.stem for path in self.LANDSAT.glob("*.webp")}
+        want = {d["landsat"]["scene"] for d in sheet["days"] if d.get("landsat")}
+        missing = sorted(want - have)
+        assert not missing, f"{len(missing)} Landsat days без picture, {missing[:3]}"
+
+    def test_every_thermal_day_has_its_own_quicklook(self, sheet: dict) -> None:
+        if not self.THERMAL.exists():
+            pytest.skip("thermal quicklooks not rendered yet")
+        have = {path.stem for path in self.THERMAL.glob("*.webp")}
+        want = {d["thermal"]["scene"] for d in sheet["days"] if d.get("thermal")}
+        missing = sorted(want - have)
+        assert not missing, (
+            f"{len(missing)} thermal days without picture, {missing[:3]}"
+        )
+
+    def test_radar_pictures_exist_exactly_where_one_pass_carries_the_verdict(
+        self, sheet: dict
+    ) -> None:
+        """Both directions, because both failures are wrong in the same way.
+
+        A missing file leaves a verdict the reader cannot look at. A file for a
+        day whose verdict averaged several passes would show one overpass as
+        though it were the measurement.
+        """
+        if not self.SAR.exists():
+            pytest.skip("radar quicklooks not rendered yet")
+        # The renderer works from the verdict table, which reaches four days
+        # beyond the sheet's own window, so only the days the sheet can show are
+        # this test's business.
+        inside = {day["date"] for day in sheet["days"]}
+        have = {path.stem for path in self.SAR.glob("*.webp")} & inside
+        want = {d["date"] for d in sheet["days"] if (d.get("sar") or {}).get("scene")}
+        assert not sorted(want - have), (
+            f"verdicts without a picture: {sorted(want - have)[:3]}"
+        )
+        assert not sorted(have - want), (
+            "radar pictures for days whose verdict came from more than one pass: "
+            f"{sorted(have - want)[:3]}"
+        )
+
+    def test_the_page_addresses_each_picture_from_its_own_layer(self) -> None:
+        """The folders appear in the file exactly once each, and in order.
+
+        A cheap structural check, but it is the one that would catch somebody
+        pointing the Landsat row at `thumbs/` during a hurried edit.
+        """
+        source = (ROOT / "docs" / "assets" / "js" / "contact-sheet.js").read_text()
+        # Counted with the `../assets/` prefix that precedes them in the
+        # template literals, because `thumbs/` is also a prefix of
+        # `thumbs-landsat/` and a bare count would double up.
+        for folder in (
+            "thumbs/",
+            "classes/",
+            "thumbs-landsat/",
+            "thumbs-thermal/",
+            "thumbs-sar/",
+        ):
+            seen = source.count(f"../assets/{folder}")
+            assert seen == 1, (
+                f"{folder} is addressed {seen} times in the page, expected exactly once"
+            )
