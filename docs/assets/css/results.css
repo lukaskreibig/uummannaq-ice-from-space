@@ -45,19 +45,38 @@
   white-space: pre-wrap;
 }
 
-.legend {
+/* One row, directly under the figure it explains. It used to wrap into six
+   lines and pushed the day panel below the fold, which on a page whose whole
+   point is looking at one thing while reading another is the wrong trade. It
+   scrolls sideways on a narrow screen rather than stacking. */
+/* The selector mirrors Material's own, which is
+   `.md-typeset ul:not([hidden]) { display: flow-root }`. That is a class, a
+   type and an attribute, so both `.legend` and `.md-typeset .legend` lose to
+   it, and they lose SILENTLY: flex-wrap and overflow applied while display did
+   not, and the legend stacked into seven rows looking exactly like a flex-wrap
+   bug. Adding the same :not() puts this one class ahead rather than relying on
+   which stylesheet happens to load second. */
+.md-typeset ul.legend:not([hidden]) {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem 1.1rem;
-  font-size: 0.72rem;
-  margin: 0.6rem 0 0;
-  padding: 0;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 0 0.62rem;
+  font-size: 0.64rem;
+  margin: 0.45rem 0 0;
+  padding: 0 0 0.2rem;
   list-style: none;
+  scrollbar-width: thin;
 }
-.legend li { display: flex; align-items: center; gap: 0.4rem; }
-.legend .chip {
-  width: 0.75rem;
-  height: 0.75rem;
+.md-typeset ul.legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+  flex: none;
+}
+.md-typeset ul.legend .chip {
+  width: 0.62rem;
+  height: 0.62rem;
   border-radius: 2px;
   flex: none;
 }
@@ -116,6 +135,9 @@ text { font-family: var(--md-text-font-family, sans-serif); }
 .sheet-cell[data-measured="false"] .fill { opacity: 0.38; }
 .sheet-cell:focus-visible { outline: 2px solid var(--md-accent-fg-color); outline-offset: 1px; z-index: 2; }
 .sheet-cell[data-selected="true"] { box-shadow: inset 0 0 0 2px var(--md-accent-fg-color); z-index: 2; }
+/* A pinned day keeps its ring after the pointer has moved on, and says so with
+   a second, heavier one, so it is clear why the panel stopped following. */
+.sheet-cell[data-pinned="true"] { box-shadow: inset 0 0 0 2px var(--md-accent-fg-color), 0 0 0 1px var(--md-accent-fg-color); z-index: 3; }
 /* Four lanes under every cell, one per instrument, so a day that three
    instruments saw reads as three marks rather than as a darker cell. The cell
    above them is the value the published curve carries; these lanes are who
@@ -131,6 +153,9 @@ text { font-family: var(--md-text-font-family, sans-serif); }
 }
 .sheet-months span { border-left: 1px solid var(--md-default-fg-color--lightest); padding-left: 2px; }
 
+/* A fixed floor, because the panel now follows the pointer: a day with four
+   instruments is much taller than one with a single Landsat pass, and without
+   it the page would jump under the cursor while sweeping across the sheet. */
 .day-panel {
   border: 1px solid var(--md-default-fg-color--lightest);
   border-radius: 2px;
@@ -138,6 +163,11 @@ text { font-family: var(--md-text-font-family, sans-serif); }
   margin-top: 0.9rem;
   display: grid;
   gap: 0.75rem;
+  align-content: start;
+  min-height: 27rem;
+}
+@media (max-width: 50rem) {
+  .day-panel { min-height: 0; }
 }
 .day-panel h4 {
   margin: 0;
@@ -189,4 +219,13 @@ text { font-family: var(--md-text-font-family, sans-serif); }
   line-height: 1.5;
   color: var(--md-default-fg-color--light);
   max-width: 26rem;
+}
+
+/* Splits the legend into its two halves: what the fill means, then which
+   instrument each rule stands for. */
+.md-typeset ul.legend li.divider {
+  width: 1px;
+  align-self: stretch;
+  background: var(--md-default-fg-color--lightest);
+  margin: 0 0.25rem;
 }

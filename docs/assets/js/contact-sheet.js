@@ -18,7 +18,7 @@
   const MOUNT = "contact-sheet";
 
   const MONTHS = [
-    [53, "22. Feb"], [60, "1. Mär"], [91, "1. Apr"], [121, "1. Mai"], [152, "1. Jun"],
+    [53, "22 Feb"], [60, "1 Mar"], [91, "1 Apr"], [121, "1 May"], [152, "1 Jun"],
   ];
 
   const load = () =>
@@ -72,7 +72,14 @@
     panel.className = "day-panel";
     panel.setAttribute("aria-live", "polite");
 
-    let selected = null;
+    let pinned = null;      // the day a click fixed in place, if any
+    let hovered = null;     // the cell the pointer is over
+    let hoverTimer = null;
+
+    /* A hover is only worth a repaint once the pointer has settled. Without
+       this, dragging across one season repaints 128 times and every one of them
+       asks the browser for a different image. */
+    const HOVER_SETTLE = 45;
 
     const layerRow = (colour, role, value, detail, absent) => {
       const row = document.createElement("div");
@@ -90,8 +97,8 @@
       panel.innerHTML = "";
       if (!day) {
         panel.innerHTML =
-          '<p class="figure-note">Einen Tag anklicken. Jede Zelle ist ein Tag im ausgewerteten ' +
-          "Fenster, Tag 53 bis 180, also 22. Februar bis 29. Juni.</p>";
+          '<p class="figure-note">Hover a day. Every cell is one day of the analysed ' +
+          "window, day 53 to 180, which is 22 February to 29 June.</p>";
         return;
       }
 
@@ -101,8 +108,8 @@
       const heading = document.createElement("h4");
       const when = new Date(Date.UTC(day.season, 0, day.doy));
       heading.textContent =
-        when.toLocaleDateString("de-DE", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }) +
-        `  ·  Tag ${day.doy}`;
+        when.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }) +
+        `  ·  day ${day.doy}`;
       panel.appendChild(heading);
 
       if (day.scene) {
@@ -111,8 +118,8 @@
         const img = document.createElement("img");
         img.src = `../assets/thumbs/${day.scene.id}.webp`;
         img.alt =
-          `Sentinel-2 Echtfarbaufnahme des Uummannaq-Fjords vom ${day.date}, ` +
-          `Szene ${day.scene.id}`;
+          `Sentinel-2 true colour quicklook of the Uummannaq fjord on ${day.date}, ` +
+          `scene ${day.scene.id}`;
         img.loading = "lazy";
         img.decoding = "async";
         img.width = 320;
@@ -121,8 +128,8 @@
         img.addEventListener("error", () => figure.remove());
         const caption = document.createElement("figcaption");
         caption.textContent =
-          "Sentinel-2 L1C, Echtfarbe aus B04, B03 und B02. Fester Kontrast und fester " +
-          "Weißabgleich über die ganze Reihe, damit eine dunkle Saison dunkel aussieht.";
+          "Sentinel-2 L1C, true colour from B04, B03 and B02. Contrast and white balance " +
+          "are fixed for the whole record, so a dark season looks dark.";
         figure.appendChild(img);
         figure.appendChild(caption);
         panel.appendChild(figure);
@@ -135,15 +142,15 @@
         panel.appendChild(
           layerRow(
             "var(--layer-s2)",
-            "Sentinel-2 · die Reihe",
-            `${fmt(s2.measured)} Eisanteil, gemessen`,
+            "Sentinel-2 · the series",
+            `ice fraction ${fmt(s2.measured)}, measured`,
             scene
-              ? `${(scene.solid * 100).toFixed(0)} % festes Eis, ${(scene.light * 100).toFixed(0)} % ` +
-                `leichtes Eis, ${(scene.water * 100).toFixed(0)} % offenes Wasser, jeweils von der ` +
-                `lesbaren Fläche. Der Eisanteil oben zählt festes und leichtes Eis zusammen.<br>` +
-                `${scene.id} · ${(scene.clearPct * 100).toFixed(1)} % der Fläche lesbar, ` +
-                `${(scene.cloudPct * 100).toFixed(1)} % Wolke · Sonne ${scene.sunElev}° · ` +
-                `${scene.usable ? "verwendet" : "vom Abdeckungstor verworfen"}`
+              ? `${(scene.solid * 100).toFixed(0)} percent solid ice, ${(scene.light * 100).toFixed(0)} ` +
+                `percent light ice, ${(scene.water * 100).toFixed(0)} percent open water, each of the ` +
+                `classified cells. The fraction above is solid and light together.<br>` +
+                `${scene.id} · the scene could see ${(scene.clearPct * 100).toFixed(1)} percent of the ` +
+                `fjord, ${(scene.cloudPct * 100).toFixed(1)} percent was cloud · sun ${scene.sunElev}° · ` +
+                `${scene.usable ? "kept" : "dropped by the visibility gate"}`
               : null
           )
         );
@@ -152,8 +159,10 @@
           layerRow(
             "var(--layer-s2)",
             "Sentinel-2 · die Reihe",
-            s2.curve != null ? `${fmt(s2.curve)} in der Kurve, aber nicht gemessen` : "keine Szene",
-            s2.curve != null ? "Wert aus Nachbartagen gefüllt und geglättet, keine Aufnahme an diesem Tag" : null,
+            s2.curve != null ? `${fmt(s2.curve)} in the series, not measured` : "no scene",
+            s2.curve != null
+              ? "Gap filled from neighbouring days and smoothed. No satellite passed on this day."
+              : null,
             true
           )
         );
@@ -165,12 +174,12 @@
         ls
           ? layerRow(
               "var(--layer-landsat)",
-              "Landsat · Bestätigung",
-              `${fmt(ls.ice)} Eisanteil`,
-              `${ls.scene} · ${(ls.share * 100).toFixed(1)} % lesbar · Sonne ${ls.sunElev}° · ` +
-                "gleiche Maske, gleiche Indizes, gleiche Schwellen. Zählt nie in die Reihe."
+              "Landsat · a second opinion",
+              `ice fraction ${fmt(ls.ice)}`,
+              `${ls.scene} · classified share ${(ls.share * 100).toFixed(1)} percent · ` +
+                `sun ${ls.sunElev}° · same mask, same indices, same thresholds. Never part of the series.`
             )
-          : layerRow("var(--layer-landsat)", "Landsat · Bestätigung", "keine Aufnahme", null, true)
+          : layerRow("var(--layer-landsat)", "Landsat · a second opinion", "no acquisition", null, true)
       );
 
       // layer three, the physics
@@ -179,17 +188,17 @@
         th
           ? layerRow(
               "var(--layer-thermal)",
-              "Landsat Thermal · Physik",
-              `${(th.frozenShare * 100).toFixed(0)} % der Fläche unter dem Gefrierpunkt` +
-                (th.celsius != null ? `, im Mittel ${fmt(th.celsius, 1)} °C` : ""),
+              "Landsat thermal · the physics",
+              `${(th.frozenShare * 100).toFixed(0)} percent of the fjord below freezing` +
+                (th.celsius != null ? `, ${fmt(th.celsius, 1)} °C on average` : ""),
               th.contradicted
-                ? "<strong>Widerspruch:</strong> die optische Kette nennt den Fjord überwiegend offen, " +
-                  "während mehr als die Hälfte unter 271,35 K strahlt. Offenes Wasser kann nicht kälter sein."
+                ? "<strong>Contradicted.</strong> The optical chain calls the fjord mostly open while more " +
+                  "than half of it radiates below 271.35 K. Open water cannot be colder than that."
                 : th.chainSaysOpen
-                ? "Die Kette nennt den Fjord offen, und das Thermometer widerspricht nicht."
-                : "Die Kette nennt den Fjord nicht offen, ein Widerspruch ist hier gar nicht möglich."
+                ? "The chain calls the fjord open and the thermal band does not contradict it."
+                : "The chain does not call the fjord open, so no contradiction is possible here."
             )
-          : layerRow("var(--layer-thermal)", "Landsat Thermal · Physik", "keine Aufnahme", null, true)
+          : layerRow("var(--layer-thermal)", "Landsat thermal · the physics", "no acquisition", null, true)
       );
 
       // layer four, the adjudicator
@@ -198,28 +207,59 @@
         sar
           ? layerRow(
               "var(--layer-sar)",
-              "Sentinel-1 · Schiedsspruch",
+              "Sentinel-1 · the verdict",
               `<span class="verdict">${
-                { "like fast ice": "wie Festeis", "like open water": "wie offenes Wasser", between: "dazwischen" }[
-                  sar.verdict
-                ] || sar.verdict
+                sar.verdict
               }</span>`,
               // `position` is normalised against this season's own references:
               // 0 is its open water, 1 is its fast ice. It runs past both ends,
               // and often does, so the text must not claim the day sits between
               // them when it does not.
-              `${fmt(sar.valueDb, 1)} dB. Auf einer Skala, auf der 0 das offene Wasser dieser Saison ` +
-                `ist (${fmt(sar.waterRefDb, 1)} dB) und 1 ihr Festeis (${fmt(sar.iceRefDb, 1)} dB), ` +
-                `liegt der Tag bei ${fmt(sar.position, 2)}` +
+              `${fmt(sar.valueDb, 1)} dB. On a scale where 0 is this season's own open water ` +
+                `(${fmt(sar.waterRefDb, 1)} dB) and 1 its own fast ice (${fmt(sar.iceRefDb, 1)} dB), ` +
+                `the day sits at ${fmt(sar.position, 2)}` +
                 (sar.position != null && (sar.position < 0 || sar.position > 1)
-                  ? ", also jenseits der beiden Bezugswerte. "
+                  ? ", outside both references. "
                   : ". ") +
                 (sar.verdict === "between"
-                  ? "Weder das eine noch das andere, und das ist bei 13 von 27 eingeordneten Tagen die Mehrheit."
+                  ? "Neither one nor the other, which is 13 of the 27 days that could be placed."
                   : "")
             )
-          : layerRow("var(--layer-sar)", "Sentinel-1 · Schiedsspruch", "keine Aufnahme", null, true)
+          : layerRow("var(--layer-sar)", "Sentinel-1 · the verdict", "no acquisition", null, true)
       );
+    }
+
+    function mark(cell) {
+      if (hovered && hovered !== pinned) hovered.dataset.selected = "false";
+      hovered = cell;
+      if (cell) cell.dataset.selected = "true";
+    }
+
+    function preview(day, cell) {
+      if (pinned) return; // a pinned day owns the panel until it is unpinned
+      window.clearTimeout(hoverTimer);
+      hoverTimer = window.setTimeout(() => {
+        mark(cell);
+        show(day);
+      }, HOVER_SETTLE);
+    }
+
+    function pin(day, cell) {
+      window.clearTimeout(hoverTimer);
+      if (pinned === cell) {
+        pinned.dataset.pinned = "false";
+        pinned = null;
+        mark(cell);
+        show(day);
+        return;
+      }
+      if (pinned) pinned.dataset.pinned = "false";
+      if (hovered && hovered !== cell) hovered.dataset.selected = "false";
+      pinned = cell;
+      hovered = cell;
+      cell.dataset.pinned = "true";
+      cell.dataset.selected = "true";
+      show(day);
     }
 
     data.seasons.forEach((season) => {
@@ -267,25 +307,26 @@
         });
         cell.appendChild(marks);
 
-        const dateLabel = new Date(Date.UTC(season, 0, doy)).toLocaleDateString("de-DE", {
+        const dateLabel = new Date(Date.UTC(season, 0, doy)).toLocaleDateString("en-GB", {
           day: "numeric", month: "short", year: "numeric", timeZone: "UTC",
         });
         const layers = day
           ? [day.s2 && day.s2.measured != null && "Sentinel-2", day.landsat && "Landsat",
-             day.thermal && "Thermal", day.sar && "Radar"].filter(Boolean)
+             day.thermal && "thermal", day.sar && "radar"].filter(Boolean)
           : [];
-        cell.title = `${dateLabel}: ${layers.length ? layers.join(", ") : "keine Messung"}`;
+        cell.title = `${dateLabel}: ${layers.length ? layers.join(", ") : "no measurement"}`;
         cell.setAttribute("aria-label", cell.title);
 
         if (day) {
-          cell.addEventListener("click", () => {
-            if (selected) selected.dataset.selected = "false";
-            selected = cell;
-            cell.dataset.selected = "true";
-            show(day);
-          });
+          // Hovering shows, clicking pins. Sweeping across a season should read
+          // like scrubbing a timeline, and the click is there for anyone who
+          // wants a day to stay put while they read it.
+          cell.addEventListener("pointerenter", () => preview(day, cell));
+          cell.addEventListener("focus", () => preview(day, cell));
+          cell.addEventListener("click", () => pin(day, cell));
         } else {
           cell.disabled = true;
+          cell.addEventListener("pointerenter", () => preview(null, null));
         }
         strip.appendChild(cell);
       }
@@ -296,27 +337,37 @@
 
     const legend = document.createElement("ul");
     legend.className = "legend";
+    // Two groups on one line, split by a rule rather than by two words: the
+    // cell's fill on the left, the instruments that measured on the right. The
+    // words cost 110 pixels of a 688 pixel column and the prose above already
+    // says which half is which.
     legend.innerHTML =
-      '<li><span class="chip" style="background:' + iceFill(0.95) + ';border:1px solid var(--md-default-fg-color--lighter)"></span>viel Eis</li>' +
-      '<li><span class="chip" style="background:' + iceFill(0.05) + '"></span>offenes Wasser</li>' +
-      '<li><span class="chip" style="background:' + iceFill(0.6) + ';opacity:0.38"></span>blass: gefüllt, nicht gemessen</li>' +
-      '<li><span class="chip" style="background:var(--layer-s2)"></span>Sentinel-2 hat gemessen</li>' +
-      '<li><span class="chip" style="background:var(--layer-landsat)"></span>Landsat optisch</li>' +
-      '<li><span class="chip" style="background:var(--layer-thermal)"></span>Landsat thermal</li>' +
-      '<li><span class="chip" style="background:var(--layer-sar)"></span>Sentinel-1 Radar</li>';
+
+      '<li><span class="chip" style="background:' + iceFill(0.95) + ';border:1px solid var(--md-default-fg-color--lighter)"></span>ice</li>' +
+      '<li><span class="chip" style="background:' + iceFill(0.05) + '"></span>water</li>' +
+      '<li><span class="chip" style="background:' + iceFill(0.6) + ';opacity:0.38"></span>gap filled</li>' +
+      '<li class="divider" aria-hidden="true"></li>' +
+      '<li><span class="chip" style="background:var(--layer-s2)"></span>Sentinel-2</li>' +
+      '<li><span class="chip" style="background:var(--layer-landsat)"></span>Landsat</li>' +
+      '<li><span class="chip" style="background:var(--layer-thermal)"></span>thermal</li>' +
+      '<li><span class="chip" style="background:var(--layer-sar)"></span>radar</li>';
     root.appendChild(legend);
     root.appendChild(panel);
+
+    // Leaving the sheet keeps the last day on screen. Clearing it would make
+    // the panel flash empty every time the pointer crosses a row boundary.
+    root.addEventListener("pointerleave", () => window.clearTimeout(hoverTimer));
 
     const c = data.counts;
     const note = document.createElement("p");
     note.className = "figure-note";
     note.textContent =
-      `${c.days} Tage im ausgewerteten Fenster über zehn Saisons. ` +
-      `${c.s2} mit eigener Sentinel-2-Szene, ${c.landsat} mit Landsat, ${c.sar} mit Radar. ` +
-      `Der Thermalkanal liegt an ${c.thermal} dieser Tage daneben; an ${c.chainSaysOpen} davon nennt die ` +
-      `Kette den Fjord offen, und an ${c.contradicted} widerspricht ihm das Thermometer. ` +
-      `Alle Zahlen hier gelten für das Fenster; über die ganze Reihe, auch außerhalb, sind es 226 ` +
-      `verglichene Tage, 84 mit Aussage „offen" und 36 Widersprüche.`;
+      `${c.days} days in the analysed window across ten seasons. ` +
+      `${c.s2} carry a Sentinel-2 scene of their own, ${c.landsat} a Landsat one, ${c.sar} radar. ` +
+      `The thermal band sits beside ${c.thermal} of these days; on ${c.chainSaysOpen} of them the chain ` +
+      `calls the fjord open, and on ${c.contradicted} the thermal band contradicts it. ` +
+      `These counts are for the window. Over the whole record the comparison covers 226 days, ` +
+      `84 of them called open, with 36 contradicted.`;
     root.appendChild(note);
 
     show(null);
@@ -330,8 +381,8 @@
       .then((data) => render(root, data))
       .catch(() => {
         root.innerHTML =
-          '<p class="figure-note">Der Kontaktbogen konnte nicht geladen werden. ' +
-          "Lokal hilft <code>python3 scripts/build_site_data.py</code>.</p>";
+          '<p class="figure-note">The contact sheet could not be loaded. ' +
+          "Locally, <code>python3 scripts/build_site_data.py</code> writes what it needs.</p>";
       });
   }
 
