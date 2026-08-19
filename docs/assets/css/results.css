@@ -137,7 +137,7 @@ text { font-family: var(--md-text-font-family, sans-serif); }
 .sheet-cell[data-selected="true"] { box-shadow: inset 0 0 0 2px var(--md-accent-fg-color); z-index: 2; }
 /* A pinned day keeps its ring after the pointer has moved on, and says so with
    a second, heavier one, so it is clear why the panel stopped following. */
-.sheet-cell[data-pinned="true"] { box-shadow: inset 0 0 0 2px var(--md-accent-fg-color), 0 0 0 1px var(--md-accent-fg-color); z-index: 3; }
+.sheet-cell[data-opened="true"] { box-shadow: inset 0 0 0 2px var(--md-accent-fg-color), 0 0 0 1px var(--md-accent-fg-color); z-index: 3; }
 /* Four lanes under every cell, one per instrument, so a day that three
    instruments saw reads as three marks rather than as a darker cell. The cell
    above them is the value the published curve carries; these lanes are who
@@ -275,14 +275,6 @@ text { font-family: var(--md-text-font-family, sans-serif); }
   pointer-events: none;
 }
 
-/* A pinned panel is meant to be read and its scene id copied, so it takes the
-   pointer back and says it has. */
-.md-typeset .day-panel.floating[data-pinned="true"] {
-  pointer-events: auto;
-  border-color: var(--md-accent-fg-color);
-  overflow-y: auto;
-}
-
 /* Smaller inside the popup than inside the docked panel: the docked one has a
    whole column, this one has to sit beside a cursor.
 
@@ -291,33 +283,10 @@ text { font-family: var(--md-text-font-family, sans-serif); }
    pixels plus a 26 rem cap from the docked rules, so the panel came out 420
    wide however firmly `width` was stated. */
 .md-typeset .day-panel.floating > * { min-width: 0; }
-/* In the hovered card there is one picture and the card is 340 px wide, so it
-   takes the full width rather than sharing it. */
-.md-typeset .day-panel.floating:not([data-pinned="true"]) .layer-figure {
+/* One picture in the glance card, taking the card's whole width. */
+.md-typeset .day-panel.floating .layer-figure {
   max-width: none;
   flex-basis: 100%;
-}
-
-/* A pinned card carries every picture, and four upright quicklooks plus their
-   text do not fit in any window: at full width this came to 936 pixels of a 960
-   pixel screen, which is the takeover the compact form was built to avoid. Two
-   answers together. The pictures pair up, 150 px each, so a row is one line of
-   pictures rather than two. And the card is bounded by the window and scrolls
-   inside itself, which it can do because pinning already restores pointer
-   events. Nothing is hidden, it is only further down. */
-.md-typeset .day-panel.floating[data-pinned="true"] {
-  max-height: calc(100vh - 1.5rem);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-/* Half the row each, computed rather than guessed: a fixed 150 px plus the gap
-   came to 310 in a 278 px column and wrapped, which cost a whole row of height
-   and put the photograph above its own classification instead of beside it.
-   Sharing the row also makes every picture the same size, which is what lets
-   the four be compared at all. */
-.md-typeset .day-panel.floating[data-pinned="true"] .layer-figure {
-  flex: 0 0 calc(50% - 0.25rem);
-  max-width: calc(50% - 0.25rem);
 }
 .md-typeset .day-panel.floating .day-layer .detail { font-size: 0.72rem; }
 .md-typeset .day-panel.floating h4 { font-size: 0.88rem; }
@@ -331,21 +300,21 @@ text { font-family: var(--md-text-font-family, sans-serif); }
    `display: -webkit-box`, and Material forces `display: flow-root` on content
    elements, so the clamp applied and did nothing at all. */
 /* The one thing a reader cannot discover by pointing at something. */
-.md-typeset .day-panel.floating .pin-hint {
+.md-typeset .day-panel.floating .open-hint {
   font-size: 0.62rem;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--md-default-fg-color--lighter);
   margin: 0;
 }
-.md-typeset .day-panel:not(.floating) .pin-hint { display: none; }
+.md-typeset .day-panel:not(.floating) .open-hint { display: none; }
 
 /* The quicklook is smaller in the popup than in the pinned panel, and since the
    thumbnails were corrected to the AOI's upright 0.814 aspect it has to be a
    good deal smaller: 320 pixels wide is now 393 tall. The fjord and its island
    stay recognisable at 168, and every pixel here is one the popup takes off the
    reader's screen. */
-.md-typeset .day-panel.floating:not([data-pinned="true"]) .layer-figure {
+.md-typeset .day-panel.floating .layer-figure {
   max-width: 168px;
   flex-basis: 168px;
 }
@@ -353,10 +322,133 @@ text { font-family: var(--md-text-font-family, sans-serif); }
 /* Tighter rows in the popup than in the panel. A day that four instruments saw
    carries four blocks, and at the docked spacing that came to 813 pixels of a
    960 pixel window. The saving is all in the chrome, not in the words. */
-.md-typeset .day-panel.floating:not([data-pinned="true"]) { gap: 0.4rem; padding: 0.7rem 0.8rem; }
-.md-typeset .day-panel.floating:not([data-pinned="true"]) .day-layer {
+.md-typeset .day-panel.floating { gap: 0.4rem; padding: 0.7rem 0.8rem; }
+.md-typeset .day-panel.floating .day-layer {
   padding-bottom: 0.32rem;
   line-height: 1.42;
 }
-.md-typeset .day-panel.floating:not([data-pinned="true"]) .day-layer .role { font-size: 0.6rem; }
-.md-typeset .day-panel.floating:not([data-pinned="true"]) .layer-figure { gap: 0.2rem; }
+.md-typeset .day-panel.floating .day-layer .role { font-size: 0.6rem; }
+.md-typeset .day-panel.floating .layer-figure { gap: 0.2rem; }
+
+/* ── The viewer ───────────────────────────────────────────────────────────
+   What the pinned card was trying and failing to be.
+
+   The glance card is 340 px wide because it sits beside a cursor. Five upright
+   quicklooks do not go in 340 px: each came out 134 px across, the four rows of
+   them made 1917 px of content inside a 930 px box, and the reader had to pin
+   first and then scroll a narrow column to see a satellite image the size of a
+   postage stamp. The container was wrong, not the amount of content.
+
+   So the pictures get their own room. One instrument per card, two cards
+   across, and a quicklook drawn near the 320 px it was rendered at. */
+.md-typeset .day-viewer {
+  width: min(1180px, 94vw);
+  max-height: 88vh;
+  padding: 0;
+  border: 1px solid var(--md-default-fg-color--lighter);
+  border-radius: 4px;
+  background: var(--md-default-bg-color);
+  color: var(--md-default-fg-color);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  /* A dialog is display:none until it opens, and `display: flex` in the base
+     rule would defeat that, so the layout is declared on the open state. */
+}
+.md-typeset .day-viewer[open] {
+  display: flex;
+  flex-direction: column;
+}
+.md-typeset .day-viewer::backdrop {
+  background: rgba(0, 0, 0, 0.62);
+}
+
+.md-typeset .viewer-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1.1rem 0.7rem;
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+  flex: 0 0 auto;
+}
+.md-typeset .viewer-head h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.md-typeset .viewer-close {
+  border: 0;
+  background: transparent;
+  color: var(--md-default-fg-color--light);
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: 0.15rem 0.35rem;
+  cursor: pointer;
+  border-radius: 3px;
+}
+.md-typeset .viewer-close:hover { color: var(--md-default-fg-color); }
+.md-typeset .viewer-close:focus-visible {
+  outline: 2px solid var(--md-accent-fg-color);
+  outline-offset: 2px;
+}
+
+/* Two instrument cards across, one below 900 px. `auto-fit` was tempting and
+   wrong: at 1180 px it makes three columns for four cards and leaves one
+   stranded on its own row at triple width. */
+.md-typeset .viewer-body {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1px;
+  background: var(--md-default-fg-color--lightest);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  flex: 1 1 auto;
+}
+@media (min-width: 900px) {
+  .md-typeset .viewer-body { grid-template-columns: 1fr 1fr; }
+}
+
+.md-typeset .viewer-body .day-layer {
+  background: var(--md-default-bg-color);
+  margin: 0;
+  padding: 0.9rem 1.1rem 1.1rem;
+  border: 0;
+  grid-template-columns: 3px 1fr;
+  gap: 0.75rem;
+}
+.md-typeset .viewer-body .day-layer .role { font-size: 0.68rem; }
+.md-typeset .viewer-body .day-layer .value { font-size: 0.95rem; }
+.md-typeset .viewer-body .day-layer .detail { font-size: 0.75rem; line-height: 1.6; }
+
+/* The quicklooks are 320 by 393 as rendered, and this is where they get to be
+   that. Two side by side in the Sentinel-2 card, one in each of the others, all
+   the same width, because comparing them is the whole reason they are here. */
+.md-typeset .viewer-body .layer-figures { gap: 0.6rem; margin-top: 0.6rem; }
+/* Share the row, rather than each claiming a fixed 260 px. Fixed widths wrapped
+   by six pixels: the card is 588 wide, but the coloured rule, the gap and the
+   padding take 62 of them, so two 260s plus their own gap came to 532 in a 526
+   column and the photograph ended up above its classification instead of beside
+   it. A percentage cannot miss by six pixels. The cap keeps a lone picture from
+   growing to twice the size of a paired one, since comparing them is the point. */
+.md-typeset .viewer-body .layer-figure {
+  flex: 0 1 calc(50% - 0.3rem);
+  max-width: 272px;
+}
+.md-typeset .viewer-body .layer-figure figcaption { font-size: 0.68rem; }
+
+/* A day nothing measured still gets its card, greyed, so the grid keeps its
+   shape and the absence is visible rather than merely missing. */
+.md-typeset .viewer-body .day-layer.absent { opacity: 0.55; }
+
+.md-typeset .viewer-body .figure-note,
+.md-typeset .viewer-body .open-hint { grid-column: 1 / -1; }
+
+/* The cell the viewer is showing keeps its mark while the dialog is up, so
+   closing it does not leave the reader wondering where they were. */
+.sheet-cell[data-opened="true"] {
+  box-shadow:
+    inset 0 0 0 2px var(--md-accent-fg-color),
+    0 0 0 1px var(--md-accent-fg-color);
+  z-index: 3;
+}

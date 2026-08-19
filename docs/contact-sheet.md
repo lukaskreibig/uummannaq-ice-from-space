@@ -3,7 +3,8 @@
 Ten seasons, 1280 days, and for each of them what the satellites saw. The fill of
 a cell is the value the published series carries. The four rules underneath it
 say which instruments actually looked that day. Hovering a day opens the scene
-and what each instrument made of it; clicking pins it.
+and what each instrument made of it; clicking opens that day at full size,
+with every instrument's picture beside its own numbers.
 
 Everything below is read from `archive/reprocessed_2026`: `daily_series.csv`,
 `summary.csv`, `landsat_season_series.csv`, `thermal_audit.csv` and

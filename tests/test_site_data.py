@@ -465,3 +465,66 @@ class TestEveryRowCanShowItsOwnPicture:
             assert seen == 1, (
                 f"{folder} is addressed {seen} times in the page, expected exactly once"
             )
+
+
+class TestTheViewerIsTheReadingContainer:
+    """The pictures live in a dialog, and there are reasons it cannot regress.
+
+    The version this replaced put five upright quicklooks in the cursor-following
+    card: 134 px each, 1917 px of scrolling inside a 930 px box, and the reader
+    had to pin the card before seeing more than one of them. The container was
+    wrong for the task, so the task moved to a container built for it.
+    """
+
+    SOURCE = ROOT / "docs" / "assets" / "js" / "contact-sheet.js"
+    STYLES = ROOT / "docs" / "assets" / "css" / "results.css"
+
+    def test_the_viewer_is_a_real_dialog(self) -> None:
+        """A div would mean writing focus trapping and inertness by hand."""
+        source = self.SOURCE.read_text()
+        assert 'createElement("dialog")' in source
+        assert "showModal" in source
+
+    def test_pinning_is_gone(self) -> None:
+        """No state, no attribute, no styling, and no instruction to pin.
+
+        Pinning existed only to keep the wrong container open long enough to
+        read. Leaving any of it behind would leave two ways to open a day and
+        one of them worse.
+        """
+        source = self.SOURCE.read_text()
+        styles = self.STYLES.read_text()
+        page = (ROOT / "docs" / "contact-sheet.md").read_text()
+        for needle in ("data-pinned", "dataset.pinned", "pin-hint"):
+            assert needle not in source, f"{needle} survives in the page script"
+            assert needle not in styles, f"{needle} survives in the stylesheet"
+        assert "pins it" not in page
+
+    def test_every_way_out_runs_the_same_teardown(self) -> None:
+        """Escape, the backdrop and the button all call closeViewer().
+
+        Measured on the real page: `viewer.close()` runs, `viewer.open` goes
+        false, and no `close` event is raised. Cleanup hung on that event left
+        the cell marked as open with the dialog already gone, so the teardown is
+        called directly and the event listener is only a fallback.
+        """
+        source = self.SOURCE.read_text()
+        assert source.count("function closeViewer()") == 1
+        # once as the button handler, once from the backdrop, once from Escape,
+        # once as the fallback listener, plus the definition
+        assert source.count("closeViewer") >= 5
+
+    def test_escape_is_caught_where_focus_cannot_move_it(self) -> None:
+        """On the document, in capture, and only while the viewer is open.
+
+        A listener on the dialog fires only while focus is inside it, which
+        stops being true the moment a reader clicks a picture. The `viewer.open`
+        guard is what leaves Escape to Material's search box the rest of the
+        time.
+        """
+        source = self.SOURCE.read_text()
+        block = source[source.index('if (event.key !== "Escape"') :][:400]
+        assert "!viewer.open" in block, "Escape is not guarded on the viewer being open"
+        assert "true\n    );" in block or "true)" in block, (
+            "the listener is not in capture"
+        )
