@@ -159,7 +159,7 @@ that did not survive its own test.
      29 artefacts     archive/reprocessed_2026, every published figure traceable to one
       4 instruments   Sentinel-2 optical, Landsat optical, Landsat thermal, Sentinel-1 radar
   over 4000 lines     documentation, ordered by how much each weakness could change a conclusion
-    160 tests         plus four gates that run on every push, one of them `make audit`
+    162 tests         plus four gates that run on every push, one of them `make audit`
 ```
 
 ## Check a number yourself

@@ -523,8 +523,49 @@ class TestTheViewerIsTheReadingContainer:
         time.
         """
         source = self.SOURCE.read_text()
-        block = source[source.index('if (event.key !== "Escape"') :][:400]
+        start = source.index('document.addEventListener(\n      "keydown"')
+        block = source[start : source.index("\n    );", start) + 7]
         assert "!viewer.open" in block, "Escape is not guarded on the viewer being open"
-        assert "true\n    );" in block or "true)" in block, (
-            "the listener is not in capture"
+        assert 'event.key !== "Escape"' in block
+        assert block.rstrip().endswith("true\n    );"), "the listener is not in capture"
+
+    def test_the_viewer_can_be_walked_day_by_day(self) -> None:
+        """Aim is not a requirement, because a cell is four pixels wide.
+
+        Measured at 768 by 1024, a tablet in portrait: a sheet cell is 4.16 by
+        17 pixels against a 44 pixel minimum target. Widening it would mean
+        three thousand pixels of sideways scrolling through ten seasons, which
+        costs the overview a contact sheet exists to give. So the viewer steps
+        instead, by button and by arrow key, and a tap only has to land nearby.
+        """
+        source = self.SOURCE.read_text()
+        assert "function stepTo(" in source
+        assert "ArrowLeft" in source and "ArrowRight" in source
+        assert "viewer-step" in source
+        styles = self.STYLES.read_text()
+        block = styles[styles.index(".md-typeset .viewer-step,") :][:400]
+        assert "min-width: 44px" in block and "min-height: 44px" in block
+
+    def test_nothing_a_tablet_needs_sits_behind_a_hover(self) -> None:
+        """Both pages, because both were broken and in different ways.
+
+        The sheet filled a docked panel from `pointerenter`, which a tablet does
+        fire, one frame before the tap that covers it: 2153 pixels of duplicate
+        page on the way to a dialog. And the specification curve offered
+        `mouseenter` and nothing else, so a device with no hover could not read
+        one specification on a page that promises hovering reads them out.
+        """
+        sheet = self.SOURCE.read_text()
+        assert "(hover: none)" in sheet, "the sheet does not ask about hover at all"
+        assert "if (coarse()) return;" in sheet
+
+        curve = (ROOT / "docs" / "assets" / "js" / "specification-curve.js").read_text()
+        assert 'hit.addEventListener("click"' in curve, "a column cannot be tapped"
+        assert "function stepSpec(" in curve
+
+        styles = self.STYLES.read_text()
+        assert "@media (hover: none)" in styles
+        touch = styles[styles.index("@media (hover: none)") :][:800]
+        assert ".day-panel { display: none; }" in touch, (
+            "the docked panel, which only hovering can fill, is still in the flow"
         )

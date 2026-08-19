@@ -84,13 +84,30 @@
     const viewerHead = document.createElement("div");
     viewerHead.className = "viewer-head";
     const viewerTitle = document.createElement("h3");
+
+    const viewerNav = document.createElement("div");
+    viewerNav.className = "viewer-nav";
+    const step = (label, name) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "viewer-step";
+      button.setAttribute("aria-label", name);
+      button.textContent = label;
+      viewerNav.appendChild(button);
+      return button;
+    };
+    const viewerPrev = step("\u2039", "The day before");
+    const viewerNext = step("\u203a", "The day after");
+
     const viewerClose = document.createElement("button");
     viewerClose.type = "button";
     viewerClose.className = "viewer-close";
     viewerClose.setAttribute("aria-label", "Close");
     viewerClose.textContent = "\u00d7";
+    viewerNav.appendChild(viewerClose);
+
     viewerHead.appendChild(viewerTitle);
-    viewerHead.appendChild(viewerClose);
+    viewerHead.appendChild(viewerNav);
 
     const viewerBody = document.createElement("div");
     viewerBody.className = "viewer-body";
@@ -143,7 +160,14 @@
     document.addEventListener(
       "keydown",
       (event) => {
-        if (event.key !== "Escape" || !viewer.open) return;
+        if (!viewer.open) return;
+        if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+          event.preventDefault();
+          event.stopPropagation();
+          stepTo(event.key === "ArrowLeft" ? -1 : 1);
+          return;
+        }
+        if (event.key !== "Escape") return;
         event.preventDefault();
         event.stopPropagation();
         closeViewer();
@@ -155,6 +179,20 @@
     viewer.addEventListener("close", closeViewer);
 
     let opened = null;      // the cell whose day the viewer is showing
+
+    /* Every cell in the order the sheet draws them, so the viewer can step from
+       one day to the next. This is what makes the sheet usable by finger at all:
+       a cell is four pixels wide in a 736 pixel column, which no thumb can aim
+       at, and widening it would mean either scrolling sideways through ten
+       seasons or giving up the overview that is the whole point of a contact
+       sheet. So aim is not required. A tap lands within a few days, and the
+       arrows walk to the exact one. */
+    const ordered = [];
+
+    // Touch, taken from the pointer rather than the width. A tablet in landscape
+    // is 1024 wide and still has no hover, and a narrow desktop window has a
+    // mouse; asking about width would get both wrong.
+    const coarse = () => window.matchMedia("(hover: none)").matches;
     let hovered = null;     // the cell the pointer is over
     let hoverTimer = null;
     let frame = null;       // the pending reposition
@@ -268,8 +306,10 @@
       };
       if (!day) {
         target.innerHTML =
-          '<p class="figure-note">Hover a day. Every cell is one day of the analysed ' +
-          "window, day 53 to 180, which is 22 February to 29 June.</p>";
+          '<p class="figure-note">' +
+          (coarse() ? "Tap a day" : "Hover a day") +
+          ". Every cell is one day of the analysed window, day 53 to 180, " +
+          "which is 22 February to 29 June.</p>";
         return;
       }
 
@@ -474,7 +514,9 @@
       if (compact) {
         const hint = document.createElement("p");
         hint.className = "open-hint";
-        hint.textContent = "Click to open this day at full size.";
+        hint.textContent = coarse()
+          ? "Tap to open this day at full size."
+          : "Click to open this day at full size.";
         target.appendChild(hint);
       }
     }
@@ -529,6 +571,11 @@
 
     function preview(day, cell, anchor) {
       if (viewer.open) return; // the viewer owns the reader's attention
+      /* Nothing to preview without a pointer that can hover. A tablet fires
+         pointerenter on tap, one frame before the click that opens the viewer,
+         and filling the docked panel from it built 2153 pixels of duplicate
+         page under the sheet on the way to a dialog that was about to cover it. */
+      if (coarse()) return;
       window.clearTimeout(hoverTimer);
       if (!day) return;
       hoverTimer = window.setTimeout(() => {
@@ -542,6 +589,24 @@
       }, HOVER_SETTLE);
     }
 
+    /* Walk to the neighbouring day that HAS something to show. Stepping onto an
+       empty cell would open a viewer with four rows of "no acquisition", which
+       is a true statement and a waste of a tap. The sheet still draws those
+       days; the arrows just do not stop on them. */
+    function stepTo(direction) {
+      const here = ordered.findIndex((entry) => entry.cell === opened);
+      if (here < 0) return;
+      for (let i = here + direction; i >= 0 && i < ordered.length; i += direction) {
+        if (ordered[i].day) {
+          open(ordered[i].day, ordered[i].cell);
+          return;
+        }
+      }
+    }
+
+    viewerPrev.addEventListener("click", () => stepTo(-1));
+    viewerNext.addEventListener("click", () => stepTo(1));
+
     function open(day, cell) {
       if (!day) return;
       window.clearTimeout(hoverTimer);
@@ -552,6 +617,9 @@
       if (opened) opened.dataset.opened = "false";
       opened = cell;
       cell.dataset.opened = "true";
+      // Stepping can walk off the visible part of the sheet, and closing the
+      // viewer onto a marked cell the reader cannot see is disorienting.
+      cell.scrollIntoView({ block: "nearest", inline: "nearest" });
 
       const when = new Date(Date.UTC(day.season, 0, day.doy));
       viewerTitle.textContent =
@@ -629,6 +697,8 @@
           : [];
         cell.title = `${dateLabel}: ${layers.length ? layers.join(", ") : "no measurement"}`;
         cell.setAttribute("aria-label", cell.title);
+
+        ordered.push({ cell, day });
 
         if (day) {
           // Hovering shows, clicking pins. Sweeping across a season should read
