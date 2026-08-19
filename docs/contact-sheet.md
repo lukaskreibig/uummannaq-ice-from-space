@@ -1,3 +1,8 @@
+---
+hide:
+  - toc
+---
+
 # Every day, and what each instrument made of it
 
 Ten seasons, 1280 days, and for each of them what the satellites saw. The fill of
