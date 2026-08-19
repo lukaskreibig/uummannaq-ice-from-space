@@ -1,0 +1,175 @@
+/* Styling for the two results pages.
+ *
+ * Everything reads Material's own tokens rather than fixed colours, so the
+ * light and dark palettes of the theme carry straight through and there is no
+ * second place to keep a colour scheme in step.
+ *
+ * The one thing that is NOT taken from the theme is the four instrument hues.
+ * They encode which instrument measured a day, so they have to stay distinct
+ * from the accent and from each other on both grounds. */
+
+:root {
+  --layer-s2: #1b6e8c;      /* the record */
+  --layer-landsat: #7a9bb0; /* second optical opinion */
+  --layer-thermal: #a8482a; /* the physics check */
+  --layer-sar: #6b5b8f;     /* the adjudicator */
+  --sheet-filled: #b8c6cf;  /* interpolated, never a measurement */
+}
+
+[data-md-color-scheme="slate"] {
+  --layer-s2: #62b0cd;
+  --layer-landsat: #93b2c6;
+  --layer-thermal: #e08a68;
+  --layer-sar: #a795c9;
+  --sheet-filled: #3c4b57;
+}
+
+/* ------------------------------------------------------------ shared bits */
+
+.figure-note {
+  font-size: 0.74rem;
+  line-height: 1.55;
+  color: var(--md-default-fg-color--light);
+  margin: 0.4rem 0 0;
+}
+
+.readout {
+  font-family: var(--md-code-font-family, monospace);
+  font-size: 0.72rem;
+  line-height: 1.7;
+  background: var(--md-code-bg-color);
+  border-left: 2px solid var(--md-accent-fg-color);
+  padding: 0.6rem 0.8rem;
+  margin-top: 0.6rem;
+  min-height: 5.6rem;
+  white-space: pre-wrap;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1.1rem;
+  font-size: 0.72rem;
+  margin: 0.6rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.legend li { display: flex; align-items: center; gap: 0.4rem; }
+.legend .chip {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 2px;
+  flex: none;
+}
+
+.chart-shell { overflow-x: auto; }
+.chart-shell svg { display: block; min-width: 34rem; }
+
+text { font-family: var(--md-text-font-family, sans-serif); }
+.tick-label { font-size: 9px; fill: var(--md-default-fg-color--light); }
+.axis-line { stroke: var(--md-default-fg-color--lightest); stroke-width: 1; }
+.zero-line { stroke: var(--md-default-fg-color--light); stroke-width: 1; stroke-dasharray: 3 3; }
+
+/* -------------------------------------------------- specification curve */
+
+.spec-dot { fill: var(--md-default-fg-color--light); }
+.spec-dot.significant { fill: var(--md-accent-fg-color); }
+.spec-dot.published { fill: var(--layer-thermal); }
+.spec-hit { fill: transparent; cursor: crosshair; }
+.spec-hit:hover ~ * { pointer-events: none; }
+.spec-mark { fill: var(--md-default-fg-color--light); }
+.spec-mark.on { fill: var(--md-default-fg-color); }
+.spec-row-label { font-size: 9px; fill: var(--md-default-fg-color--light); }
+.spec-group-label {
+  font-size: 8.5px;
+  fill: var(--md-default-fg-color--lighter);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.spec-cursor { stroke: var(--md-accent-fg-color); stroke-width: 1; }
+
+/* -------------------------------------------------------- contact sheet */
+
+.sheet-row { display: grid; grid-template-columns: 3.2rem 1fr; gap: 0 0.6rem; align-items: center; }
+.sheet-year {
+  font-family: var(--md-code-font-family, monospace);
+  font-size: 0.74rem;
+  color: var(--md-default-fg-color--light);
+  font-variant-numeric: tabular-nums;
+}
+.sheet-strip { display: grid; gap: 1px; }
+/* Fixed height rather than a square: at 128 columns a square cell is three
+   pixels tall, and nothing readable fits under it. */
+.sheet-cell {
+  height: 17px;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  position: relative;
+  min-width: 0;
+  display: block;
+}
+.sheet-cell .fill { height: 17px; }
+/* A day the curve carries but no satellite measured. Held apart by weight, not
+   by a hatch: a 45 degree hatch inside a three pixel cell is static, not a
+   pattern, which the first draft of this page proved. */
+.sheet-cell[data-measured="false"] .fill { opacity: 0.38; }
+.sheet-cell:focus-visible { outline: 2px solid var(--md-accent-fg-color); outline-offset: 1px; z-index: 2; }
+.sheet-cell[data-selected="true"] { box-shadow: inset 0 0 0 2px var(--md-accent-fg-color); z-index: 2; }
+/* Four lanes under every cell, one per instrument, so a day that three
+   instruments saw reads as three marks rather than as a darker cell. The cell
+   above them is the value the published curve carries; these lanes are who
+   actually looked. */
+.sheet-marks { display: grid; gap: 1px; margin-top: 2px; }
+.sheet-mark { height: 2px; background: var(--md-default-fg-color--lightest); }
+
+.sheet-months {
+  display: grid;
+  font-size: 0.66rem;
+  color: var(--md-default-fg-color--light);
+  margin-left: 3.8rem;
+}
+.sheet-months span { border-left: 1px solid var(--md-default-fg-color--lightest); padding-left: 2px; }
+
+.day-panel {
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 2px;
+  padding: 0.9rem 1rem;
+  margin-top: 0.9rem;
+  display: grid;
+  gap: 0.75rem;
+}
+.day-panel h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+}
+.day-layer {
+  display: grid;
+  grid-template-columns: 0.28rem 1fr;
+  gap: 0 0.7rem;
+  align-items: start;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+}
+.day-layer:last-child { border-bottom: 0; padding-bottom: 0; }
+.day-layer .bar { border-radius: 1px; align-self: stretch; }
+.day-layer .role {
+  font-size: 0.66rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--md-default-fg-color--light);
+}
+.day-layer .value { font-variant-numeric: tabular-nums; }
+.day-layer .detail { font-size: 0.76rem; color: var(--md-default-fg-color--light); }
+.day-layer.absent .value { color: var(--md-default-fg-color--lighter); font-style: italic; }
+
+.verdict {
+  display: inline-block;
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.1rem 0.4rem;
+  border-radius: 2px;
+  border: 1px solid currentColor;
+}

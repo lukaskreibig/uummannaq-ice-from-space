@@ -30,6 +30,15 @@ plugins:
   - search
   - section-index
 
+# The two results pages carry their own figures. Everything they draw comes from
+# docs/assets/data, which scripts/build_site_data.py writes out of the committed
+# archive tables; nothing is hand-entered.
+extra_css:
+  - assets/css/results.css
+extra_javascript:
+  - assets/js/specification-curve.js
+  - assets/js/contact-sheet.js
+
 markdown_extensions:
   - admonition
   - attr_list
@@ -44,6 +53,9 @@ markdown_extensions:
 # cross-check, sit high on purpose rather than at the back.
 nav:
   - Overview: overview.md
+  - Results:
+      - Contact sheet: contact-sheet.md
+      - Specification curve: specification-curve.md
   - The method:
       - Method: methods.md
       - Pipeline details: pipeline.md

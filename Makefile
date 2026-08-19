@@ -67,7 +67,13 @@ test:
 precommit:
 	pre-commit run --all-files
 
-docs:
+# The figures read JSON that this derives from the committed archive tables.
+# Not in the repository on purpose: a second copy of numbers that already exist
+# is a second thing that can go stale.
+site-data:
+	python3 scripts/build_site_data.py
+
+docs: site-data
 	mkdocs serve
 
 # ------------------------------------------------------------------- the run
