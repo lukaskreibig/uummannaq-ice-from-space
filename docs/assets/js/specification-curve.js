@@ -139,8 +139,17 @@
       return dot;
     });
 
-    if (data.published) {
-      const i = points.indexOf(data.published);
+    /* findIndex on the flag, not indexOf on the object. `data.published` is a
+       SEPARATE object in the JSON, because JSON cannot share a reference, so
+       identity never matched and indexOf returned -1 every single time. x(-1)
+       is 183.6 in a 760 unit viewBox and the real published dot is at 421.8:
+       the label naming the published 22.6 percent sat 246 units to its left,
+       over the four negative specifications, saying the exact opposite of the
+       page beneath it, which states that the published choice sits in the quiet
+       middle of the grid. The same file already had it right at stepSpec. */
+    const publishedAt = points.findIndex((p) => p.published);
+    if (data.published && publishedAt >= 0) {
+      const i = publishedAt;
       svg.appendChild(
         make(
           "text",
@@ -243,12 +252,16 @@
       hit.addEventListener("mouseenter", () => {
         if (held === null) focus(i);
       });
-      hit.addEventListener("focus", () => focus(i));
       hit.addEventListener("click", () => {
         held = held === i ? null : i;
         focus(showing());
       });
-      hit.setAttribute("tabindex", "0");
+      /* No tabindex. These 120 rectangles were focusable, which sounds like
+         keyboard access and is not: the svg carries role="img", so everything
+         inside it is pruned from the accessibility tree, and a screen reader
+         met 120 stops with no name at all, ahead of every real control on the
+         page. The arrows below the figure are the keyboard route, and they are
+         named buttons. */
       svg.appendChild(hit);
     });
     svg.addEventListener("mouseleave", () => {

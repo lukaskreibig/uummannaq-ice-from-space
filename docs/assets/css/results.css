@@ -95,7 +95,14 @@ text { font-family: var(--md-text-font-family, sans-serif); }
 .spec-dot.significant { fill: var(--md-accent-fg-color); }
 .spec-dot.published { fill: var(--layer-thermal); }
 .spec-hit { fill: transparent; cursor: crosshair; }
-.spec-hit:hover ~ * { pointer-events: none; }
+/* There was a `.spec-hit:hover ~ *` rule here, setting pointer-events: none.
+   It never did what it was written for and it broke the new one. The 120 hit
+   rects are appended LAST, so they are the only later siblings a general
+   sibling combinator can reach: the rule disabled every column to the RIGHT of
+   the hovered one. With a mouse that is invisible, because hover moves on. On a
+   touch screen the synthetic hover sticks to the tapped element, so after
+   tapping a column nothing to its right could be tapped at all, on a figure
+   whose page now promises that tapping holds a specification. */
 .spec-mark { fill: var(--md-default-fg-color--light); }
 .spec-mark.on { fill: var(--md-default-fg-color); }
 .spec-row-label { font-size: 9px; fill: var(--md-default-fg-color--light); }
@@ -467,11 +474,6 @@ text { font-family: var(--md-text-font-family, sans-serif); }
      within it is the arrows' job. */
   .sheet-cell { height: 30px; }
   .sheet-year { line-height: 30px; }
-
-  /* The docked panel exists to be filled by hovering, and there is no hovering
-     here. Leaving it in the flow left "Hover a day" sitting under the sheet on
-     a device that cannot. */
-  .md-typeset .day-panel { display: none; }
 }
 
 /* Every control in the viewer is a real target. The close button measured
@@ -543,3 +545,9 @@ text { font-family: var(--md-text-font-family, sans-serif); }
   outline: 2px solid var(--md-accent-fg-color);
   outline-offset: 2px;
 }
+
+/* The panel is only ever wanted floating. Hiding it on `(hover: none)` covered
+   a pure touch tablet and missed every hovering pointer under 1100: measured at
+   1024 by 768 with a trackpad, one hover grew the page by 2084 pixels. The
+   container is the right question, so this asks about the container. */
+.md-typeset .day-panel:not(.floating) { display: none; }

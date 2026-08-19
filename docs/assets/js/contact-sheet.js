@@ -189,10 +189,6 @@
        arrows walk to the exact one. */
     const ordered = [];
 
-    // Touch, taken from the pointer rather than the width. A tablet in landscape
-    // is 1024 wide and still has no hover, and a narrow desktop window has a
-    // mouse; asking about width would get both wrong.
-    const coarse = () => window.matchMedia("(hover: none)").matches;
     let hovered = null;     // the cell the pointer is over
     let hoverTimer = null;
     let frame = null;       // the pending reposition
@@ -305,11 +301,11 @@
         return list.slice(0, 1);
       };
       if (!day) {
+        // Only ever seen beside a cursor: the panel is hidden unless it floats,
+        // and it only floats where there is a pointer that can hover.
         target.innerHTML =
-          '<p class="figure-note">' +
-          (coarse() ? "Tap a day" : "Hover a day") +
-          ". Every cell is one day of the analysed window, day 53 to 180, " +
-          "which is 22 February to 29 June.</p>";
+          '<p class="figure-note">Hover a day. Every cell is one day of the analysed ' +
+          "window, day 53 to 180, which is 22 February to 29 June.</p>";
         return;
       }
 
@@ -514,9 +510,7 @@
       if (compact) {
         const hint = document.createElement("p");
         hint.className = "open-hint";
-        hint.textContent = coarse()
-          ? "Tap to open this day at full size."
-          : "Click to open this day at full size.";
+        hint.textContent = "Click to open this day at full size.";
         target.appendChild(hint);
       }
     }
@@ -571,11 +565,18 @@
 
     function preview(day, cell, anchor) {
       if (viewer.open) return; // the viewer owns the reader's attention
-      /* Nothing to preview without a pointer that can hover. A tablet fires
-         pointerenter on tap, one frame before the click that opens the viewer,
-         and filling the docked panel from it built 2153 pixels of duplicate
-         page under the sheet on the way to a dialog that was about to cover it. */
-      if (coarse()) return;
+      /* Gated on the CONTAINER, not on the pointer, and the first attempt got
+         that wrong. Asking `(hover: none)` covered a pure touch tablet and left
+         out every hovering pointer under 1100: an iPad with a keyboard case, a
+         tablet in Stage Manager, a narrow desktop window. Measured at 1024 by
+         768 with a trackpad, hovering one cell grew the page by 2084 pixels,
+         five quicklooks deep, appended below the legend where nobody is
+         looking, and did it again on every settled hover.
+
+         There is no room for a 340 px card beside a cursor under 1100 anyway,
+         which is what FLOAT_FROM has always said. So below it the dialog is the
+         only reading surface, whatever the pointer is. */
+      if (!floats()) return;
       window.clearTimeout(hoverTimer);
       if (!day) return;
       hoverTimer = window.setTimeout(() => {
@@ -589,19 +590,31 @@
       }, HOVER_SETTLE);
     }
 
-    /* Walk to the neighbouring day that HAS something to show. Stepping onto an
-       empty cell would open a viewer with four rows of "no acquisition", which
-       is a true statement and a waste of a tap. The sheet still draws those
-       days; the arrows just do not stop on them. */
-    function stepTo(direction) {
+    /* Walk to the neighbouring day that HAS something to show, WITHIN the same
+       season. Stepping onto an empty cell would open four rows of "no
+       acquisition", which is true and a waste of a tap.
+
+       The season bound is the more important half. `ordered` is built season by
+       season, so a flat walk off the end of one row lands on the start of the
+       next: pressing a button labelled "the day after" on 29 June 2017 opened
+       22 February 2018, ten months away, with only the title bar to say so. The
+       arrows exist to correct a tap that landed a few days off, and jumping a
+       winter is not that. At the ends of a row the button says so by being
+       disabled. */
+    function neighbour(direction) {
       const here = ordered.findIndex((entry) => entry.cell === opened);
-      if (here < 0) return;
+      if (here < 0) return null;
+      const season = ordered[here].season;
       for (let i = here + direction; i >= 0 && i < ordered.length; i += direction) {
-        if (ordered[i].day) {
-          open(ordered[i].day, ordered[i].cell);
-          return;
-        }
+        if (ordered[i].season !== season) return null;
+        if (ordered[i].day) return ordered[i];
       }
+      return null;
+    }
+
+    function stepTo(direction) {
+      const next = neighbour(direction);
+      if (next) open(next.day, next.cell);
     }
 
     viewerPrev.addEventListener("click", () => stepTo(-1));
@@ -631,6 +644,8 @@
         }) + `  \u00b7  day ${day.doy}`;
       show(day, false, viewerBody);
       viewerBody.scrollTop = 0;
+      viewerPrev.disabled = !neighbour(-1);
+      viewerNext.disabled = !neighbour(1);
       if (typeof viewer.showModal === "function") viewer.showModal();
       else viewer.setAttribute("open", "");
     }
@@ -698,7 +713,7 @@
         cell.title = `${dateLabel}: ${layers.length ? layers.join(", ") : "no measurement"}`;
         cell.setAttribute("aria-label", cell.title);
 
-        ordered.push({ cell, day });
+        ordered.push({ cell, day, season });
 
         if (day) {
           // Hovering shows, clicking pins. Sweeping across a season should read

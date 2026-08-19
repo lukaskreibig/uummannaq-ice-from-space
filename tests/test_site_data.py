@@ -556,16 +556,53 @@ class TestTheViewerIsTheReadingContainer:
         one specification on a page that promises hovering reads them out.
         """
         sheet = self.SOURCE.read_text()
-        assert "(hover: none)" in sheet, "the sheet does not ask about hover at all"
-        assert "if (coarse()) return;" in sheet
+        # Gated on the container, not on the pointer. The first attempt asked
+        # `(hover: none)`, which covered a pure touch tablet and missed every
+        # hovering pointer under 1100 px: measured at 1024 by 768 with a
+        # trackpad, one hover grew the page by 2084 pixels.
+        assert "if (!floats()) return;" in sheet
+        assert "matchMedia" in sheet and "hover: hover" in sheet
 
         curve = (ROOT / "docs" / "assets" / "js" / "specification-curve.js").read_text()
         assert 'hit.addEventListener("click"' in curve, "a column cannot be tapped"
         assert "function stepSpec(" in curve
+        assert 'hit.setAttribute("tabindex"' not in curve, (
+            "120 unnamed tab stops inside a role=img svg are not keyboard access"
+        )
 
         styles = self.STYLES.read_text()
-        assert "@media (hover: none)" in styles
-        touch = styles[styles.index("@media (hover: none)") :][:800]
-        assert ".day-panel { display: none; }" in touch, (
-            "the docked panel, which only hovering can fill, is still in the flow"
+        assert ".md-typeset .day-panel:not(.floating) { display: none; }" in styles, (
+            "the panel is only wanted floating; docked it is two screens of duplicate page"
         )
+        # The declaration, not the name: the comment that replaced the rule
+        # quotes the selector, and quoting it is the point.
+        assert ".spec-hit:hover ~ * {" not in styles, (
+            "that rule could only reach later hit rects, so it switched off every "
+            "column to the right of the hovered one"
+        )
+
+    def test_the_published_choice_is_labelled_where_it_actually_sits(self) -> None:
+        """The one finding here that was a statement about the science.
+
+        `points.indexOf(data.published)` returned -1 every time, because
+        `data.published` is a separate object in the JSON and JSON cannot share
+        a reference. x(-1) is 183.6 in a 760 unit viewBox while the published dot
+        is at 421.8, so the label reading "published, 22.6 %" sat 246 units to
+        its left, among the four negative specifications, telling the reader the
+        opposite of the page under it.
+        """
+        curve = (ROOT / "docs" / "assets" / "js" / "specification-curve.js").read_text()
+        assert "points.indexOf(data.published)" not in curve
+        assert "points.findIndex((p) => p.published)" in curve
+
+    def test_the_arrows_do_not_walk_out_of_the_season(self) -> None:
+        """`ordered` is season major, so a flat walk jumps ten months.
+
+        Pressing a button labelled "the day after" on 29 June 2017 opened
+        22 February 2018. The arrows exist to correct a tap that landed a few
+        days off, which is not that.
+        """
+        sheet = self.SOURCE.read_text()
+        assert "ordered.push({ cell, day, season })" in sheet
+        assert "if (ordered[i].season !== season) return null;" in sheet
+        assert "viewerPrev.disabled" in sheet and "viewerNext.disabled" in sheet
