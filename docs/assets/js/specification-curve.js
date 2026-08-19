@@ -268,10 +268,12 @@
       if (held === null) focus(null);
     });
 
-    /* One column is six pixels wide in a 736 pixel figure, which no finger can
-       aim at and no reader should have to. The arrows walk the grid, so landing
-       near the right specification is enough. They also give the figure a
-       keyboard route that does not depend on tabbing through 120 rectangles. */
+    /* One column is 4.58 pixels wide in a 736 pixel figure, measured, which no
+       finger can aim at and no reader should have to. The arrows walk the grid,
+       so landing near the right specification is enough. They also give the
+       figure a keyboard route that does not depend on tabbing through 120
+       rectangles, which is what the rectangles' own tabindex used to pretend
+       to be. */
     function stepSpec(direction) {
       const from = held === null ? points.findIndex((q) => q.published) : held;
       const next = Math.min(points.length - 1, Math.max(0, from + direction));

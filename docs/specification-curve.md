@@ -15,8 +15,8 @@ figure and changes no value.
 Each combination is a point, sorted by the size of the decline. The matrix
 underneath marks which choice was active at that position. Pointing at a column
 reads the whole specification out under the figure, and tapping one holds it
-there. A column is six pixels wide, so the arrows walk the grid rather than
-asking anyone to aim.
+there. A column is four and a half pixels wide on a tablet, so the arrows walk
+the grid rather than asking anyone to aim.
 
 **The shape is deliberate.** It would also be possible to say that 116 of 120
 show a decline, and that sentence reads as a vote among 120 independent

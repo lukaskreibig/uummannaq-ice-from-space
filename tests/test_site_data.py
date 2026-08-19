@@ -606,3 +606,88 @@ class TestTheViewerIsTheReadingContainer:
         assert "ordered.push({ cell, day, season })" in sheet
         assert "if (ordered[i].season !== season) return null;" in sheet
         assert "viewerPrev.disabled" in sheet and "viewerNext.disabled" in sheet
+
+
+class TestTheSecondPassFindings:
+    """What a static read caught that browser measurements had not.
+
+    Six of these were only visible by reading the files: a lookup that always
+    failed, a sibling combinator reaching the wrong elements, dead branches, and
+    a constant where a changing value was needed. The measurements had all been
+    taken on the states those defects did not affect.
+    """
+
+    SHEET = ROOT / "docs" / "assets" / "js" / "contact-sheet.js"
+    CURVE = ROOT / "docs" / "assets" / "js" / "specification-curve.js"
+    STYLES = ROOT / "docs" / "assets" / "css" / "results.css"
+
+    def test_the_viewer_tells_a_screen_reader_which_day_it_shows(self) -> None:
+        """A constant name is the same as no name once the arrows can move.
+
+        The dialog was labelled with a fixed string, so it announced the same
+        sentence whichever day was open and said nothing at all when a step
+        changed the day underneath it.
+        """
+        source = self.SHEET.read_text()
+        assert 'aria-labelledby", "day-viewer-title"' in source
+        assert 'viewerTitle.id = "day-viewer-title"' in source
+        assert 'aria-label", "One day' not in source
+
+    def test_the_open_call_has_no_unreachable_fallback(self) -> None:
+        """The branch set `open` instead, which is worse than not opening.
+
+        `<dialog>` without `showModal` does not exist in any browser that
+        reaches this page, and the attribute form renders the viewer as a
+        permanently visible block in the page flow. A branch that cannot run
+        cannot be noticed to be wrong.
+        """
+        source = self.SHEET.read_text()
+        assert 'viewer.setAttribute("open"' not in source
+        assert "viewer.showModal();" in source
+
+    def test_significance_is_not_carried_by_colour_alone(self) -> None:
+        """The one categorical distinction the curve draws.
+
+        Fill alone is exactly what a reader with a colour vision deficiency
+        cannot resolve, so the significant and published dots carry a ring too.
+        """
+        styles = self.STYLES.read_text()
+        block = styles[styles.index(".spec-dot.significant") :][:400]
+        assert "stroke" in block
+
+    def test_the_month_band_does_not_double_its_own_height(self) -> None:
+        """ "22 Feb" is the longest label in the narrowest slot.
+
+        Seven columns give it 36 px at 768 wide and the text needs about 40, so
+        it wrapped and took the band from 21 px to 42 above a ten row sheet.
+        """
+        styles = self.STYLES.read_text()
+        block = styles[styles.index(".sheet-months span {") :][:300]
+        assert "white-space: nowrap" in block
+
+    def test_the_stated_column_width_is_the_measured_one(self) -> None:
+        """A number on the page has to be the number.
+
+        The page said a specification column is six pixels wide. Measured on the
+        deployed figure at 736 px, it is 4.58.
+        """
+        page = (ROOT / "docs" / "specification-curve.md").read_text()
+        assert "six pixels wide" not in page
+        assert "four and a half pixels" in page
+
+    def test_no_rule_is_left_selecting_nothing(self) -> None:
+        """Four selectors that could never match, and one that was overridden.
+
+        Each was true when it was written and stopped being true one change
+        later, which is the only way this kind of thing happens.
+        """
+        styles = self.STYLES.read_text()
+        for dead in (
+            ".md-typeset .viewer-body .figure-note",
+            ".md-typeset .day-panel:not(.floating) .open-hint",
+            "--sheet-filled",
+        ):
+            assert dead not in styles, f"{dead} still selects nothing"
+        # The glance card's figure width is stated once, not twice with the
+        # first copy silently losing to the second.
+        assert styles.count(".md-typeset .day-panel.floating .layer-figure {") == 1

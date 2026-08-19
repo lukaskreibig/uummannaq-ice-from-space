@@ -13,7 +13,6 @@
   --layer-landsat: #7a9bb0; /* second optical opinion */
   --layer-thermal: #a8482a; /* the physics check */
   --layer-sar: #6b5b8f;     /* the adjudicator */
-  --sheet-filled: #b8c6cf;  /* interpolated, never a measurement */
 }
 
 [data-md-color-scheme="slate"] {
@@ -21,7 +20,6 @@
   --layer-landsat: #93b2c6;
   --layer-thermal: #e08a68;
   --layer-sar: #a795c9;
-  --sheet-filled: #3c4b57;
 }
 
 /* ------------------------------------------------------------ shared bits */
@@ -91,9 +89,20 @@ text { font-family: var(--md-text-font-family, sans-serif); }
 
 /* -------------------------------------------------- specification curve */
 
+/* Significance carries a ring as well as a colour. Fill alone is the one thing
+   a reader with any colour vision deficiency cannot resolve, and this figure
+   uses it for the single categorical distinction it makes. */
 .spec-dot { fill: var(--md-default-fg-color--light); }
-.spec-dot.significant { fill: var(--md-accent-fg-color); }
-.spec-dot.published { fill: var(--layer-thermal); }
+.spec-dot.significant {
+  fill: var(--md-accent-fg-color);
+  stroke: var(--md-default-bg-color);
+  stroke-width: 1.2;
+}
+.spec-dot.published {
+  fill: var(--layer-thermal);
+  stroke: var(--md-default-fg-color);
+  stroke-width: 1.2;
+}
 .spec-hit { fill: transparent; cursor: crosshair; }
 /* There was a `.spec-hit:hover ~ *` rule here, setting pointer-events: none.
    It never did what it was written for and it broke the new one. The 120 hit
@@ -158,7 +167,16 @@ text { font-family: var(--md-text-font-family, sans-serif); }
   color: var(--md-default-fg-color--light);
   margin-left: 3.8rem;
 }
-.sheet-months span { border-left: 1px solid var(--md-default-fg-color--lightest); padding-left: 2px; }
+/* `nowrap`, because the first label is the narrowest slot and the longest text:
+   "22 Feb" needs about 40 px and its seven columns give 36 at 768 wide, so it
+   wrapped to two lines and took the whole month band from 21 px to 42 with it.
+   Overflowing a couple of pixels into March costs nothing; doubling the header
+   band above a ten row sheet does. */
+.sheet-months span {
+  border-left: 1px solid var(--md-default-fg-color--lightest);
+  padding-left: 2px;
+  white-space: nowrap;
+}
 
 /* No floor any more. It was here because the docked panel followed the pointer
    and a day with four instruments is much taller than one with a single Landsat
@@ -290,11 +308,6 @@ text { font-family: var(--md-text-font-family, sans-serif); }
    pixels plus a 26 rem cap from the docked rules, so the panel came out 420
    wide however firmly `width` was stated. */
 .md-typeset .day-panel.floating > * { min-width: 0; }
-/* One picture in the glance card, taking the card's whole width. */
-.md-typeset .day-panel.floating .layer-figure {
-  max-width: none;
-  flex-basis: 100%;
-}
 .md-typeset .day-panel.floating .day-layer .detail { font-size: 0.72rem; }
 .md-typeset .day-panel.floating h4 { font-size: 0.88rem; }
 
@@ -314,16 +327,16 @@ text { font-family: var(--md-text-font-family, sans-serif); }
   color: var(--md-default-fg-color--lighter);
   margin: 0;
 }
-.md-typeset .day-panel:not(.floating) .open-hint { display: none; }
 
-/* The quicklook is smaller in the popup than in the pinned panel, and since the
+/* The quicklook is smaller in the glance card than in the viewer, and since the
    thumbnails were corrected to the AOI's upright 0.814 aspect it has to be a
    good deal smaller: 320 pixels wide is now 393 tall. The fjord and its island
-   stay recognisable at 168, and every pixel here is one the popup takes off the
+   stay recognisable at 168, and every pixel here is one the card takes off the
    reader's screen. */
 .md-typeset .day-panel.floating .layer-figure {
   max-width: 168px;
   flex-basis: 168px;
+  gap: 0.2rem;
 }
 
 /* Tighter rows in the popup than in the panel. A day that four instruments saw
@@ -335,7 +348,6 @@ text { font-family: var(--md-text-font-family, sans-serif); }
   line-height: 1.42;
 }
 .md-typeset .day-panel.floating .day-layer .role { font-size: 0.6rem; }
-.md-typeset .day-panel.floating .layer-figure { gap: 0.2rem; }
 
 /* ── The viewer ───────────────────────────────────────────────────────────
    What the pinned card was trying and failing to be.
@@ -442,8 +454,6 @@ text { font-family: var(--md-text-font-family, sans-serif); }
    shape and the absence is visible rather than merely missing. */
 .md-typeset .viewer-body .day-layer.absent { opacity: 0.55; }
 
-.md-typeset .viewer-body .figure-note,
-.md-typeset .viewer-body .open-hint { grid-column: 1 / -1; }
 
 /* The cell the viewer is showing keeps its mark while the dialog is up, so
    closing it does not leave the reader wondering where they were. */
