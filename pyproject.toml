@@ -3,7 +3,10 @@ name = "ummannaq-ice"
 version = "0.1.0"
 description = "Sentinel-2 sea-ice classification pipeline for the Uummannaq fjord"
 readme = "README.md"
-requires-python = ">=3.10,<3.14"
+# 3.10 was dropped on 2026-08-19: it reaches end of security support on
+# 31 October 2026. The upper bound stays where it is, because torch 2.7.0
+# publishes wheels for cp39 through cp313 and none for cp314.
+requires-python = ">=3.11,<3.14"
 dependencies = [
   "numpy>=1.24,<3.0",
   "pillow>=10.0",
@@ -71,9 +74,10 @@ build-backend = "setuptools.build_meta"
 # against the exact CI versions, mypy 2.3.0 and numpy 2.5.2: --python-version
 # 3.10 fails, 3.12 passes.
 #
-# The type check therefore targets 3.12 while the test matrix still RUNS 3.10,
-# 3.11 and 3.12. Syntax the oldest supported runtime cannot execute is caught by
-# ruff's target-version and by those runtime jobs, not here.
+# The type check therefore targets 3.12 while the test matrix RUNS 3.11 and
+# 3.13, the two ends of requires-python. Syntax the oldest supported runtime
+# cannot execute is caught by ruff, which reads its target-version from
+# requires-python, and by the 3.11 job, not here.
 python_version = "3.12"
 warn_unused_configs = true
 ignore_missing_imports = true

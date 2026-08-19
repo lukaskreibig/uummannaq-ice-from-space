@@ -306,7 +306,7 @@ how to run it, and how it is packaged.
 ## Quick start
 
 ```bash
-python3 -m venv .venv              # Python 3.10 to 3.13 are supported
+python3 -m venv .venv              # Python 3.11 to 3.13 are supported
 source .venv/bin/activate
 pip install --upgrade pip setuptools wheel
 # Install PyTorch (pick the command that matches your platform)
@@ -406,7 +406,7 @@ directory:
 - `make lint`, `make typecheck`, and `make test` mirror the CI pipeline (Ruff, mypy, pytest with coverage).
 - The pytest suite includes mask aggregation unit tests, YAML inheritance checks, and a mocked pipeline smoke test.
 - `scripts/benchmark.py` benchmarks repeated runs with unique output directories and prints aggregated stats.
-- GitHub Actions (`.github/workflows/ci.yml`) runs across Python 3.10 to 3.12 on every push/PR.
+- GitHub Actions (`.github/workflows/ci.yml`) runs on Python 3.11 and 3.13, the two ends of the supported range, on every push/PR.
 
 ## Deployment
 

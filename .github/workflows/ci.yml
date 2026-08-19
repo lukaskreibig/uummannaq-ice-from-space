@@ -9,30 +9,36 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        # The floor and the ceiling of requires-python, not every minor in
+        # between. 3.13 is here because it is what the venv runs and what the
+        # declared range promises; it was promised and never tested until now.
+        # 3.14 has to wait for a torch that ships a cp314 wheel.
+        python-version: ["3.11", "3.13"]
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
+          cache: pip
 
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}-${{ matrix.python-version }}
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gdal-bin libgdal-dev libgl1
+      # There is no "Install system dependencies" step any more. It ran
+      # `apt-get install gdal-bin libgdal-dev libgl1` and it was the step that
+      # hung, three times in a row and always on the 3.10 job. None of the three
+      # had a consumer. libgl1 exists for opencv, which is not a dependency and
+      # is not installed. libgdal-dev is headers for compiling against GDAL, and
+      # rasterio arrives as a wheel carrying its own GDAL 3.9.3. gdal-bin is the
+      # command line tools, and nothing here shells out to gdalwarp, ogr2ogr or
+      # any of the others. Checked the other way round too: neither `osgeo` nor
+      # `cv2` is importable in the development environment, where the whole
+      # suite passes.
 
       - name: Install Python dependencies
         run: |
