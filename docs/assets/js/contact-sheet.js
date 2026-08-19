@@ -189,7 +189,7 @@
         panel.appendChild(
           layerRow(
             "var(--layer-s2)",
-            "Sentinel-2 · die Reihe",
+            "Sentinel-2 · the series",
             s2.curve != null ? `${fmt(s2.curve)} in the series, not measured` : "no scene",
             s2.curve != null
               ? "Gap filled from neighbouring days and smoothed. No satellite passed on this day."
