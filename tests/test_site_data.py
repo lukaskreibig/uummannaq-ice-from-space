@@ -753,3 +753,61 @@ class TestThePageShowsWhatItHas:
         styles = self.STYLES.read_text()
         block = styles[styles.index(".md-typeset .panel-step,") :][:400]
         assert "min-height: 44px" in block and "min-width: 44px" in block
+
+
+class TestTheViewerIsThePanelEnlarged:
+    """Opening a day must not rearrange it.
+
+    The viewer used to lay the four instruments out two by two with the long
+    text while the panel laid them across in one row, so opening a day changed
+    the arrangement under the reader and then asked them to scroll it. Two
+    arrangements of one thing is one too many, and the one that scrolls is the
+    one that was supposed to show everything at once.
+    """
+
+    STYLES = ROOT / "docs" / "assets" / "css" / "results.css"
+    SOURCE = ROOT / "docs" / "assets" / "js" / "contact-sheet.js"
+
+    def test_both_surfaces_use_the_same_column_shape(self) -> None:
+        styles = self.STYLES.read_text()
+        for body in (".md-typeset .panel-body", ".md-typeset .viewer-body"):
+            assert f"{body} {{ grid-template-columns: 1fr 1fr; }}" in styles
+            assert f"{body} {{ grid-template-columns: 1.9fr 1fr 1fr 1fr; }}" in styles
+
+    def test_the_pictures_sit_between_the_name_and_the_numbers(self) -> None:
+        """Which is what puts every column's quicklook on one line.
+
+        With the picture last, four instruments whose sentences differ in length
+        put their quicklooks at four different heights, and pictures that do not
+        line up cannot be read against each other.
+        """
+        source = self.SOURCE.read_text()
+        block = source[source.index("const layerRow = ") :][:1000]
+        assert block.index("role") < block.index("figureFor(pictures)")
+        assert block.index("figureFor(pictures)") < block.index("layer-text")
+        # And a role is given room for two lines, because one of the four needs it.
+        styles = self.STYLES.read_text()
+        assert "min-height: 2.9em" in styles
+
+    def test_nothing_between_the_track_and_the_image_can_outgrow_it(self) -> None:
+        """A grid item and a flex item both default to their content's width.
+
+        One unnamed wrapper with `min-width: auto` was enough to push the Landsat
+        column from 243 px to 329 and draw its quicklook a third larger than the
+        two beside it.
+        """
+        styles = self.STYLES.read_text()
+        block = styles[styles.index(".md-typeset .day-layer > div,") :][:300]
+        assert "min-width: 0" in block and "max-width: 100%" in block
+
+    def test_the_figure_cap_is_stated_once_per_breakpoint(self) -> None:
+        """A media query does not outrank a later rule of equal specificity.
+
+        The cap was written both in the breakpoints and again afterwards, and
+        the later 320 quietly beat the 200 the two column layout asks for: at
+        768 by 1024 that drew 317 px quicklooks and pushed the second row 443
+        pixels past the bottom of the dialog.
+        """
+        styles = self.STYLES.read_text()
+        assert "max-width: var(--figure-cap)" in styles
+        assert styles.count("--figure-cap:") == 3
