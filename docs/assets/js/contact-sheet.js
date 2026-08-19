@@ -71,7 +71,15 @@
       cell.textContent = text;
       head.appendChild(cell);
     });
-    root.appendChild(head);
+    /* Everything that IS the sheet in one box, so it can be lifted into the
+       viewer and put back. The viewer's job is to show a day large, and a day
+       is chosen on the sheet, so the sheet goes with it: moving the real one
+       rather than drawing a second keeps 1280 cells, their handlers and their
+       marked state as one thing that cannot drift out of step. */
+    const sheetBox = document.createElement("div");
+    sheetBox.className = "sheet-box";
+    root.appendChild(sheetBox);
+    sheetBox.appendChild(head);
 
     /* THE PANEL IS THE PAGE'S ANSWER TO ITS OWN TITLE, and it used to be empty.
        A contact sheet is a sheet of pictures. This one showed a heat map, a
@@ -169,9 +177,16 @@
     viewerHead.appendChild(viewerTitle);
     viewerHead.appendChild(viewerNav);
 
+    /* The sheet on top, the pictures underneath, which is the page's own shape
+       and the reason this is worth opening at all: the arrows walk day by day,
+       but ten seasons are a place you point at. */
+    const viewerSheet = document.createElement("div");
+    viewerSheet.className = "viewer-sheet";
+
     const viewerBody = document.createElement("div");
     viewerBody.className = "viewer-body";
     viewer.appendChild(viewerHead);
+    viewer.appendChild(viewerSheet);
     viewer.appendChild(viewerBody);
     root.appendChild(viewer);
 
@@ -187,6 +202,8 @@
       const cell = opened;
       opened = null;
       if (cell) cell.dataset.opened = "false";
+      // The sheet goes back where it came from, above the panel it feeds.
+      if (sheetBox.parentElement === viewerSheet) root.insertBefore(sheetBox, panel);
       if (viewer.open) viewer.close();
       // The panel keeps whatever day the viewer was left on, so closing it
       // lands the reader where they were rather than where they started.
@@ -276,8 +293,13 @@
        whole screen would make a mis-aimed finger expensive. */
     const canHover = () => window.matchMedia("(hover: hover)").matches;
 
-    // Matches the viewer's own four column breakpoint in results.css.
-    const wideViewer = () => window.matchMedia("(min-width: 1000px)").matches;
+    /* The long wording needs width AND height, and asking only about width got
+       that wrong: at 1024 by 768, a tablet in landscape, four columns of full
+       sentences came to 653 px in a 444 px strip, because the sheet above it
+       had taken 207. Height is the scarce dimension once the sheet is in the
+       dialog too. */
+    const wideViewer = () =>
+      window.matchMedia("(min-width: 1200px) and (min-height: 820px)").matches;
 
     /* Every instrument's picture sits in that instrument's own row, under that
        instrument's own number. Nothing stands in for anything else: on the 304
@@ -586,6 +608,16 @@
     /* One entry point for "this is the day now". Everything that changes the
        day goes through it: hovering, tapping, the arrows, and closing the
        viewer. */
+    /* One place that answers "the day is now this", whichever surface is on
+       screen. The sheet lives in the page or inside the dialog depending on
+       what is open, and it fires the same events either way, so the handler
+       must not care which. */
+    function choose(entry) {
+      if (!entry || !entry.day) return;
+      select(entry);
+      if (viewer.open) fillViewer(entry.day, entry.cell);
+    }
+
     function select(entry) {
       if (!entry || !entry.day) return;
       mark(entry.cell);
@@ -634,21 +666,19 @@
     }
 
     function stepTo(direction) {
-      const next = neighbour(direction, opened);
-      if (next) open(next.day, next.cell);
+      choose(neighbour(direction, opened));
     }
 
     viewerPrev.addEventListener("click", () => stepTo(-1));
     viewerNext.addEventListener("click", () => stepTo(1));
 
-    function open(day, cell) {
-      if (!day) return;
-      window.clearTimeout(settleTimer);
-      if (opened) opened.dataset.opened = "false";
+    /* Fills the viewer with a day. Separate from opening it, because once the
+       sheet is inside the dialog the reader chooses days without ever closing
+       it, and calling showModal on an open dialog throws. */
+    function fillViewer(day, cell) {
+      if (opened && opened !== cell) opened.dataset.opened = "false";
       opened = cell;
       cell.dataset.opened = "true";
-      // Stepping can walk off the visible part of the sheet, and closing the
-      // viewer onto a marked cell the reader cannot see is disorienting.
       cell.scrollIntoView({ block: "nearest", inline: "nearest" });
 
       const when = new Date(Date.UTC(day.season, 0, day.doy));
@@ -668,12 +698,22 @@
       viewerBody.scrollTop = 0;
       viewerPrev.disabled = !neighbour(-1, cell);
       viewerNext.disabled = !neighbour(1, cell);
+    }
+
+    function open(day, cell) {
+      if (!day) return;
+      window.clearTimeout(settleTimer);
+      fillViewer(day, cell);
+      if (viewer.open) return;
+      // The sheet moves in rather than being copied. See sheetBox.
+      viewerSheet.appendChild(sheetBox);
       // No fallback branch. `<dialog>` without showModal does not exist in any
       // browser that reaches this page, and the branch that was here set the
       // `open` attribute instead, which renders the viewer as a permanently
       // visible block in the page flow: worse than not opening at all, and
       // impossible to notice because it can never run.
       viewer.showModal();
+      cell.scrollIntoView({ block: "nearest", inline: "nearest" });
     }
 
     data.seasons.forEach((season) => {
@@ -743,15 +783,17 @@
              make a finger aimed at a cell five pixels wide expensive to
              mis-aim. There the button beside the date opens the viewer. */
           cell.addEventListener("pointerenter", () => {
-            if (viewer.open) return;
             window.clearTimeout(settleTimer);
-            settleTimer = window.setTimeout(() => select(entry), HOVER_SETTLE);
+            settleTimer = window.setTimeout(() => choose(entry), HOVER_SETTLE);
           });
-          cell.addEventListener("focus", () => select(entry));
+          cell.addEventListener("focus", () => choose(entry));
           cell.addEventListener("click", () => {
             window.clearTimeout(settleTimer);
-            select(entry);
-            if (canHover()) open(day, cell);
+            choose(entry);
+            // Inside the viewer a click has already done its work: choose()
+            // filled it. Outside, a click means "bigger", but only with a
+            // pointer that hovered first; on touch the tap IS the selection.
+            if (!viewer.open && canHover()) open(day, cell);
           });
         } else {
           cell.disabled = true;
@@ -760,7 +802,7 @@
       }
 
       row.appendChild(strip);
-      root.appendChild(row);
+      sheetBox.appendChild(row);
     });
 
     const legend = document.createElement("ul");
@@ -779,7 +821,7 @@
       '<li><span class="chip" style="background:var(--layer-landsat)"></span>Landsat</li>' +
       '<li><span class="chip" style="background:var(--layer-thermal)"></span>thermal</li>' +
       '<li><span class="chip" style="background:var(--layer-sar)"></span>radar</li>';
-    root.appendChild(legend);
+    sheetBox.appendChild(legend);
     root.appendChild(panel);
 
     /* Leaving the sheet stops the sweep but does NOT empty the panel. Emptying
@@ -793,8 +835,8 @@
       hovered = null;
     });
 
-    panelPrev.addEventListener("click", () => select(neighbour(-1)));
-    panelNext.addEventListener("click", () => select(neighbour(1)));
+    panelPrev.addEventListener("click", () => choose(neighbour(-1)));
+    panelNext.addEventListener("click", () => choose(neighbour(1)));
     panelOpen.addEventListener("click", () => {
       if (current) open(current.day, current.cell);
     });

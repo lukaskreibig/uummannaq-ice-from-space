@@ -387,7 +387,8 @@ text { font-family: var(--md-text-font-family, sans-serif); }
    So the pictures get their own room. One instrument per card, two cards
    across, and a quicklook drawn near the 320 px it was rendered at. */
 .md-typeset .day-viewer {
-  width: min(1400px, 96vw);
+  width: min(1600px, 97vw);
+  height: 94vh;
   max-height: 94vh;
   padding: 0;
   border: 1px solid var(--md-default-fg-color--lighter);
@@ -435,7 +436,7 @@ text { font-family: var(--md-text-font-family, sans-serif); }
   display: grid;
   grid-template-columns: 1fr;
   gap: 1rem;
-  padding: 0.7rem 1.1rem 0.8rem;
+  padding: 0.5rem 1.1rem 0.5rem;
   --figure-cap: 240px;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -451,7 +452,7 @@ text { font-family: var(--md-text-font-family, sans-serif); }
   .md-typeset .viewer-body { grid-template-columns: 1fr 1fr; }
   /* Two wide columns will happily draw a 320 px quicklook and put the second
      row past the bottom of the screen. */
-  .md-typeset .viewer-body { --figure-cap: 188px; }
+  .md-typeset .viewer-body { --figure-cap: 172px; }
 }
 @media (min-width: 1000px) {
   .md-typeset .viewer-body { grid-template-columns: 1.9fr 1fr 1fr 1fr; }
@@ -601,7 +602,7 @@ text { font-family: var(--md-text-font-family, sans-serif); }
 /* The figure sits between the instrument's name and its numbers, so every
    column puts its picture on the same line however long its sentences are. */
 .md-typeset .layer-figures { margin: 0.35rem 0 0; }
-.md-typeset .layer-text { margin-top: 0.4rem; }
+.md-typeset .layer-text { margin-top: 0.3rem; }
 
 /* Two things that kept the quicklooks off one line, both measured in the
    viewer at 1440.
@@ -631,4 +632,42 @@ text { font-family: var(--md-text-font-family, sans-serif); }
 .md-typeset .layer-figure {
   min-width: 0;
   max-width: 100%;
+}
+
+/* ── The viewer holds the sheet as well ───────────────────────────────────
+   Full size means the whole thing: the sheet on top, so ten seasons stay a
+   place the reader can point at, and the day's pictures underneath. The arrows
+   walk day by day and are the right tool for a neighbour; nobody walks from
+   February 2017 to May 2024.
+
+   The sheet is MOVED here, not copied. A second one would be 1280 more cells,
+   a second set of handlers and two marked states to keep in step. */
+.md-typeset .viewer-sheet {
+  flex: 0 0 auto;
+  padding: 0.55rem 1.1rem 0.35rem;
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+  overflow: hidden;
+}
+/* Tighter than on the page: this box is competing with the pictures for the
+   height of one screen, and a row that reads as a band still reads as one at
+   13 pixels. */
+.md-typeset .viewer-sheet .sheet-cell { height: 13px; }
+.md-typeset .viewer-sheet .sheet-year { line-height: 13px; font-size: 0.58rem; }
+.md-typeset .viewer-sheet .legend { margin: 0.35rem 0 0; font-size: 0.6rem; }
+.md-typeset .viewer-sheet .sheet-months { font-size: 0.58rem; }
+
+/* The strip takes what the sheet leaves, and scrolls only if a narrow window
+   forces the instruments onto two rows. */
+.md-typeset .viewer-body {
+  align-content: start;
+}
+
+/* On a short screen the sheet gives height back to the pictures. Ten rows still
+   read as ten bands at ten pixels, and the strip below is what the reader
+   opened the thing for. */
+@media (max-height: 820px) {
+  .md-typeset .viewer-sheet { padding: 0.4rem 1.1rem 0.3rem; }
+  .md-typeset .viewer-sheet .sheet-cell { height: 10px; }
+  .md-typeset .viewer-sheet .sheet-year { line-height: 10px; font-size: 0.52rem; }
+  .md-typeset .viewer-sheet .legend { margin: 0.25rem 0 0; font-size: 0.55rem; }
 }

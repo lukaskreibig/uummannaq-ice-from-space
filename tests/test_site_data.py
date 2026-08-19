@@ -563,7 +563,7 @@ class TestTheViewerIsTheReadingContainer:
         # mis-aim and a hover has already filled the panel before the click.
         assert "const canHover = () =>" in sheet
         assert 'matchMedia("(hover: hover)")' in sheet
-        assert "if (canHover()) open(day, cell);" in sheet
+        assert "if (!viewer.open && canHover()) open(day, cell);" in sheet
 
         curve = (ROOT / "docs" / "assets" / "js" / "specification-curve.js").read_text()
         assert 'hit.addEventListener("click"' in curve, "a column cannot be tapped"
@@ -811,3 +811,47 @@ class TestTheViewerIsThePanelEnlarged:
         styles = self.STYLES.read_text()
         assert "max-width: var(--figure-cap)" in styles
         assert styles.count("--figure-cap:") == 3
+
+
+class TestFullSizeIsTheWholeThing:
+    """The sheet goes into the viewer, not a copy of it.
+
+    Full size means the sheet on top and the day's pictures underneath, which is
+    the page's own shape: the arrows are right for a neighbour, but ten seasons
+    are a place a reader points at, and before this the only way to reach a
+    distant day from inside the viewer was to close it.
+    """
+
+    SOURCE = ROOT / "docs" / "assets" / "js" / "contact-sheet.js"
+    STYLES = ROOT / "docs" / "assets" / "css" / "results.css"
+
+    def test_the_sheet_is_moved_and_moved_back(self) -> None:
+        """One sheet. A second would be 1280 more cells, a second set of
+        handlers, and two marked states to keep in step."""
+        source = self.SOURCE.read_text()
+        assert "viewerSheet.appendChild(sheetBox)" in source
+        assert "root.insertBefore(sheetBox, panel)" in source
+        assert "cloneNode" not in source, "the sheet is moved, never copied"
+
+    def test_choosing_a_day_works_on_whichever_surface_is_open(self) -> None:
+        """The sheet fires the same events in the page and in the dialog.
+
+        `open()` is also idempotent, because calling showModal on an open dialog
+        throws, and once the sheet is inside it the reader picks days without
+        ever closing it.
+        """
+        source = self.SOURCE.read_text()
+        assert "function choose(entry)" in source
+        assert "if (viewer.open) fillViewer(entry.day, entry.cell);" in source
+        assert "if (viewer.open) return;" in source
+
+    def test_the_sheet_gives_height_back_on_a_short_screen(self) -> None:
+        """Height is the scarce dimension once the sheet is in the dialog too.
+
+        At 1024 by 768 the sheet took 207 px of a 722 px dialog and the full
+        sentences below it came to 653 in a 444 px strip.
+        """
+        styles = self.STYLES.read_text()
+        assert "@media (max-height: 820px)" in styles
+        source = self.SOURCE.read_text()
+        assert "(min-width: 1200px) and (min-height: 820px)" in source
