@@ -2,7 +2,7 @@
 
 ## Environment
 
-1. Create a virtual environment (Python 3.10 to 3.13 are supported) and install dependencies:
+1. Create a virtual environment (Python 3.11 to 3.13 are supported) and install dependencies:
 
    ```bash
    python3 -m venv .venv
