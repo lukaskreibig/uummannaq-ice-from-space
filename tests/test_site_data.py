@@ -556,12 +556,14 @@ class TestTheViewerIsTheReadingContainer:
         one specification on a page that promises hovering reads them out.
         """
         sheet = self.SOURCE.read_text()
-        # Gated on the container, not on the pointer. The first attempt asked
-        # `(hover: none)`, which covered a pure touch tablet and missed every
-        # hovering pointer under 1100 px: measured at 1024 by 768 with a
-        # trackpad, one hover grew the page by 2084 pixels.
-        assert "if (!floats()) return;" in sheet
-        assert "matchMedia" in sheet and "hover: hover" in sheet
+        # The panel is permanent now, so there is nothing left to gate: hovering
+        # fills it, tapping fills it, and it is never empty in the first place.
+        # What still depends on the pointer is only whether a click also opens
+        # the viewer, because a tap that takes over the screen is expensive to
+        # mis-aim and a hover has already filled the panel before the click.
+        assert "const canHover = () =>" in sheet
+        assert 'matchMedia("(hover: hover)")' in sheet
+        assert "if (canHover()) open(day, cell);" in sheet
 
         curve = (ROOT / "docs" / "assets" / "js" / "specification-curve.js").read_text()
         assert 'hit.addEventListener("click"' in curve, "a column cannot be tapped"
@@ -571,9 +573,10 @@ class TestTheViewerIsTheReadingContainer:
         )
 
         styles = self.STYLES.read_text()
-        assert ".md-typeset .day-panel:not(.floating) { display: none; }" in styles, (
-            "the panel is only wanted floating; docked it is two screens of duplicate page"
+        assert ".floating" not in styles, (
+            "the floating card is gone; the panel it was covering for is always there"
         )
+        assert ".floating" not in sheet
         # The declaration, not the name: the comment that replaced the rule
         # quotes the selector, and quoting it is the point.
         assert ".spec-hit:hover ~ * {" not in styles, (
@@ -684,10 +687,69 @@ class TestTheSecondPassFindings:
         styles = self.STYLES.read_text()
         for dead in (
             ".md-typeset .viewer-body .figure-note",
-            ".md-typeset .day-panel:not(.floating) .open-hint",
             "--sheet-filled",
+            ".open-hint",
         ):
             assert dead not in styles, f"{dead} still selects nothing"
-        # The glance card's figure width is stated once, not twice with the
-        # first copy silently losing to the second.
-        assert styles.count(".md-typeset .day-panel.floating .layer-figure {") == 1
+
+
+class TestThePageShowsWhatItHas:
+    """The page opens on a day, with pictures, before anyone touches anything.
+
+    This is the defect the whole panel was rebuilt for. A page called a contact
+    sheet opened with a heat map, a legend and paragraphs, and kept 1364
+    satellite images behind a click on a cell four pixels wide that nothing
+    invited anyone to click. On a touch screen there was not even a hover to
+    stumble into it with, so the imagery was, for most readers, not there.
+    """
+
+    SOURCE = ROOT / "docs" / "assets" / "js" / "contact-sheet.js"
+    STYLES = ROOT / "docs" / "assets" / "css" / "results.css"
+
+    def test_a_day_is_chosen_before_the_reader_does_anything(self) -> None:
+        source = self.SOURCE.read_text()
+        assert "const opening =" in source
+        assert "select(opening)" in source
+        # The richest day it can find, and fallbacks rather than an empty panel.
+        assert "thermal.contradicted" in source
+        assert source.count("withPictures.find(") >= 3
+
+    def test_the_panel_is_never_emptied(self) -> None:
+        """`show(null)` used to run at the end of render and on pointerleave.
+
+        Emptying it is what made the page look like it contained nothing: the
+        reader moved the mouse away and every picture went with it.
+        """
+        source = self.SOURCE.read_text()
+        assert "show(null)" not in source
+
+    def test_the_classification_is_in_the_panel_not_only_the_viewer(self) -> None:
+        """It is the comparison the page exists to make.
+
+        Keeping the class raster for the viewer was keeping it for the readers
+        who found the viewer, which was the problem.
+        """
+        source = self.SOURCE.read_text()
+        block = source[source.index("assets/classes/") - 600 :][:700]
+        assert "if (scene) {" in block, (
+            "the class raster is still conditional on the form"
+        )
+
+    def test_the_panel_carries_its_own_controls(self) -> None:
+        """Everything the reader needs is on the panel, not behind a discovery.
+
+        Arrows to walk the record, and one button that says in words that the
+        pictures get bigger. All three are real targets.
+        """
+        source = self.SOURCE.read_text()
+        for needed in (
+            "panel-step",
+            "panel-open",
+            "panelPrev",
+            "panelNext",
+            "panelOpen",
+        ):
+            assert needed in source
+        styles = self.STYLES.read_text()
+        block = styles[styles.index(".md-typeset .panel-step,") :][:400]
+        assert "min-height: 44px" in block and "min-width: 44px" in block

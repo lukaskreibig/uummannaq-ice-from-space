@@ -17,8 +17,13 @@
 
   const MOUNT = "contact-sheet";
 
+  /* Month names alone. The first slot is seven columns wide, 36 px at 736, and
+     "22 Feb" needs about 40, so with wrapping it doubled the whole header band
+     and with `nowrap` it ran over "1 Mar" instead. Neither is a label. This
+     header orients; the window's exact ends, day 53 to 180, are in the prose
+     and in the panel's own dates. */
   const MONTHS = [
-    [53, "22 Feb"], [60, "1 Mar"], [91, "1 Apr"], [121, "1 May"], [152, "1 Jun"],
+    [53, "Feb"], [60, "Mar"], [91, "Apr"], [121, "May"], [152, "Jun"],
   ];
 
   const load = () =>
@@ -68,9 +73,58 @@
     });
     root.appendChild(head);
 
+    /* THE PANEL IS THE PAGE'S ANSWER TO ITS OWN TITLE, and it used to be empty.
+       A contact sheet is a sheet of pictures. This one showed a heat map, a
+       legend and paragraphs, and kept 1364 satellite images behind a click on a
+       cell four pixels wide that nothing invited anyone to click. On a touch
+       screen there was not even a hover to stumble into it with.
+
+       So a day is on screen from the moment the page loads, with its pictures,
+       and the sheet becomes what it looks like: the index into 1280 more. The
+       panel never empties, never moves, and never waits to be discovered. */
+    /* A div rather than a figure, and that is a layout decision, not a semantic
+       one: Material sizes `figure` to its content, so the panel came out 487 px
+       wide inside a 938 px column and every picture shrank to fit. It is a
+       labelled region instead, which is what it actually is: something that
+       changes as the reader moves, not a static illustration. */
     const panel = document.createElement("div");
     panel.className = "day-panel";
+    panel.setAttribute("role", "region");
+    panel.setAttribute("aria-label", "The selected day, through each instrument");
     panel.setAttribute("aria-live", "polite");
+
+    const panelHead = document.createElement("div");
+    panelHead.className = "panel-head";
+    const panelTitle = document.createElement("div");
+    panelTitle.className = "panel-title";
+    const panelNav = document.createElement("div");
+    panelNav.className = "panel-nav";
+
+    const arrow = (label, name) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "panel-step";
+      button.setAttribute("aria-label", name);
+      button.textContent = label;
+      panelNav.appendChild(button);
+      return button;
+    };
+    const panelPrev = arrow("\u2039", "The day before");
+    const panelNext = arrow("\u203a", "The day after");
+
+    const panelOpen = document.createElement("button");
+    panelOpen.type = "button";
+    panelOpen.className = "panel-open";
+    panelOpen.textContent = "open full size";
+    panelNav.appendChild(panelOpen);
+
+    panelHead.appendChild(panelTitle);
+    panelHead.appendChild(panelNav);
+
+    const panelBody = document.createElement("div");
+    panelBody.className = "panel-body";
+    panel.appendChild(panelHead);
+    panel.appendChild(panelBody);
 
     /* A native dialog rather than a div, and the reasons are all things that
        would otherwise have to be written by hand and got wrong: Escape closes
@@ -134,6 +188,10 @@
       opened = null;
       if (cell) cell.dataset.opened = "false";
       if (viewer.open) viewer.close();
+      // The panel keeps whatever day the viewer was left on, so closing it
+      // lands the reader where they were rather than where they started.
+      const entry = ordered.find((e) => e.cell === cell);
+      if (entry) select(entry);
       // The focus call comes AFTER the close, and the order is the whole point.
       // A modal dialog traps focus, so focusing a cell behind it while it is
       // still open silently does nothing and the reader is left at the top of
@@ -196,29 +254,27 @@
     const ordered = [];
 
     let hovered = null;     // the cell the pointer is over
-    let hoverTimer = null;
-    let frame = null;       // the pending reposition
-    let cursor = { x: 0, y: 0 };
+    let current = null;     // the entry the panel is showing
+    let settleTimer = null;
 
     /* A hover is only worth a repaint once the pointer has settled. Without
        this, dragging across one season repaints 128 times and every one of them
-       asks the browser for a different image. */
+       asks the browser for a different set of images. */
     const HOVER_SETTLE = 45;
 
-    /* How far the panel sits from the pointer. Enough that it never lands under
-       the cursor, which would put it between the pointer and the cell it is
-       describing and start a flicker the reader cannot escape. */
-    const CURSOR_GAP = 18;
-    const EDGE = 12;
+    /* There is no floating card any more. It existed to spare the reader a look
+       away at a panel that was empty until they hovered, which is a problem
+       that stops existing once the panel is never empty. Two things showing the
+       same day, one of them moving, was noise; one thing that is always in the
+       same place is learnable. Everything it needed, place, reposition, flip,
+       clamp, pointer-events and a settle timer, went with it.
 
-    /* Below this the panel stays docked under the sheet. A 340 pixel card
-       floating over a 600 pixel window is not a panel, it is a takeover, and a
-       touch screen has no hover to open it with anyway. */
-    const FLOAT_FROM = 1100;
-
-    const floats = () =>
-      window.matchMedia(`(min-width: ${FLOAT_FROM}px)`).matches &&
-      window.matchMedia("(hover: hover)").matches;
+       What remains is the one question the interaction still turns on: can this
+       pointer hover at all. With hover, moving across the sheet fills the panel
+       and a click means "bigger". Without it, a tap fills the panel and the
+       button beside the date means "bigger", because a tap that took over the
+       whole screen would make a mis-aimed finger expensive. */
+    const canHover = () => window.matchMedia("(hover: hover)").matches;
 
     /* Every instrument's picture sits in that instrument's own row, under that
        instrument's own number. Nothing stands in for anything else: on the 304
@@ -295,25 +351,15 @@
        Five upright quicklooks in it came to 1917 px of scrolling inside a 340 px
        column, each picture 134 px wide, and "pin it first" was a workaround for
        having chosen the wrong container rather than a feature. */
+    /* `compact` is the panel, which is a look; the full form is the viewer,
+       which is a read. Both now carry every picture the day has: the panel was
+       the only reason a picture was ever withheld, and it withheld them because
+       it used to be a 340 pixel card. What still differs is the words. */
     function show(day, compact, into) {
-      const target = into || panel;
+      const target = into || panelBody;
       target.innerHTML = "";
-      let picturesSpent = false;
-      const budget = (list) => {
-        if (!list || !list.length) return null;
-        if (!compact) return list;
-        if (picturesSpent) return null;
-        picturesSpent = true;
-        return list.slice(0, 1);
-      };
-      if (!day) {
-        // Only ever seen beside a cursor: the panel is hidden unless it floats,
-        // and it only floats where there is a pointer that can hover.
-        target.innerHTML =
-          '<p class="figure-note">Hover a day. Every cell is one day of the analysed ' +
-          "window, day 53 to 180, which is 22 February to 29 June.</p>";
-        return;
-      }
+      const budget = (list) => (list && list.length ? list : null);
+      if (!day) return;
 
       // The picture first, then what each instrument made of it. Only days with
       // a Sentinel-2 scene have one; the file is named after the scene id so a
@@ -352,11 +398,14 @@
                 alt:
                   `Sentinel-2 true colour quicklook of the Uummannaq fjord on ${day.date}, ` +
                   `scene ${scene.id}`,
-                caption: compact ? null : "true colour, B04 B03 B02",
+                caption: "true colour",
               },
             ]
           : [];
-        if (scene && !compact) {
+        // In the panel as well as the viewer. The photograph beside the decision
+        // taken on it is the comparison this page exists to make, and keeping it
+        // for the viewer was keeping it for the readers who found the viewer.
+        if (scene) {
           pictures.push({
             src: `../assets/classes/${scene.id}.png`,
             alt:
@@ -424,7 +473,7 @@
                   // Its own fixed stretch and its own white balance, measured on
                   // Landsat. Sharing Sentinel-2's would invite a brightness
                   // comparison between two instruments that does not hold.
-                  caption: compact ? null : "Landsat true colour, its own fixed stretch",
+                  caption: compact ? "Landsat true colour" : "Landsat true colour, its own fixed stretch",
                 },
               ])
             )
@@ -460,7 +509,7 @@
                       // the record's range, because within one scene the fjord
                       // varies by about nine kelvin while the seasons vary by
                       // forty. Spread over forty, every picture was one colour.
-                      caption: compact ? null : "brightness temperature, blue is below 271.35 K",
+                      caption: compact ? "blue is below 271.35 K" : "brightness temperature, blue is below 271.35 K",
                     },
                   ])
                 : null
@@ -505,7 +554,7 @@
                       alt:
                         `Sentinel-1 terrain corrected backscatter over the Uummannaq fjord on ` +
                         `${day.date}, scene ${sar.scene}`,
-                      caption: compact ? null : "gamma0 HH in dB, fixed scale. Roughness, not brightness",
+                      caption: compact ? "gamma0 HH in dB" : "gamma0 HH in dB, fixed scale. Roughness, not brightness",
                     },
                   ])
                 : null
@@ -513,87 +562,32 @@
           : layerRow("var(--layer-sar)", "Sentinel-1 · the verdict", "no acquisition", null, true)
       );
 
-      if (compact) {
-        const hint = document.createElement("p");
-        hint.className = "open-hint";
-        hint.textContent = "Click to open this day at full size.";
-        target.appendChild(hint);
-      }
+    }
+
+    /* One entry point for "this is the day now". Everything that changes the
+       day goes through it: hovering, tapping, the arrows, and closing the
+       viewer. */
+    function select(entry) {
+      if (!entry || !entry.day) return;
+      mark(entry.cell);
+      current = entry;
+      const when = new Date(Date.UTC(entry.day.season, 0, entry.day.doy));
+      panelTitle.textContent =
+        when.toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+          timeZone: "UTC",
+        }) + `  \u00b7  day ${entry.day.doy}`;
+      show(entry.day, true);
+      panelPrev.disabled = !neighbour(-1);
+      panelNext.disabled = !neighbour(1);
     }
 
     function mark(cell) {
       if (hovered) hovered.dataset.selected = "false";
       hovered = cell;
       if (cell) cell.dataset.selected = "true";
-    }
-
-    /* Place the panel beside the pointer: right of it when there is room, left
-       of it when there is not, and never off the top or bottom of the window.
-       Measured against the panel's real box rather than a guessed size, because
-       a day with four instruments is a good deal taller than a day with one and
-       a guess would clip the tall ones. */
-    function place(anchor) {
-      if (!panel.classList.contains("floating")) return;
-      const box = panel.getBoundingClientRect();
-      const room = { w: document.documentElement.clientWidth, h: window.innerHeight };
-
-      let left = anchor.x + CURSOR_GAP;
-      if (left + box.width > room.w - EDGE) {
-        const flipped = anchor.x - CURSOR_GAP - box.width;
-        // Only flip if the other side is genuinely roomier; on a narrow window
-        // both sides overflow and shifting beats flipping into a worse corner.
-        left = flipped >= EDGE ? flipped : Math.max(EDGE, room.w - EDGE - box.width);
-      }
-
-      let top = anchor.y - box.height / 2;
-      top = Math.min(Math.max(EDGE, top), room.h - EDGE - box.height);
-
-      panel.style.left = `${Math.round(left)}px`;
-      panel.style.top = `${Math.round(top)}px`;
-    }
-
-    function reposition(anchor) {
-      cursor = anchor;
-      if (frame) return;
-      frame = window.requestAnimationFrame(() => {
-        frame = null;
-        place(cursor);
-      });
-    }
-
-    function setFloating(on) {
-      panel.classList.toggle("floating", on);
-      if (!on) {
-        panel.style.left = "";
-        panel.style.top = "";
-      }
-    }
-
-    function preview(day, cell, anchor) {
-      if (viewer.open) return; // the viewer owns the reader's attention
-      /* Gated on the CONTAINER, not on the pointer, and the first attempt got
-         that wrong. Asking `(hover: none)` covered a pure touch tablet and left
-         out every hovering pointer under 1100: an iPad with a keyboard case, a
-         tablet in Stage Manager, a narrow desktop window. Measured at 1024 by
-         768 with a trackpad, hovering one cell grew the page by 2084 pixels,
-         five quicklooks deep, appended below the legend where nobody is
-         looking, and did it again on every settled hover.
-
-         There is no room for a 340 px card beside a cursor under 1100 anyway,
-         which is what FLOAT_FROM has always said. So below it the dialog is the
-         only reading surface, whatever the pointer is. */
-      if (!floats()) return;
-      window.clearTimeout(hoverTimer);
-      if (!day) return;
-      hoverTimer = window.setTimeout(() => {
-        mark(cell);
-        const floating = floats();
-        setFloating(floating);
-        show(day, floating);
-        // After show(), because the panel has only just gained its content and
-        // therefore its height, and the placement depends on it.
-        place(anchor || cursor);
-      }, HOVER_SETTLE);
     }
 
     /* Walk to the neighbouring day within the same season.
@@ -608,8 +602,9 @@
        The `.day` check below never fires today, because every one of the 1280
        cells in this window carries a day. It is here so that narrowing the
        window later cannot produce a viewer of four empty rows. */
-    function neighbour(direction) {
-      const here = ordered.findIndex((entry) => entry.cell === opened);
+    function neighbour(direction, from) {
+      const anchor = from || (viewer.open ? opened : current && current.cell);
+      const here = ordered.findIndex((entry) => entry.cell === anchor);
       if (here < 0) return null;
       const season = ordered[here].season;
       for (let i = here + direction; i >= 0 && i < ordered.length; i += direction) {
@@ -620,7 +615,7 @@
     }
 
     function stepTo(direction) {
-      const next = neighbour(direction);
+      const next = neighbour(direction, opened);
       if (next) open(next.day, next.cell);
     }
 
@@ -629,11 +624,7 @@
 
     function open(day, cell) {
       if (!day) return;
-      window.clearTimeout(hoverTimer);
-      // The glance card gets out of the way rather than sitting under the
-      // backdrop, half visible, competing with the thing it just opened.
-      setFloating(false);
-      show(null);
+      window.clearTimeout(settleTimer);
       if (opened) opened.dataset.opened = "false";
       opened = cell;
       cell.dataset.opened = "true";
@@ -651,22 +642,14 @@
         }) + `  \u00b7  day ${day.doy}`;
       show(day, false, viewerBody);
       viewerBody.scrollTop = 0;
-      viewerPrev.disabled = !neighbour(-1);
-      viewerNext.disabled = !neighbour(1);
+      viewerPrev.disabled = !neighbour(-1, cell);
+      viewerNext.disabled = !neighbour(1, cell);
       // No fallback branch. `<dialog>` without showModal does not exist in any
       // browser that reaches this page, and the branch that was here set the
       // `open` attribute instead, which renders the viewer as a permanently
       // visible block in the page flow: worse than not opening at all, and
       // impossible to notice because it can never run.
       viewer.showModal();
-    }
-
-    /* Keyboard reaches the sheet through the cells themselves, and a focused
-       cell has a box rather than a pointer. Anchoring to its right edge puts
-       the panel where a mouse user would have found it. */
-    function anchorOf(cell) {
-      const r = cell.getBoundingClientRect();
-      return { x: r.right, y: r.top + r.height / 2 };
     }
 
     data.seasons.forEach((season) => {
@@ -726,19 +709,26 @@
 
         ordered.push({ cell, day, season });
 
+        const entry = ordered[ordered.length - 1];
+
         if (day) {
-          // Hovering shows, clicking pins. Sweeping across a season should read
-          // like scrubbing a timeline, and the click is there for anyone who
-          // wants a day to stay put while they read it.
-          cell.addEventListener("pointerenter", (event) =>
-            preview(day, cell, { x: event.clientX, y: event.clientY })
-          );
-          cell.addEventListener("pointermove", (event) => {
-            if (viewer.open || hovered !== cell) return;
-            reposition({ x: event.clientX, y: event.clientY });
+          /* Sweeping the sheet scrubs the panel, the way a timeline scrubs a
+             video. A click means "bigger", but only where there is a hover to
+             have already filled the panel: on a touch screen the tap IS the
+             selection, and making every tap take over the whole screen would
+             make a finger aimed at a cell five pixels wide expensive to
+             mis-aim. There the button beside the date opens the viewer. */
+          cell.addEventListener("pointerenter", () => {
+            if (viewer.open) return;
+            window.clearTimeout(settleTimer);
+            settleTimer = window.setTimeout(() => select(entry), HOVER_SETTLE);
           });
-          cell.addEventListener("focus", () => preview(day, cell, anchorOf(cell)));
-          cell.addEventListener("click", () => open(day, cell));
+          cell.addEventListener("focus", () => select(entry));
+          cell.addEventListener("click", () => {
+            window.clearTimeout(settleTimer);
+            select(entry);
+            if (canHover()) open(day, cell);
+          });
         } else {
           cell.disabled = true;
         }
@@ -768,21 +758,54 @@
     root.appendChild(legend);
     root.appendChild(panel);
 
-    // Leaving the sheet puts the glance card away and hands the space back.
+    /* Leaving the sheet stops the sweep but does NOT empty the panel. Emptying
+       it was what made this page look like it had nothing in it: the reader
+       moved the mouse away and every picture went with it. The last day stays,
+       only its cell stops being marked. */
     root.addEventListener("pointerleave", () => {
-      window.clearTimeout(hoverTimer);
+      window.clearTimeout(settleTimer);
       if (viewer.open) return;
       if (hovered) hovered.dataset.selected = "false";
       hovered = null;
-      setFloating(false);
-      show(null);
     });
 
-    // The window can change under the glance card. Re-placing costs nothing and
-    // stops it hanging off an edge after a resize or a scroll.
-    ["resize", "scroll"].forEach((name) =>
-      window.addEventListener(name, () => place(cursor), { passive: true })
-    );
+    panelPrev.addEventListener("click", () => select(neighbour(-1)));
+    panelNext.addEventListener("click", () => select(neighbour(1)));
+    panelOpen.addEventListener("click", () => {
+      if (current) open(current.day, current.cell);
+    });
+
+    /* THE DAY THE PAGE OPENS ON, chosen rather than hardcoded. The richest day
+       in the record is the one all four instruments saw AND disagreed about:
+       the optical chain calls the fjord mostly open, the thermal band says more
+       than half of it radiates below the freezing point of seawater, and the
+       radar was asked to settle it. That day shows five pictures, four
+       populated rows and the reason this page has four layers, which is more
+       than any sentence above it manages.
+
+       If the archive ever loses that combination the fallbacks step down in
+       order rather than leaving the panel empty, because an empty panel is the
+       exact failure this whole thing was rebuilt to remove. */
+    const withPictures = ordered.filter((e) => e.day);
+    const opening =
+      withPictures.find(
+        (e) =>
+          e.day.scene &&
+          e.day.landsat &&
+          e.day.thermal &&
+          e.day.thermal.contradicted &&
+          (e.day.sar || {}).scene
+      ) ||
+      withPictures.find((e) => e.day.scene && e.day.landsat && e.day.thermal) ||
+      withPictures.find((e) => e.day.scene) ||
+      withPictures[0];
+    if (opening) {
+      select(opening);
+      // Selected, not marked: nothing is under the pointer yet, and a marked
+      // cell on load reads as a place the reader has already been.
+      if (hovered) hovered.dataset.selected = "false";
+      hovered = null;
+    }
 
     const c = data.counts;
     const note = document.createElement("p");
@@ -795,8 +818,6 @@
       `These counts are for the window. Over the whole record the comparison covers 226 days, ` +
       `84 of them called open, with 36 contradicted.`;
     root.appendChild(note);
-
-    show(null);
   }
 
   function boot() {

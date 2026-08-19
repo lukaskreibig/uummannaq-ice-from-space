@@ -183,19 +183,121 @@ text { font-family: var(--md-text-font-family, sans-serif); }
    pass, so the page jumped under the cursor. The popup took that job, and
    docked is now only used where there is no hover to jump with, so 540 pixels
    of reserved white space bought nothing. */
-.day-panel {
+/* The panel is the page's answer to its own title, and it is on screen from the
+   first paint. It used to be empty until hovered, which meant a page called a
+   contact sheet opened with no photograph on it at all and kept 1364 of them
+   behind a click on a cell four pixels wide.
+
+   Laid out as one row of pictures, because that is the comparison the page is
+   for: the same fjord on the same day through four instruments, side by side.
+   The instrument that has no acquisition still gets its column and says so. */
+.md-typeset .day-panel {
   border: 1px solid var(--md-default-fg-color--lightest);
-  border-radius: 2px;
-  padding: 0.9rem 1rem;
-  margin-top: 0.9rem;
-  display: grid;
-  gap: 0.75rem;
-  align-content: start;
+  border-radius: 3px;
+  padding: 0.75rem 0.9rem 0.9rem;
+  margin: 0.9rem 0 0;
+  display: block;
 }
-.day-panel h4 {
-  margin: 0;
-  font-size: 0.95rem;
+
+.md-typeset .panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+}
+.md-typeset .panel-title {
+  font-size: 0.92rem;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+.md-typeset .panel-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.md-typeset .panel-step,
+.md-typeset .panel-open {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--md-default-fg-color--light);
+  font-size: 1.05rem;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+}
+/* The one control that has to be read rather than recognised: it is the only
+   thing on the page that says the pictures get bigger. */
+.md-typeset .panel-open {
+  padding: 0 0.85rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-color: var(--md-default-fg-color--lighter);
+}
+.md-typeset .panel-step:hover:not(:disabled),
+.md-typeset .panel-open:hover {
+  color: var(--md-default-fg-color);
+  border-color: var(--md-default-fg-color--lighter);
+}
+.md-typeset .panel-step:disabled { opacity: 0.32; cursor: default; }
+.md-typeset .panel-step:focus-visible,
+.md-typeset .panel-open:focus-visible {
+  outline: 2px solid var(--md-accent-fg-color);
+  outline-offset: 2px;
+}
+
+/* How many instruments fit across, decided by measurement rather than by taste.
+   Four columns need about 820 px of content before a picture stops being a
+   picture: at 736, which is a tablet in portrait, four across gave 114 px each,
+   smaller than the same page gives a phone in one column. So the columns come
+   in as the room does, and nothing ever gets narrower by being on a bigger
+   screen, which is the mistake the viewer made once already. */
+.md-typeset .panel-body {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.9rem;
+  padding-top: 0.75rem;
+}
+@media (min-width: 560px) {
+  .md-typeset .panel-body { grid-template-columns: 1fr 1fr; }
+}
+@media (min-width: 1100px) {
+  /* The Sentinel-2 column is wider because it carries two pictures, the scene
+     and what the classifier made of it, which is the comparison this page is
+     for. */
+  .md-typeset .panel-body { grid-template-columns: 1.9fr 1fr 1fr 1fr; }
+}
+.md-typeset .panel-body .day-layer {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  grid-template-columns: 3px 1fr;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.md-typeset .panel-body .day-layer .role { font-size: 0.6rem; }
+.md-typeset .panel-body .day-layer .value { font-size: 0.8rem; line-height: 1.35; }
+.md-typeset .panel-body .day-layer .detail { font-size: 0.68rem; line-height: 1.5; }
+.md-typeset .panel-body .layer-figures { gap: 0.4rem; margin-top: 0.5rem; }
+.md-typeset .panel-body .layer-figure figcaption { font-size: 0.6rem; line-height: 1.4; }
+.md-typeset .panel-body .day-layer.absent { opacity: 0.5; }
+
+/* Share the column, capped, so a wide column does not blow one quicklook up to
+   400 px beside a paragraph of eight words. The viewer is where they get big.
+   Stated once: an earlier pair of rules set `max-width: none` here and 220 four
+   lines later, and only the second one ever counted. */
+.md-typeset .panel-body .layer-figure {
+  flex: 1 1 0;
+  max-width: 220px;
 }
 .day-layer {
   display: grid;
@@ -272,82 +374,6 @@ text { font-family: var(--md-text-font-family, sans-serif); }
   background: var(--md-default-fg-color--lightest);
   margin: 0 0.25rem;
 }
-
-/* ---------------------------------------------------- the floating panel */
-
-/* The panel follows the pointer instead of sitting under the sheet, because a
-   sheet is read by sweeping and a reader should not have to look 400 pixels
-   away to find out what is under the cursor. Docked is still the fallback: on a
-   narrow window, on a touch screen, and whenever nothing is hovered.
-   `.md-typeset` scoping for the same reason the legend needs it. */
-.md-typeset .day-panel.floating {
-  position: fixed;
-  z-index: 6;
-  /* Pixels, not rem. Material sets the root font size to 125 percent, so a rem
-     here is 20px and a value picked in 16px units comes out a quarter too wide.
-     This one is a physical size on screen, so it is stated as one. */
-  width: 340px;
-  margin: 0;
-  min-height: 0;
-  max-height: calc(100vh - 24px);
-  overflow: hidden;
-  background: var(--md-default-bg-color);
-  border-color: var(--md-default-fg-color--lighter);
-  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.22), 0 1px 3px rgba(0, 0, 0, 0.18);
-  /* The one property this whole thing turns on. Without it the panel slides
-     under the cursor, the cell below it stops being hovered, the panel closes,
-     the cell is hovered again, and the reader watches it strobe. */
-  pointer-events: none;
-}
-
-/* Smaller inside the popup than inside the docked panel: the docked one has a
-   whole column, this one has to sit beside a cursor.
-
-   `min-width: 0` on the children is what actually holds the width. A grid track
-   sizes to its content by default, and the quicklook carries an intrinsic 320
-   pixels plus a 26 rem cap from the docked rules, so the panel came out 420
-   wide however firmly `width` was stated. */
-.md-typeset .day-panel.floating > * { min-width: 0; }
-.md-typeset .day-panel.floating .day-layer .detail { font-size: 0.72rem; }
-.md-typeset .day-panel.floating h4 { font-size: 0.88rem; }
-
-@media (prefers-reduced-motion: no-preference) {
-  .md-typeset .day-panel.floating { transition: opacity 90ms ease-out; }
-}
-
-/* A hovered panel is a glance, a pinned one is a read. The compact form is
-   chosen in the rendering rather than clamped here: `-webkit-line-clamp` needs
-   `display: -webkit-box`, and Material forces `display: flow-root` on content
-   elements, so the clamp applied and did nothing at all. */
-/* The one thing a reader cannot discover by pointing at something. */
-.md-typeset .day-panel.floating .open-hint {
-  font-size: 0.62rem;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--md-default-fg-color--lighter);
-  margin: 0;
-}
-
-/* The quicklook is smaller in the glance card than in the viewer, and since the
-   thumbnails were corrected to the AOI's upright 0.814 aspect it has to be a
-   good deal smaller: 320 pixels wide is now 393 tall. The fjord and its island
-   stay recognisable at 168, and every pixel here is one the card takes off the
-   reader's screen. */
-.md-typeset .day-panel.floating .layer-figure {
-  max-width: 168px;
-  flex-basis: 168px;
-  gap: 0.2rem;
-}
-
-/* Tighter rows in the popup than in the panel. A day that four instruments saw
-   carries four blocks, and at the docked spacing that came to 813 pixels of a
-   960 pixel window. The saving is all in the chrome, not in the words. */
-.md-typeset .day-panel.floating { gap: 0.4rem; padding: 0.7rem 0.8rem; }
-.md-typeset .day-panel.floating .day-layer {
-  padding-bottom: 0.32rem;
-  line-height: 1.42;
-}
-.md-typeset .day-panel.floating .day-layer .role { font-size: 0.6rem; }
 
 /* ── The viewer ───────────────────────────────────────────────────────────
    What the pinned card was trying and failing to be.
@@ -556,8 +582,3 @@ text { font-family: var(--md-text-font-family, sans-serif); }
   outline-offset: 2px;
 }
 
-/* The panel is only ever wanted floating. Hiding it on `(hover: none)` covered
-   a pure touch tablet and missed every hovering pointer under 1100: measured at
-   1024 by 768 with a trackpad, one hover grew the page by 2084 pixels. The
-   container is the right question, so this asks about the container. */
-.md-typeset .day-panel:not(.floating) { display: none; }
