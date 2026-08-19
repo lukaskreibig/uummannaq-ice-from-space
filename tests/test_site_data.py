@@ -148,3 +148,51 @@ class TestTheSpecificationCurveStaysAGrid:
         declines = [p["decline"] for p in curve["points"]]
         assert min(declines) < 0
         assert curve["summary"]["declining"] < curve["summary"]["n"]
+
+
+class TestThePicturesMatchTheTable:
+    """Every scene the record used has its picture, and no picture is an orphan.
+
+    A thumbnail is committed rather than rendered in CI, which means it can
+    outlive the row it belongs to. Both directions are checked, because a
+    missing picture is a hole in the sheet and a stray one is a scene somebody
+    dropped without noticing.
+    """
+
+    THUMBS = ROOT / "docs" / "assets" / "thumbs"
+
+    def usable_ids(self) -> set[str]:
+        with (ARCHIVE / "summary.csv").open(newline="", encoding="utf-8") as handle:
+            return {
+                row["tile_id"] for row in csv.DictReader(handle) if row["usable"] == "1"
+            }
+
+    def rendered_ids(self) -> set[str]:
+        return {path.stem for path in self.THUMBS.glob("*.webp")}
+
+    def test_every_usable_scene_has_a_thumbnail(self) -> None:
+        missing = sorted(self.usable_ids() - self.rendered_ids())
+        assert not missing, (
+            f"{len(missing)} scenes without a picture, e.g. {missing[:3]}"
+        )
+
+    def test_no_thumbnail_outlives_its_scene(self) -> None:
+        stray = sorted(self.rendered_ids() - self.usable_ids())
+        assert not stray, f"{len(stray)} pictures with no row, e.g. {stray[:3]}"
+
+    def test_the_day_panel_can_name_all_three_classes(self, sheet: dict) -> None:
+        """Solid, light and water, not just the fraction that pools two of them.
+
+        Added because the pictures demanded it: 17 April 2021 shows floes and
+        open leads and still reports an ice fraction of 1.00, since the leads
+        were classified as LIGHT ice and the fraction counts solid and light
+        together. Water on that day is 0.0000. With only the fraction on screen
+        that reads as a fault in the chain rather than as a class boundary.
+        """
+        with_scene = [d for d in sheet["days"] if d.get("scene")]
+        assert with_scene
+        for day in with_scene:
+            scene = day["scene"]
+            assert {"solid", "light", "water"} <= set(scene)
+            total = scene["solid"] + scene["light"] + scene["water"]
+            assert total <= 1.0001, f"{scene['id']} classes sum to {total}"
