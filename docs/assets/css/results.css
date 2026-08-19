@@ -95,7 +95,14 @@ text { font-family: var(--md-text-font-family, sans-serif); }
 .spec-dot.significant { fill: var(--md-accent-fg-color); }
 .spec-dot.published { fill: var(--layer-thermal); }
 .spec-hit { fill: transparent; cursor: crosshair; }
-.spec-hit:hover ~ * { pointer-events: none; }
+/* There was a `.spec-hit:hover ~ *` rule here, setting pointer-events: none.
+   It never did what it was written for and it broke the new one. The 120 hit
+   rects are appended LAST, so they are the only later siblings a general
+   sibling combinator can reach: the rule disabled every column to the RIGHT of
+   the hovered one. With a mouse that is invisible, because hover moves on. On a
+   touch screen the synthetic hover sticks to the tapped element, so after
+   tapping a column nothing to its right could be tapped at all, on a figure
+   whose page now promises that tapping holds a specification. */
 .spec-mark { fill: var(--md-default-fg-color--light); }
 .spec-mark.on { fill: var(--md-default-fg-color); }
 .spec-row-label { font-size: 9px; fill: var(--md-default-fg-color--light); }
@@ -377,22 +384,6 @@ text { font-family: var(--md-text-font-family, sans-serif); }
   font-weight: 700;
   letter-spacing: 0.01em;
 }
-.md-typeset .viewer-close {
-  border: 0;
-  background: transparent;
-  color: var(--md-default-fg-color--light);
-  font-size: 1.2rem;
-  line-height: 1;
-  padding: 0.15rem 0.35rem;
-  cursor: pointer;
-  border-radius: 3px;
-}
-.md-typeset .viewer-close:hover { color: var(--md-default-fg-color); }
-.md-typeset .viewer-close:focus-visible {
-  outline: 2px solid var(--md-accent-fg-color);
-  outline-offset: 2px;
-}
-
 /* Two instrument cards across, one below 900 px. `auto-fit` was tempting and
    wrong: at 1180 px it makes three columns for four cards and leaves one
    stranded on its own row at triple width. */
@@ -405,7 +396,17 @@ text { font-family: var(--md-text-font-family, sans-serif); }
   overscroll-behavior: contain;
   flex: 1 1 auto;
 }
-@media (min-width: 900px) {
+/* Two columns only once there is room for two full cards, which is a good deal
+   later than it looks. The breakpoint was 900 and that was measured wrong: at
+   1024 by 768, a tablet in LANDSCAPE, it gave two 480 px columns and shrank
+   every quicklook to 203 pixels, while the same tablet held upright showed them
+   at 272. Turning the device to get more screen made the pictures smaller.
+
+   A card needs about 620 px to hold two 272 px figures with its rule, gap and
+   padding, so two of them need roughly 1250, and the dialog is min(1180, 94vw).
+   1220 is where 94vw first clears that. Below it the cards run full width and
+   the figures stay at their cap. */
+@media (min-width: 1220px) {
   .md-typeset .viewer-body { grid-template-columns: 1fr 1fr; }
 }
 
@@ -452,3 +453,101 @@ text { font-family: var(--md-text-font-family, sans-serif); }
     0 0 0 1px var(--md-accent-fg-color);
   z-index: 3;
 }
+
+
+/* ── Tablet first ─────────────────────────────────────────────────────────
+   Measured on the deployed page at 768 by 1024, which is what a tablet in
+   portrait actually gets.
+
+   A cell came out 4.16 by 17 pixels. The smallest target a finger can be asked
+   to hit is 44, so the sheet was ten times too fine to operate by touch, and
+   the panel it filled on the way to the dialog came to 2153 pixels of page.
+
+   Widening the cells is not the answer. 128 days at a tappable width is a
+   sheet three thousand pixels across, and scrolling sideways through ten
+   seasons destroys the one thing a contact sheet is for. So the sheet stays an
+   overview and stops pretending to be a control: aim is no longer required,
+   because the viewer steps day by day. What DOES change here is the vertical
+   dimension, where there is room to give. */
+@media (hover: none) {
+  /* Taller rows, so choosing a SEASON is comfortable even though choosing a day
+     within it is the arrows' job. */
+  .sheet-cell { height: 30px; }
+  .sheet-year { line-height: 30px; }
+}
+
+/* Every control in the viewer is a real target. The close button measured
+   27 by 30, which is a miss waiting to happen on any touch screen. */
+.md-typeset .viewer-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.md-typeset .viewer-step,
+.md-typeset .viewer-close {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: var(--md-default-fg-color--light);
+  font-size: 1.15rem;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.md-typeset .viewer-step:hover,
+.md-typeset .viewer-close:hover {
+  color: var(--md-default-fg-color);
+  background: var(--md-default-fg-color--lightest);
+}
+.md-typeset .viewer-step:focus-visible,
+.md-typeset .viewer-close:focus-visible {
+  outline: 2px solid var(--md-accent-fg-color);
+  outline-offset: -2px;
+}
+
+/* The curve's own controls, same rule as the viewer's: a real target. */
+.md-typeset .spec-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.6rem 0 0.2rem;
+}
+.md-typeset .spec-step {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.7rem;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--md-default-fg-color--light);
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.md-typeset .spec-step.spec-release {
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+}
+.md-typeset .spec-step:hover {
+  color: var(--md-default-fg-color);
+  border-color: var(--md-default-fg-color--lighter);
+}
+.md-typeset .spec-step:focus-visible {
+  outline: 2px solid var(--md-accent-fg-color);
+  outline-offset: 2px;
+}
+
+/* The panel is only ever wanted floating. Hiding it on `(hover: none)` covered
+   a pure touch tablet and missed every hovering pointer under 1100: measured at
+   1024 by 768 with a trackpad, one hover grew the page by 2084 pixels. The
+   container is the right question, so this asks about the container. */
+.md-typeset .day-panel:not(.floating) { display: none; }

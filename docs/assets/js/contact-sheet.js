@@ -84,13 +84,30 @@
     const viewerHead = document.createElement("div");
     viewerHead.className = "viewer-head";
     const viewerTitle = document.createElement("h3");
+
+    const viewerNav = document.createElement("div");
+    viewerNav.className = "viewer-nav";
+    const step = (label, name) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "viewer-step";
+      button.setAttribute("aria-label", name);
+      button.textContent = label;
+      viewerNav.appendChild(button);
+      return button;
+    };
+    const viewerPrev = step("\u2039", "The day before");
+    const viewerNext = step("\u203a", "The day after");
+
     const viewerClose = document.createElement("button");
     viewerClose.type = "button";
     viewerClose.className = "viewer-close";
     viewerClose.setAttribute("aria-label", "Close");
     viewerClose.textContent = "\u00d7";
+    viewerNav.appendChild(viewerClose);
+
     viewerHead.appendChild(viewerTitle);
-    viewerHead.appendChild(viewerClose);
+    viewerHead.appendChild(viewerNav);
 
     const viewerBody = document.createElement("div");
     viewerBody.className = "viewer-body";
@@ -143,7 +160,14 @@
     document.addEventListener(
       "keydown",
       (event) => {
-        if (event.key !== "Escape" || !viewer.open) return;
+        if (!viewer.open) return;
+        if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+          event.preventDefault();
+          event.stopPropagation();
+          stepTo(event.key === "ArrowLeft" ? -1 : 1);
+          return;
+        }
+        if (event.key !== "Escape") return;
         event.preventDefault();
         event.stopPropagation();
         closeViewer();
@@ -155,6 +179,16 @@
     viewer.addEventListener("close", closeViewer);
 
     let opened = null;      // the cell whose day the viewer is showing
+
+    /* Every cell in the order the sheet draws them, so the viewer can step from
+       one day to the next. This is what makes the sheet usable by finger at all:
+       a cell is four pixels wide in a 736 pixel column, which no thumb can aim
+       at, and widening it would mean either scrolling sideways through ten
+       seasons or giving up the overview that is the whole point of a contact
+       sheet. So aim is not required. A tap lands within a few days, and the
+       arrows walk to the exact one. */
+    const ordered = [];
+
     let hovered = null;     // the cell the pointer is over
     let hoverTimer = null;
     let frame = null;       // the pending reposition
@@ -267,6 +301,8 @@
         return list.slice(0, 1);
       };
       if (!day) {
+        // Only ever seen beside a cursor: the panel is hidden unless it floats,
+        // and it only floats where there is a pointer that can hover.
         target.innerHTML =
           '<p class="figure-note">Hover a day. Every cell is one day of the analysed ' +
           "window, day 53 to 180, which is 22 February to 29 June.</p>";
@@ -529,6 +565,18 @@
 
     function preview(day, cell, anchor) {
       if (viewer.open) return; // the viewer owns the reader's attention
+      /* Gated on the CONTAINER, not on the pointer, and the first attempt got
+         that wrong. Asking `(hover: none)` covered a pure touch tablet and left
+         out every hovering pointer under 1100: an iPad with a keyboard case, a
+         tablet in Stage Manager, a narrow desktop window. Measured at 1024 by
+         768 with a trackpad, hovering one cell grew the page by 2084 pixels,
+         five quicklooks deep, appended below the legend where nobody is
+         looking, and did it again on every settled hover.
+
+         There is no room for a 340 px card beside a cursor under 1100 anyway,
+         which is what FLOAT_FROM has always said. So below it the dialog is the
+         only reading surface, whatever the pointer is. */
+      if (!floats()) return;
       window.clearTimeout(hoverTimer);
       if (!day) return;
       hoverTimer = window.setTimeout(() => {
@@ -542,6 +590,36 @@
       }, HOVER_SETTLE);
     }
 
+    /* Walk to the neighbouring day that HAS something to show, WITHIN the same
+       season. Stepping onto an empty cell would open four rows of "no
+       acquisition", which is true and a waste of a tap.
+
+       The season bound is the more important half. `ordered` is built season by
+       season, so a flat walk off the end of one row lands on the start of the
+       next: pressing a button labelled "the day after" on 29 June 2017 opened
+       22 February 2018, ten months away, with only the title bar to say so. The
+       arrows exist to correct a tap that landed a few days off, and jumping a
+       winter is not that. At the ends of a row the button says so by being
+       disabled. */
+    function neighbour(direction) {
+      const here = ordered.findIndex((entry) => entry.cell === opened);
+      if (here < 0) return null;
+      const season = ordered[here].season;
+      for (let i = here + direction; i >= 0 && i < ordered.length; i += direction) {
+        if (ordered[i].season !== season) return null;
+        if (ordered[i].day) return ordered[i];
+      }
+      return null;
+    }
+
+    function stepTo(direction) {
+      const next = neighbour(direction);
+      if (next) open(next.day, next.cell);
+    }
+
+    viewerPrev.addEventListener("click", () => stepTo(-1));
+    viewerNext.addEventListener("click", () => stepTo(1));
+
     function open(day, cell) {
       if (!day) return;
       window.clearTimeout(hoverTimer);
@@ -552,6 +630,9 @@
       if (opened) opened.dataset.opened = "false";
       opened = cell;
       cell.dataset.opened = "true";
+      // Stepping can walk off the visible part of the sheet, and closing the
+      // viewer onto a marked cell the reader cannot see is disorienting.
+      cell.scrollIntoView({ block: "nearest", inline: "nearest" });
 
       const when = new Date(Date.UTC(day.season, 0, day.doy));
       viewerTitle.textContent =
@@ -563,6 +644,8 @@
         }) + `  \u00b7  day ${day.doy}`;
       show(day, false, viewerBody);
       viewerBody.scrollTop = 0;
+      viewerPrev.disabled = !neighbour(-1);
+      viewerNext.disabled = !neighbour(1);
       if (typeof viewer.showModal === "function") viewer.showModal();
       else viewer.setAttribute("open", "");
     }
@@ -629,6 +712,8 @@
           : [];
         cell.title = `${dateLabel}: ${layers.length ? layers.join(", ") : "no measurement"}`;
         cell.setAttribute("aria-label", cell.title);
+
+        ordered.push({ cell, day, season });
 
         if (day) {
           // Hovering shows, clicking pins. Sweeping across a season should read

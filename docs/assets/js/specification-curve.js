@@ -139,8 +139,17 @@
       return dot;
     });
 
-    if (data.published) {
-      const i = points.indexOf(data.published);
+    /* findIndex on the flag, not indexOf on the object. `data.published` is a
+       SEPARATE object in the JSON, because JSON cannot share a reference, so
+       identity never matched and indexOf returned -1 every single time. x(-1)
+       is 183.6 in a 760 unit viewBox and the real published dot is at 421.8:
+       the label naming the published 22.6 percent sat 246 units to its left,
+       over the four negative specifications, saying the exact opposite of the
+       page beneath it, which states that the published choice sits in the quiet
+       middle of the grid. The same file already had it right at stepSpec. */
+    const publishedAt = points.findIndex((p) => p.published);
+    if (data.published && publishedAt >= 0) {
+      const i = publishedAt;
       svg.appendChild(
         make(
           "text",
@@ -223,6 +232,15 @@
       }
     };
 
+    /* Held is a specification the reader chose rather than one they swept over.
+       Without it this figure was unreadable on a tablet: the only ways in were
+       mouseenter and focus, so a device with no pointer to hover could not read
+       a single specification, on a page that promises hovering a column reads
+       it out. A tap now holds a column, and a sweep still previews one. */
+    let held = null;
+
+    const showing = () => (held === null ? null : held);
+
     points.forEach((p, i) => {
       const hit = make("rect", {
         x: PAD.l + (i / n) * (W - PAD.l - PAD.r),
@@ -231,12 +249,35 @@
         height: CURVE_H + GAP + MATRIX_H,
         class: "spec-hit",
       });
-      hit.addEventListener("mouseenter", () => focus(i));
-      hit.addEventListener("focus", () => focus(i));
-      hit.setAttribute("tabindex", "0");
+      hit.addEventListener("mouseenter", () => {
+        if (held === null) focus(i);
+      });
+      hit.addEventListener("click", () => {
+        held = held === i ? null : i;
+        focus(showing());
+      });
+      /* No tabindex. These 120 rectangles were focusable, which sounds like
+         keyboard access and is not: the svg carries role="img", so everything
+         inside it is pruned from the accessibility tree, and a screen reader
+         met 120 stops with no name at all, ahead of every real control on the
+         page. The arrows below the figure are the keyboard route, and they are
+         named buttons. */
       svg.appendChild(hit);
     });
-    svg.addEventListener("mouseleave", () => focus(null));
+    svg.addEventListener("mouseleave", () => {
+      if (held === null) focus(null);
+    });
+
+    /* One column is six pixels wide in a 736 pixel figure, which no finger can
+       aim at and no reader should have to. The arrows walk the grid, so landing
+       near the right specification is enough. They also give the figure a
+       keyboard route that does not depend on tabbing through 120 rectangles. */
+    function stepSpec(direction) {
+      const from = held === null ? points.findIndex((q) => q.published) : held;
+      const next = Math.min(points.length - 1, Math.max(0, from + direction));
+      held = next;
+      focus(next);
+    }
 
     const shell = document.createElement("div");
     shell.className = "chart-shell";
@@ -250,6 +291,31 @@
       '<li><span class="chip" style="background:var(--md-accent-fg-color)"></span>p &lt; 0,05</li>' +
       '<li><span class="chip" style="background:var(--md-default-fg-color--light)"></span>all the rest</li>';
     root.appendChild(legend);
+    const specNav = document.createElement("div");
+    specNav.className = "spec-nav";
+    [
+      ["\u2039", "The specification to the left", -1],
+      ["\u203a", "The specification to the right", 1],
+    ].forEach(([label, name, direction]) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "spec-step";
+      button.setAttribute("aria-label", name);
+      button.textContent = label;
+      button.addEventListener("click", () => stepSpec(direction));
+      specNav.appendChild(button);
+    });
+    const release = document.createElement("button");
+    release.type = "button";
+    release.className = "spec-step spec-release";
+    release.textContent = "back to the published choice";
+    release.addEventListener("click", () => {
+      held = null;
+      focus(null);
+    });
+    specNav.appendChild(release);
+
+    root.appendChild(specNav);
     root.appendChild(readout);
 
     const s = data.summary;

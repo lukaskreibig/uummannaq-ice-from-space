@@ -523,8 +523,86 @@ class TestTheViewerIsTheReadingContainer:
         time.
         """
         source = self.SOURCE.read_text()
-        block = source[source.index('if (event.key !== "Escape"') :][:400]
+        start = source.index('document.addEventListener(\n      "keydown"')
+        block = source[start : source.index("\n    );", start) + 7]
         assert "!viewer.open" in block, "Escape is not guarded on the viewer being open"
-        assert "true\n    );" in block or "true)" in block, (
-            "the listener is not in capture"
+        assert 'event.key !== "Escape"' in block
+        assert block.rstrip().endswith("true\n    );"), "the listener is not in capture"
+
+    def test_the_viewer_can_be_walked_day_by_day(self) -> None:
+        """Aim is not a requirement, because a cell is four pixels wide.
+
+        Measured at 768 by 1024, a tablet in portrait: a sheet cell is 4.16 by
+        17 pixels against a 44 pixel minimum target. Widening it would mean
+        three thousand pixels of sideways scrolling through ten seasons, which
+        costs the overview a contact sheet exists to give. So the viewer steps
+        instead, by button and by arrow key, and a tap only has to land nearby.
+        """
+        source = self.SOURCE.read_text()
+        assert "function stepTo(" in source
+        assert "ArrowLeft" in source and "ArrowRight" in source
+        assert "viewer-step" in source
+        styles = self.STYLES.read_text()
+        block = styles[styles.index(".md-typeset .viewer-step,") :][:400]
+        assert "min-width: 44px" in block and "min-height: 44px" in block
+
+    def test_nothing_a_tablet_needs_sits_behind_a_hover(self) -> None:
+        """Both pages, because both were broken and in different ways.
+
+        The sheet filled a docked panel from `pointerenter`, which a tablet does
+        fire, one frame before the tap that covers it: 2153 pixels of duplicate
+        page on the way to a dialog. And the specification curve offered
+        `mouseenter` and nothing else, so a device with no hover could not read
+        one specification on a page that promises hovering reads them out.
+        """
+        sheet = self.SOURCE.read_text()
+        # Gated on the container, not on the pointer. The first attempt asked
+        # `(hover: none)`, which covered a pure touch tablet and missed every
+        # hovering pointer under 1100 px: measured at 1024 by 768 with a
+        # trackpad, one hover grew the page by 2084 pixels.
+        assert "if (!floats()) return;" in sheet
+        assert "matchMedia" in sheet and "hover: hover" in sheet
+
+        curve = (ROOT / "docs" / "assets" / "js" / "specification-curve.js").read_text()
+        assert 'hit.addEventListener("click"' in curve, "a column cannot be tapped"
+        assert "function stepSpec(" in curve
+        assert 'hit.setAttribute("tabindex"' not in curve, (
+            "120 unnamed tab stops inside a role=img svg are not keyboard access"
         )
+
+        styles = self.STYLES.read_text()
+        assert ".md-typeset .day-panel:not(.floating) { display: none; }" in styles, (
+            "the panel is only wanted floating; docked it is two screens of duplicate page"
+        )
+        # The declaration, not the name: the comment that replaced the rule
+        # quotes the selector, and quoting it is the point.
+        assert ".spec-hit:hover ~ * {" not in styles, (
+            "that rule could only reach later hit rects, so it switched off every "
+            "column to the right of the hovered one"
+        )
+
+    def test_the_published_choice_is_labelled_where_it_actually_sits(self) -> None:
+        """The one finding here that was a statement about the science.
+
+        `points.indexOf(data.published)` returned -1 every time, because
+        `data.published` is a separate object in the JSON and JSON cannot share
+        a reference. x(-1) is 183.6 in a 760 unit viewBox while the published dot
+        is at 421.8, so the label reading "published, 22.6 %" sat 246 units to
+        its left, among the four negative specifications, telling the reader the
+        opposite of the page under it.
+        """
+        curve = (ROOT / "docs" / "assets" / "js" / "specification-curve.js").read_text()
+        assert "points.indexOf(data.published)" not in curve
+        assert "points.findIndex((p) => p.published)" in curve
+
+    def test_the_arrows_do_not_walk_out_of_the_season(self) -> None:
+        """`ordered` is season major, so a flat walk jumps ten months.
+
+        Pressing a button labelled "the day after" on 29 June 2017 opened
+        22 February 2018. The arrows exist to correct a tap that landed a few
+        days off, which is not that.
+        """
+        sheet = self.SOURCE.read_text()
+        assert "ordered.push({ cell, day, season })" in sheet
+        assert "if (ordered[i].season !== season) return null;" in sheet
+        assert "viewerPrev.disabled" in sheet and "viewerNext.disabled" in sheet
