@@ -66,7 +66,19 @@ OUT = ROOT / "docs" / "assets" / "thumbs"
 
 BUCKET = "/vsis3/sentinel-s2-l1c/tiles"
 RGB_BANDS = ("B04", "B03", "B02")
-WIDTH, HEIGHT = 320, 256
+# 320 by 393, and the height is not a taste decision. The AOI is 14.73 by 18.11
+# km in UTM 22N, so it is upright, aspect 0.814. The first version of this
+# script drew it into 320 by 256, which is a landscape box, and every thumbnail
+# in the archive came out stretched sideways by a factor of 1.54. Nothing in the
+# picture announces that: a fjord has no straight lines to go crooked and an
+# island has no shape you can check by eye. It surfaced only when the exported
+# class rasters arrived at 368 by 453, the pipeline's own upright grid, and the
+# photograph beside them did not agree.
+#
+# The rule that would have caught it: a picture of a place is a measurement of
+# that place, and a measurement carries its geometry. Derive the second side
+# from the first and the projected bounds, never pick both.
+WIDTH, HEIGHT = 320, 393
 
 # The reflectance range the stretch maps to black and white, fixed for every
 # scene in the record. 0.02 is darker than open water at this latitude ever

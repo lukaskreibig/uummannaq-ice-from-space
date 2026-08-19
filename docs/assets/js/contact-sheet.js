@@ -98,7 +98,53 @@
       window.matchMedia(`(min-width: ${FLOAT_FROM}px)`).matches &&
       window.matchMedia("(hover: hover)").matches;
 
-    const layerRow = (colour, role, value, detail, absent) => {
+    /* Every instrument's picture sits in that instrument's own row, under that
+       instrument's own number. Nothing stands in for anything else: on the 304
+       days that Landsat saw and Sentinel-2 did not, the Sentinel-2 row still
+       says it has no scene, and the Landsat picture appears beside the Landsat
+       reading rather than in the gap above. build_site_data.py refuses to merge
+       the numbers and tests assert that it cannot; a picture doing it visually
+       would be the same claim by another route. */
+    const figureFor = (pictures) => {
+      const wrap = document.createElement("div");
+      wrap.className = "layer-figures";
+      let alive = 0;
+      pictures.forEach((pic) => {
+        const figure = document.createElement("figure");
+        figure.className = "layer-figure" + (pic.pixelated ? " pixelated" : "");
+        const img = document.createElement("img");
+        img.src = pic.src;
+        img.alt = pic.alt;
+        // NOT lazy, and that is a correction rather than an oversight. The panel
+        // holds one day at a time, so at most five pictures of a few kilobytes
+        // each are ever in the document, and there is nothing to defer. Worse,
+        // the pinned card is `position: fixed` with its own scrollbar, and
+        // inside that combination the browser never decided the lower pictures
+        // had come near the viewport: they answered 200 to a fetch and stayed
+        // at 0 by 0 pixels forever. Four of the five rows were blank.
+        img.decoding = "async";
+        img.width = pic.width || 320;
+        img.height = pic.height || 393;
+        alive += 1;
+        // A picture the renderer never reached leaves no gap and no broken
+        // icon, and the last one to go takes the empty row with it.
+        img.addEventListener("error", () => {
+          figure.remove();
+          alive -= 1;
+          if (alive <= 0) wrap.remove();
+        });
+        figure.appendChild(img);
+        if (pic.caption) {
+          const cap = document.createElement("figcaption");
+          cap.textContent = pic.caption;
+          figure.appendChild(cap);
+        }
+        wrap.appendChild(figure);
+      });
+      return wrap;
+    };
+
+    const layerRow = (colour, role, value, detail, absent, pictures) => {
       const row = document.createElement("div");
       row.className = "day-layer" + (absent ? " absent" : "");
       row.innerHTML =
@@ -107,6 +153,7 @@
         `<div class="value">${value}</div>` +
         (detail ? `<div class="detail">${detail}</div>` : "") +
         "</div>";
+      if (pictures && pictures.length) row.lastChild.appendChild(figureFor(pictures));
       return row;
     };
 
@@ -118,6 +165,21 @@
        draw is also testable, which a truncation is not. */
     function show(day, compact) {
       panel.innerHTML = "";
+      /* The pictures turned upright when the thumbnails were corrected to the
+         AOI's real 0.814 aspect, and three upright pictures stacked in a 340 px
+         card come to over 900 pixels, which is the whole window. So the hovered
+         card carries ONE picture, belonging to the first layer that has one,
+         and it stays inside that layer's row where its label is. The pinned
+         card carries all of them. That is the same bargain the text already
+         makes: a glance shows less, and clicking shows everything. */
+      let picturesSpent = false;
+      const budget = (list) => {
+        if (!list || !list.length) return null;
+        if (!compact) return list;
+        if (picturesSpent) return null;
+        picturesSpent = true;
+        return list.slice(0, 1);
+      };
       if (!day) {
         panel.innerHTML =
           '<p class="figure-note">Hover a day. Every cell is one day of the analysed ' +
@@ -135,38 +197,41 @@
         `  ·  day ${day.doy}`;
       panel.appendChild(heading);
 
-      if (day.scene) {
-        const figure = document.createElement("figure");
-        figure.className = "day-figure";
-        const img = document.createElement("img");
-        img.src = `../assets/thumbs/${day.scene.id}.webp`;
-        img.alt =
-          `Sentinel-2 true colour quicklook of the Uummannaq fjord on ${day.date}, ` +
-          `scene ${day.scene.id}`;
-        img.loading = "lazy";
-        img.decoding = "async";
-        img.width = 320;
-        img.height = 256;
-        // A scene the renderer could not reach leaves no gap and no broken icon.
-        img.addEventListener("error", () => figure.remove());
-        const caption = document.createElement("figcaption");
-        // Three lines of provenance is right in the panel a reader has pinned
-        // and wrong in a card that opened under their cursor half a second ago.
-        // The popup names the scene, which is what identifies the picture; the
-        // page above it carries the rest.
-        caption.textContent = compact
-          ? day.scene.id
-          : "Sentinel-2 L1C, true colour from B04, B03 and B02. Contrast and white balance " +
-            "are fixed for the whole record, so a dark season looks dark.";
-        figure.appendChild(img);
-        figure.appendChild(caption);
-        panel.appendChild(figure);
-      }
-
       // layer one, the record
       const s2 = day.s2 || {};
       if (s2.measured != null) {
         const scene = day.scene;
+        /* The photograph and the decision, side by side in the pinned form.
+           The class raster is the classifier's own output on the 40 m grid the
+           decision was made on, 368 by 453 cells under a 1302 by 1600 image,
+           and it is drawn without smoothing so that coarseness stays visible.
+           That difference IS the honest picture of this method: a sharp
+           photograph with a coarse grid of judgements over it. The hovered card
+           shows the photograph alone, because two pictures in a glance is one
+           too many. */
+        const pictures = scene
+          ? [
+              {
+                src: `../assets/thumbs/${scene.id}.webp`,
+                alt:
+                  `Sentinel-2 true colour quicklook of the Uummannaq fjord on ${day.date}, ` +
+                  `scene ${scene.id}`,
+                caption: compact ? null : "true colour, B04 B03 B02",
+              },
+            ]
+          : [];
+        if (scene && !compact) {
+          pictures.push({
+            src: `../assets/classes/${scene.id}.png`,
+            alt:
+              `The classifier's own output for ${day.date}: solid ice, light ice, open water, ` +
+              "land and cloud, on the 40 m analysis grid",
+            caption: "classified, 40 m grid",
+            pixelated: true,
+            width: 368,
+            height: 453,
+          });
+        }
         panel.appendChild(
           layerRow(
             "var(--layer-s2)",
@@ -182,7 +247,9 @@
                 `${scene.id} · the scene could see ${(scene.clearPct * 100).toFixed(1)} percent of the ` +
                 `fjord, ${(scene.cloudPct * 100).toFixed(1)} percent was cloud · sun ${scene.sunElev}° · ` +
                 `${scene.usable ? "kept" : "dropped by the visibility gate"}`
-              : null
+              : null,
+            false,
+            budget(pictures)
           )
         );
       } else {
@@ -210,7 +277,20 @@
               compact
                 ? `classified share ${(ls.share * 100).toFixed(1)} %`
                 : `${ls.scene} · classified share ${(ls.share * 100).toFixed(1)} percent · ` +
-                  `sun ${ls.sunElev}° · same mask, same indices, same thresholds. Never part of the series.`
+                  `sun ${ls.sunElev}° · same mask, same indices, same thresholds. Never part of the series.`,
+              false,
+              budget([
+                {
+                  src: `../assets/thumbs-landsat/${ls.scene}.webp`,
+                  alt:
+                    `Landsat true colour quicklook of the Uummannaq fjord on ${day.date}, ` +
+                    `scene ${ls.scene}`,
+                  // Its own fixed stretch and its own white balance, measured on
+                  // Landsat. Sharing Sentinel-2's would invite a brightness
+                  // comparison between two instruments that does not hold.
+                  caption: compact ? null : "Landsat true colour, its own fixed stretch",
+                },
+              ])
             )
           : layerRow("var(--layer-landsat)", "Landsat · a second opinion", "no acquisition", null, true)
       );
@@ -231,7 +311,23 @@
                   "than half of it radiates below 271.35 K. Open water cannot be colder than that."
                 : th.chainSaysOpen
                 ? "The chain calls the fjord open and the thermal band does not contradict it."
-                : "The chain does not call the fjord open, so no contradiction is possible here."
+                : "The chain does not call the fjord open, so no contradiction is possible here.",
+              false,
+              th.scene
+                ? budget([
+                    {
+                      src: `../assets/thumbs-thermal/${th.scene}.webp`,
+                      alt:
+                        `Brightness temperature of the Uummannaq fjord on ${day.date}, blue below ` +
+                        "the freezing point of seawater and amber above it",
+                      // The ramp is centred on 271.35 K rather than spread over
+                      // the record's range, because within one scene the fjord
+                      // varies by about nine kelvin while the seasons vary by
+                      // forty. Spread over forty, every picture was one colour.
+                      caption: compact ? null : "brightness temperature, blue is below 271.35 K",
+                    },
+                  ])
+                : null
             )
           : layerRow("var(--layer-thermal)", "Landsat thermal · the physics", "no acquisition", null, true)
       );
@@ -260,7 +356,23 @@
                   : ". ") +
                 (sar.verdict === "between"
                   ? "Neither one nor the other, which is 13 of the 27 days that could be placed."
-                  : "")
+                  : ""),
+              false,
+              // Only where one acquisition IS the verdict. On the days whose
+              // value came from more than one pass, `scene` is null and the row
+              // carries its numbers without a picture, rather than showing one
+              // overpass as though it were the measurement.
+              sar.scene
+                ? budget([
+                    {
+                      src: `../assets/thumbs-sar/${day.date}.webp`,
+                      alt:
+                        `Sentinel-1 terrain corrected backscatter over the Uummannaq fjord on ` +
+                        `${day.date}, scene ${sar.scene}`,
+                      caption: compact ? null : "gamma0 HH in dB, fixed scale. Roughness, not brightness",
+                    },
+                  ])
+                : null
             )
           : layerRow("var(--layer-sar)", "Sentinel-1 · the verdict", "no acquisition", null, true)
       );

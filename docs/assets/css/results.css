@@ -202,21 +202,41 @@ text { font-family: var(--md-text-font-family, sans-serif); }
   border: 1px solid currentColor;
 }
 
-.day-figure { margin: 0; display: grid; gap: 0.35rem; }
-.day-figure img {
+/* Each instrument's pictures sit inside that instrument's own row. Two of them
+   at most, side by side, which is the Sentinel-2 photograph next to the
+   classifier's decision on the same scene. */
+.md-typeset .layer-figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.45rem;
+}
+.md-typeset .layer-figure {
+  margin: 0;
+  display: grid;
+  gap: 0.3rem;
+  flex: 1 1 8rem;
+  min-width: 0;
+  max-width: 13rem;
+}
+.md-typeset .layer-figure img {
   width: 100%;
-  max-width: 26rem;
   height: auto;
   display: block;
   border: 1px solid var(--md-default-fg-color--lightest);
   border-radius: 2px;
-  image-rendering: auto;
 }
-.day-figure figcaption {
-  font-size: 0.68rem;
-  line-height: 1.5;
+/* The class raster is 368 by 453 cells and it is meant to look like 368 by 453
+   cells. Smoothing it would draw a sharper boundary than the analysis has, and
+   the whole reason it sits beside the photograph is to show how coarse the
+   decision grid really is against a 10 m image. */
+.md-typeset .layer-figure.pixelated img {
+  image-rendering: pixelated;
+}
+.md-typeset .layer-figure figcaption {
+  font-size: 0.66rem;
+  line-height: 1.45;
   color: var(--md-default-fg-color--light);
-  max-width: 26rem;
 }
 
 /* Splits the legend into its two halves: what the fill means, then which
@@ -271,8 +291,34 @@ text { font-family: var(--md-text-font-family, sans-serif); }
    pixels plus a 26 rem cap from the docked rules, so the panel came out 420
    wide however firmly `width` was stated. */
 .md-typeset .day-panel.floating > * { min-width: 0; }
-.md-typeset .day-panel.floating .day-figure img { max-width: 100%; width: 100%; }
-.md-typeset .day-panel.floating .day-figure figcaption { max-width: none; }
+/* In the hovered card there is one picture and the card is 340 px wide, so it
+   takes the full width rather than sharing it. */
+.md-typeset .day-panel.floating:not([data-pinned="true"]) .layer-figure {
+  max-width: none;
+  flex-basis: 100%;
+}
+
+/* A pinned card carries every picture, and four upright quicklooks plus their
+   text do not fit in any window: at full width this came to 936 pixels of a 960
+   pixel screen, which is the takeover the compact form was built to avoid. Two
+   answers together. The pictures pair up, 150 px each, so a row is one line of
+   pictures rather than two. And the card is bounded by the window and scrolls
+   inside itself, which it can do because pinning already restores pointer
+   events. Nothing is hidden, it is only further down. */
+.md-typeset .day-panel.floating[data-pinned="true"] {
+  max-height: calc(100vh - 1.5rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+/* Half the row each, computed rather than guessed: a fixed 150 px plus the gap
+   came to 310 in a 278 px column and wrapped, which cost a whole row of height
+   and put the photograph above its own classification instead of beside it.
+   Sharing the row also makes every picture the same size, which is what lets
+   the four be compared at all. */
+.md-typeset .day-panel.floating[data-pinned="true"] .layer-figure {
+  flex: 0 0 calc(50% - 0.25rem);
+  max-width: calc(50% - 0.25rem);
+}
 .md-typeset .day-panel.floating .day-layer .detail { font-size: 0.72rem; }
 .md-typeset .day-panel.floating h4 { font-size: 0.88rem; }
 
@@ -294,15 +340,14 @@ text { font-family: var(--md-text-font-family, sans-serif); }
 }
 .md-typeset .day-panel:not(.floating) .pin-hint { display: none; }
 
-/* The quicklook is smaller in the popup than in the pinned panel. The fjord and
-   its island are recognisable well below the rendered 320 pixels, and every
-   pixel here is one the popup takes off the reader's screen. */
-.md-typeset .day-panel.floating:not([data-pinned="true"]) .day-figure img {
-  width: 260px;
-}
-.md-typeset .day-panel.floating:not([data-pinned="true"]) .day-figure figcaption {
-  font-family: var(--md-code-font-family, monospace);
-  font-size: 0.6rem;
+/* The quicklook is smaller in the popup than in the pinned panel, and since the
+   thumbnails were corrected to the AOI's upright 0.814 aspect it has to be a
+   good deal smaller: 320 pixels wide is now 393 tall. The fjord and its island
+   stay recognisable at 168, and every pixel here is one the popup takes off the
+   reader's screen. */
+.md-typeset .day-panel.floating:not([data-pinned="true"]) .layer-figure {
+  max-width: 168px;
+  flex-basis: 168px;
 }
 
 /* Tighter rows in the popup than in the panel. A day that four instruments saw
@@ -314,4 +359,4 @@ text { font-family: var(--md-text-font-family, sans-serif); }
   line-height: 1.42;
 }
 .md-typeset .day-panel.floating:not([data-pinned="true"]) .day-layer .role { font-size: 0.6rem; }
-.md-typeset .day-panel.floating:not([data-pinned="true"]) .day-figure { gap: 0.2rem; }
+.md-typeset .day-panel.floating:not([data-pinned="true"]) .layer-figure { gap: 0.2rem; }

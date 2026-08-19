@@ -225,6 +225,11 @@ def contact_sheet() -> dict[str, Any]:
             continue
         celsius = number(row["celsius"])
         days[iso]["thermal"] = {
+            # The same Landsat scene the optical row names, not a separate
+            # acquisition. It is repeated here so the thermal row can address
+            # its own picture without reaching into another layer's data, and
+            # because the two are the same scene is worth being able to assert.
+            "scene": row["scene"],
             "kelvin": number(row["kelvin"]),
             "celsius": None if celsius is None else round(celsius, 1),
             # share of the fjord radiating below the freezing point of seawater
@@ -234,6 +239,32 @@ def contact_sheet() -> dict[str, Any]:
         }
 
     # --- layer four: the adjudicator ------------------------------------------
+    #
+    # Which acquisition produced a day's verdict is not in the verdict table,
+    # and it matters, because a day can have up to four passes and the sheet
+    # shows a radar picture beside the verdict. The link between the tables is
+    # `value_db`, which is the `water_median_db` of the pass it came from. Where
+    # exactly one pass carries that value, the scene is named here and the page
+    # can show it. Where none does, the verdict was formed from more than one
+    # pass, no single image is the measurement, and `scene` stays null so the
+    # page shows the verdict without a picture rather than picking one.
+    passes = [
+        row
+        for row in rows("sar_thermal_days.csv")
+        if row.get("role") == "suspect" and row.get("water_median_db")
+    ]
+
+    def acquisition_for(iso: str, value_db: Optional[float]) -> Optional[str]:
+        if value_db is None:
+            return None
+        matches = [
+            row
+            for row in passes
+            if row["target_day"][:10] == iso
+            and abs(float(row["water_median_db"]) - value_db) < 1e-6
+        ]
+        return matches[0]["scene_id"] if len(matches) == 1 else None
+
     verdicts = {row["day"][:10]: row for row in rows("sar_thermal_verdicts.csv")}
     for iso, row in verdicts.items():
         if iso not in days:
@@ -241,6 +272,7 @@ def contact_sheet() -> dict[str, Any]:
         position = number(row["pos"])
         days[iso]["sar"] = {
             "verdict": row["verdict"],
+            "scene": acquisition_for(iso, number(row["value_db"])),
             # where the day sits between this season's own fast ice (1) and its
             # own open water (0); outside that span the value runs past the ends
             "position": None if position is None else round(position, 3),
