@@ -79,11 +79,17 @@
        real backdrop instead of a fixed overlay guessing at a z-index. */
     const viewer = document.createElement("dialog");
     viewer.className = "day-viewer";
-    viewer.setAttribute("aria-label", "One day, and what each instrument made of it");
+    // Named by its own title, so the name changes with the day. A constant
+    // string meant a screen reader heard "One day, and what each instrument
+    // made of it" whichever day was open, and heard nothing at all when the
+    // arrows moved to another one.
+    viewer.setAttribute("aria-labelledby", "day-viewer-title");
+    viewer.setAttribute("aria-modal", "true");
 
     const viewerHead = document.createElement("div");
     viewerHead.className = "viewer-head";
     const viewerTitle = document.createElement("h3");
+    viewerTitle.id = "day-viewer-title";
 
     const viewerNav = document.createElement("div");
     viewerNav.className = "viewer-nav";
@@ -590,17 +596,18 @@
       }, HOVER_SETTLE);
     }
 
-    /* Walk to the neighbouring day that HAS something to show, WITHIN the same
-       season. Stepping onto an empty cell would open four rows of "no
-       acquisition", which is true and a waste of a tap.
+    /* Walk to the neighbouring day within the same season.
+    
+       `ordered` is built season by season, so a flat walk off the end of one row
+       lands on the start of the next: a button labelled "the day after", pressed
+       on 29 June 2017, opened 22 February 2018. Ten months away, with only the
+       title bar to say so. The arrows exist to correct a tap that landed a few
+       days off, and jumping a winter is not that. At the ends of a row the
+       button says so by being disabled.
 
-       The season bound is the more important half. `ordered` is built season by
-       season, so a flat walk off the end of one row lands on the start of the
-       next: pressing a button labelled "the day after" on 29 June 2017 opened
-       22 February 2018, ten months away, with only the title bar to say so. The
-       arrows exist to correct a tap that landed a few days off, and jumping a
-       winter is not that. At the ends of a row the button says so by being
-       disabled. */
+       The `.day` check below never fires today, because every one of the 1280
+       cells in this window carries a day. It is here so that narrowing the
+       window later cannot produce a viewer of four empty rows. */
     function neighbour(direction) {
       const here = ordered.findIndex((entry) => entry.cell === opened);
       if (here < 0) return null;
@@ -646,8 +653,12 @@
       viewerBody.scrollTop = 0;
       viewerPrev.disabled = !neighbour(-1);
       viewerNext.disabled = !neighbour(1);
-      if (typeof viewer.showModal === "function") viewer.showModal();
-      else viewer.setAttribute("open", "");
+      // No fallback branch. `<dialog>` without showModal does not exist in any
+      // browser that reaches this page, and the branch that was here set the
+      // `open` attribute instead, which renders the viewer as a permanently
+      // visible block in the page flow: worse than not opening at all, and
+      // impossible to notice because it can never run.
+      viewer.showModal();
     }
 
     /* Keyboard reaches the sheet through the cells themselves, and a focused
